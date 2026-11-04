@@ -35,11 +35,283 @@
     <p class="lead">Vitest / Jasmine với TestBed, test component, test service có HTTP giả, component harness, test e2e bằng Playwright. So với Vitest + Vue Test Utils.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Viết unit test cho component và service</li><li>Giả lập HTTP trong test</li><li>Viết test e2e cho luồng chính</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="cong-cu-test-cua-angular"><a href="#cong-cu-test-cua-angular" class="anchor" aria-hidden="true">#</a>Công cụ test của Angular</h2>
+<table>
+<tr><th>Loại</th><th>Angular</th><th>Vue</th></tr>
+<tr><td>Test runner</td><td><b>Vitest</b> (mặc định cho dự án mới từ v21), hoặc Jasmine + Karma (dự án cũ)</td><td>Vitest</td></tr>
+<tr><td>Dựng component để test</td><td><code>TestBed</code></td><td>Vue Test Utils <code>mount()</code></td></tr>
+<tr><td>Giả lập HTTP</td><td><code>provideHttpClientTesting</code> + <code>HttpTestingController</code></td><td>MSW / mock fetch</td></tr>
+<tr><td>Thao tác component thư viện</td><td>Component harness (CDK)</td><td>tìm phần tử bằng selector</td></tr>
+<tr><td>Thư viện "test như người dùng"</td><td>Angular Testing Library</td><td>Vue Testing Library</td></tr>
+<tr><td>E2E</td><td>Playwright / Cypress</td><td>Playwright / Cypress</td></tr>
+</table>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> test                 <span class="c"># chạy unit test (Vitest hoặc Karma tuỳ dự án)</span>
+<span class="k">ng</span> test --watch=false   <span class="c"># chạy một lần, dùng trong CI</span>
+<span class="k">ng</span> test --coverage</code></pre></div>
+
+<h2 id="test-mot-ham-va-mot-service-thuan"><a href="#test-mot-ham-va-mot-service-thuan" class="anchor" aria-hidden="true">#</a>Test một hàm và một service thuần</h2>
+<p>Hàm thuần và service không phụ thuộc gì test như mọi code TypeScript, không cần TestBed:</p>
+<div class="code"><div class="code-h"><span>relative-due.pipe.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { describe, expect, it } <span class="k">from</span> <span class="s">'vitest'</span>;
+<span class="k">import</span> { RelativeDuePipe } <span class="k">from</span> <span class="s">'./relative-due.pipe'</span>;
+
+<span class="f">describe</span>(<span class="s">'RelativeDuePipe'</span>, () =&gt; {
+  <span class="k">const</span> pipe = <span class="k">new</span> <span class="f">RelativeDuePipe</span>();
+  it.<span class="f">each</span>([
+    [<span class="s">'2026-11-04'</span>, <span class="s">'Hạn hôm nay'</span>],
+    [<span class="s">'2026-11-05'</span>, <span class="s">'Hạn ngày mai'</span>],
+    [<span class="s">'2026-11-09'</span>, <span class="s">'Còn 5 ngày'</span>],
+    [<span class="s">'2026-11-01'</span>, <span class="s">'Quá hạn 3 ngày'</span>],
+  ])(<span class="s">'%s → %s'</span>, (due, expected) =&gt; {
+    <span class="f">expect</span>(pipe.<span class="f">transform</span>(due, <span class="s">'2026-11-04'</span>)).<span class="f">toBe</span>(expected);
+  });
+});</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng test --watch=false</span>
+ ✓ src/app/shared/relative-due.pipe.spec.ts (4 tests) 3ms
+ ✓ src/app/features/grading/grading-store.spec.ts (5 tests) 41ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Duration  1.32s</pre></div>
+
+<h2 id="test-service-co-inject-testbed"><a href="#test-service-co-inject-testbed" class="anchor" aria-hidden="true">#</a>Test service có inject: TestBed</h2>
+<div class="code"><div class="code-h"><span>class-store.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { TestBed } <span class="k">from</span> <span class="s">'@angular/core/testing'</span>;
+<span class="k">import</span> { <span class="k">of</span>, throwError } <span class="k">from</span> <span class="s">'rxjs'</span>;
+
+<span class="f">describe</span>(<span class="s">'ClassStore'</span>, () =&gt; {
+  <span class="k">let</span> store: ClassStore;
+  <span class="k">const</span> api = {
+    list: vi.<span class="f">fn</span>(() =&gt; <span class="k">of</span>([{ id: <span class="n">1</span>, name: <span class="s">'Lớp 5A'</span>, students: <span class="n">30</span> }])),
+    update: vi.<span class="f">fn</span>(() =&gt; <span class="k">of</span>({})),
+  };
+
+  <span class="f">beforeEach</span>(() =&gt; {
+    vi.<span class="f">clearAllMocks</span>();
+    TestBed.<span class="f">configureTestingModule</span>({
+      providers: [{ provide: ClassApi, useValue: api }],   <span class="c">// thay API thật bằng bản giả</span>
+    });
+    store = TestBed.<span class="b">inject</span>(ClassStore);
+  });
+
+  <span class="f">it</span>(<span class="s">'tải danh sách lớp'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">await</span> store.<span class="f">load</span>();
+    <span class="f">expect</span>(store.<span class="f">items</span>().<span class="f">map</span>((c) =&gt; c.name)).<span class="f">toEqual</span>([<span class="s">'Lớp 5A'</span>]);
+    <span class="f">expect</span>(store.<span class="f">totalStudents</span>()).<span class="f">toBe</span>(<span class="n">30</span>);
+  });
+
+  <span class="f">it</span>(<span class="s">'đổi tên lỗi thì hoàn tác'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">await</span> store.<span class="f">load</span>();
+    api.update.<span class="f">mockReturnValueOnce</span>(<span class="f">throwError</span>(() =&gt; <span class="k">new</span> <span class="f">Error</span>(<span class="s">'500'</span>)));
+    <span class="k">await</span> store.<span class="f">rename</span>(<span class="n">1</span>, <span class="s">'Lớp 5A1'</span>);
+    <span class="f">expect</span>(store.<span class="f">items</span>()[<span class="n">0</span>].name).<span class="f">toBe</span>(<span class="s">'Lớp 5A'</span>);
+    <span class="f">expect</span>(store.<span class="f">error</span>()).<span class="f">toContain</span>(<span class="s">'không thành công'</span>);
+  });
+});</code></pre></div>
+<aside class="fe"><p>Đây là chỗ DI phát huy: thay <code>ClassApi</code> bằng object giả qua <code>providers</code>, không cần <code>vi.mock('../api')</code> cấp module như ở Vue. Store không biết và không cần biết mình đang dùng API thật hay giả.</p></aside>
+
+<h2 id="test-http-that-su-httptestingcontroller"><a href="#test-http-that-su-httptestingcontroller" class="anchor" aria-hidden="true">#</a>Test HTTP thật sự: HttpTestingController</h2>
+<div class="code"><div class="code-h"><span>assignment-api.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { provideHttpClient } <span class="k">from</span> <span class="s">'@angular/common/http'</span>;
+<span class="k">import</span> { HttpTestingController, provideHttpClientTesting } <span class="k">from</span> <span class="s">'@angular/common/http/testing'</span>;
+<span class="k">import</span> { firstValueFrom } <span class="k">from</span> <span class="s">'rxjs'</span>;
+
+<span class="f">describe</span>(<span class="s">'AssignmentApi'</span>, () =&gt; {
+  <span class="k">let</span> api: AssignmentApi;
+  <span class="k">let</span> http: HttpTestingController;
+
+  <span class="f">beforeEach</span>(() =&gt; {
+    TestBed.<span class="f">configureTestingModule</span>({ providers: [<span class="f">provideHttpClient</span>(), <span class="f">provideHttpClientTesting</span>()] });
+    api = TestBed.<span class="b">inject</span>(AssignmentApi);
+    http = TestBed.<span class="b">inject</span>(HttpTestingController);
+  });
+
+  <span class="f">afterEach</span>(() =&gt; http.<span class="f">verify</span>());   <span class="c">// báo lỗi nếu còn request chưa được xử lý</span>
+
+  <span class="f">it</span>(<span class="s">'gửi classId và page dạng query'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> result = <span class="f">firstValueFrom</span>(api.<span class="f">list</span>(<span class="n">5</span>, <span class="n">2</span>));
+    <span class="k">const</span> req = http.<span class="f">expectOne</span>((r) =&gt; r.url === <span class="s">'/api/assignments'</span>);
+    <span class="f">expect</span>(req.request.params.<span class="f">get</span>(<span class="s">'classId'</span>)).<span class="f">toBe</span>(<span class="s">'5'</span>);
+    <span class="f">expect</span>(req.request.params.<span class="f">get</span>(<span class="s">'page'</span>)).<span class="f">toBe</span>(<span class="s">'2'</span>);
+    req.<span class="f">flush</span>({ items: [], page: <span class="n">2</span>, totalPages: <span class="n">3</span> });       <span class="c">// trả response giả</span>
+    <span class="f">expect</span>((<span class="k">await</span> result).totalPages).<span class="f">toBe</span>(<span class="n">3</span>);
+  });
+
+  <span class="f">it</span>(<span class="s">'báo lỗi 404'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> result = <span class="f">firstValueFrom</span>(api.<span class="f">get</span>(<span class="n">99</span>));
+    http.<span class="f">expectOne</span>(<span class="s">'/api/assignments/99'</span>).<span class="f">flush</span>({ error: { code: <span class="s">'NOT_FOUND'</span> } }, { status: <span class="n">404</span>, statusText: <span class="s">'Not Found'</span> });
+    <span class="k">await</span> <span class="f">expect</span>(result).rejects.<span class="f">toMatchObject</span>({ status: <span class="n">404</span> });
+  });
+});</code></pre></div>
+
+<h2 id="test-component"><a href="#test-component" class="anchor" aria-hidden="true">#</a>Test component</h2>
+<div class="code"><div class="code-h"><span>rating.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { ComponentFixture, TestBed } <span class="k">from</span> <span class="s">'@angular/core/testing'</span>;
+
+<span class="f">describe</span>(<span class="s">'Rating'</span>, () =&gt; {
+  <span class="k">let</span> fixture: ComponentFixture&lt;Rating&gt;;
+  <span class="k">let</span> el: HTMLElement;
+
+  <span class="f">beforeEach</span>(<span class="k">async</span> () =&gt; {
+    <span class="k">await</span> TestBed.<span class="f">configureTestingModule</span>({ imports: [Rating] }).<span class="f">compileComponents</span>(); <span class="c">// component standalone: đưa vào imports</span>
+    fixture = TestBed.<span class="f">createComponent</span>(Rating);
+    fixture.componentRef.<span class="f">setInput</span>(<span class="s">'value'</span>, <span class="n">2</span>);     <span class="c">// đặt input</span>
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();                    <span class="c">// chờ render (zoneless)</span>
+    el = fixture.nativeElement;
+  });
+
+  <span class="f">it</span>(<span class="s">'hiện đúng số sao đang chọn'</span>, () =&gt; {
+    <span class="f">expect</span>(el.<span class="f">querySelectorAll</span>(<span class="s">'button.on'</span>).length).<span class="f">toBe</span>(<span class="n">2</span>);
+  });
+
+  <span class="f">it</span>(<span class="s">'bấm sao thứ 4 thì cập nhật model và giao diện'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> buttons = el.querySelectorAll&lt;HTMLButtonElement&gt;(<span class="s">'button'</span>);
+    buttons[<span class="n">3</span>].<span class="f">click</span>();
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+    <span class="f">expect</span>(fixture.componentInstance.<span class="f">value</span>()).<span class="f">toBe</span>(<span class="n">4</span>);
+    <span class="f">expect</span>(el.<span class="f">querySelectorAll</span>(<span class="s">'button.on'</span>).length).<span class="f">toBe</span>(<span class="n">4</span>);
+  });
+});</code></pre></div>
+<p>Ba thao tác cơ bản: <code>setInput</code> để truyền input, thao tác DOM (<code>click()</code>, đặt <code>value</code> rồi <code>dispatchEvent(new Event('input'))</code>), rồi <code>await fixture.whenStable()</code> trước khi kiểm tra DOM.</p>
+<aside class="warn"><p>Với dự án dùng Zone.js, bạn sẽ thấy <code>fixture.detectChanges()</code> gọi khắp nơi, cùng <code>fakeAsync</code> / <code>tick()</code>. Với zoneless, <code>await fixture.whenStable()</code> là cách chính, và đồng hồ giả dùng <code>vi.useFakeTimers()</code> của Vitest.</p></aside>
+
+<h3>Test output và component có service</h3>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="f">it</span>(<span class="s">'bấm Xoá phát output remove với bài tập'</span>, <span class="k">async</span> () =&gt; {
+  TestBed.<span class="f">configureTestingModule</span>({ imports: [AssignmentItem] });
+  <span class="k">const</span> fixture = TestBed.<span class="f">createComponent</span>(AssignmentItem);
+  fixture.componentRef.<span class="f">setInput</span>(<span class="s">'assignment'</span>, { id: <span class="n">9</span>, title: <span class="s">'Bài 9'</span> });
+  <span class="k">const</span> spy = vi.<span class="f">fn</span>();
+  fixture.componentInstance.remove.<span class="f">subscribe</span>(spy);        <span class="c">// output có subscribe()</span>
+  <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+  (fixture.nativeElement.<span class="f">querySelector</span>(<span class="s">'button.remove'</span>) as HTMLButtonElement).<span class="f">click</span>();
+  <span class="f">expect</span>(spy).<span class="f">toHaveBeenCalledWith</span>(expect.<span class="f">objectContaining</span>({ id: <span class="n">9</span> }));
+});</code></pre></div>
+
+<h2 id="angular-testing-library-test-nhu-nguoi-dung"><a href="#angular-testing-library-test-nhu-nguoi-dung" class="anchor" aria-hidden="true">#</a>Angular Testing Library: test như người dùng</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">npm</span> i -D @testing-library/angular @testing-library/user-event</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { render, screen } <span class="k">from</span> <span class="s">'@testing-library/angular'</span>;
+<span class="k">import</span> userEvent <span class="k">from</span> <span class="s">'@testing-library/user-event'</span>;
+
+<span class="f">it</span>(<span class="s">'lọc học sinh theo ô tìm'</span>, <span class="k">async</span> () =&gt; {
+  <span class="k">await</span> <span class="f">render</span>(StudentPicker);
+  <span class="k">await</span> userEvent.<span class="k">type</span>(screen.<span class="f">getByPlaceholderText</span>(<span class="s">'Tìm học sinh'</span>), <span class="s">'lan'</span>);
+  <span class="f">expect</span>(screen.<span class="f">getByText</span>(<span class="s">'Đỗ Lan'</span>)).<span class="f">toBeTruthy</span>();
+  <span class="f">expect</span>(screen.<span class="f">queryByText</span>(<span class="s">'Trần Bình'</span>)).<span class="f">toBeNull</span>();
+});</code></pre></div>
+<p>Tìm phần tử theo chữ, nhãn, vai trò (như người dùng nhìn thấy) thay vì class CSS: test ít vỡ khi bạn đổi cấu trúc HTML.</p>
+
+<h2 id="component-harness"><a href="#component-harness" class="anchor" aria-hidden="true">#</a>Component harness</h2>
+<p>Khi dùng component của Angular Material / CDK, test qua <b>harness</b> thay vì tìm DOM bên trong (vốn có thể đổi giữa các phiên bản):</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">const</span> loader = TestbedHarnessEnvironment.<span class="f">loader</span>(fixture);
+<span class="k">const</span> select = <span class="k">await</span> loader.<span class="f">getHarness</span>(MatSelectHarness.<span class="f">with</span>({ selector: <span class="s">'[formControlName=subject]'</span> }));
+<span class="k">await</span> select.<span class="f">open</span>();
+<span class="k">await</span> select.<span class="f">clickOptions</span>({ text: <span class="s">'Tiếng Việt'</span> });
+<span class="f">expect</span>(<span class="k">await</span> select.<span class="f">getValueText</span>()).<span class="f">toBe</span>(<span class="s">'Tiếng Việt'</span>);</code></pre></div>
+
+<h2 id="e2e-voi-playwright"><a href="#e2e-voi-playwright" class="anchor" aria-hidden="true">#</a>E2E với Playwright</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">npm</span> init playwright@latest</code></pre></div>
+<div class="code"><div class="code-h"><span>e2e/giao-bai.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { expect, test } <span class="k">from</span> <span class="s">'@playwright/test'</span>;
+
+<span class="f">test</span>(<span class="s">'giáo viên giao bài mới'</span>, <span class="k">async</span> ({ page }) =&gt; {
+  <span class="k">await</span> page.<span class="f">goto</span>(<span class="s">'/dang-nhap'</span>);
+  <span class="k">await</span> page.<span class="f">getByLabel</span>(<span class="s">'Email'</span>).<span class="f">fill</span>(<span class="s">'gv@demo.vn'</span>);
+  <span class="k">await</span> page.<span class="f">getByRole</span>(<span class="s">'button'</span>, { name: <span class="s">'Đăng nhập'</span> }).<span class="f">click</span>();
+
+  <span class="k">await</span> page.<span class="f">getByRole</span>(<span class="s">'link'</span>, { name: <span class="s">'Lớp 5A'</span> }).<span class="f">click</span>();
+  <span class="k">await</span> page.<span class="f">getByRole</span>(<span class="s">'button'</span>, { name: <span class="s">'Giao bài mới'</span> }).<span class="f">click</span>();
+  <span class="k">await</span> page.<span class="f">getByLabel</span>(<span class="s">'Tên bài'</span>).<span class="f">fill</span>(<span class="s">'Bài 7: Đo thời gian'</span>);
+  <span class="k">await</span> page.<span class="f">getByLabel</span>(<span class="s">'Hạn nộp'</span>).<span class="f">fill</span>(<span class="s">'2026-11-20'</span>);
+  <span class="k">await</span> page.<span class="f">getByRole</span>(<span class="s">'button'</span>, { name: <span class="s">'Giao bài'</span> }).<span class="f">click</span>();
+
+  <span class="k">await</span> <span class="f">expect</span>(page.<span class="f">getByText</span>(<span class="s">'Đã giao bài'</span>)).<span class="f">toBeVisible</span>();
+  <span class="k">await</span> <span class="f">expect</span>(page.<span class="f">getByRole</span>(<span class="s">'listitem'</span>).<span class="f">filter</span>({ hasText: <span class="s">'Bài 7: Đo thời gian'</span> })).<span class="f">toBeVisible</span>();
+});</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">npx playwright test</span>
+Running 6 tests using 3 workers
+  ✓  1 [chromium] › giao-bai.spec.ts:3:5 › giáo viên giao bài mới (3.2s)
+  ✓  2 [chromium] › nop-bai.spec.ts:3:5 › phụ huynh nộp ảnh bài làm (4.1s)
+  ...
+  6 passed (11.4s)</pre></div>
+
+<h2 id="bao-nhieu-test-la-du"><a href="#bao-nhieu-test-la-du" class="anchor" aria-hidden="true">#</a>Bao nhiêu test là đủ</h2>
+<table>
+<tr><th>Ưu tiên test</th><th>Vì sao</th></tr>
+<tr><td>Store / service chứa logic nghiệp vụ</td><td>nhiều nhánh, dễ test, lỗi ở đây ảnh hưởng nhiều màn hình</td></tr>
+<tr><td>Pipe, validator, hàm tiện ích</td><td>thuần, test rất rẻ</td></tr>
+<tr><td>Component có logic tương tác phức tạp (form động, bảng chấm điểm)</td><td>lỗi tương tác khó thấy bằng mắt</td></tr>
+<tr><td>Vài luồng E2E quan trọng nhất (đăng nhập, giao bài, nộp bài, thanh toán)</td><td>bắt lỗi tích hợp mà unit test bỏ qua</td></tr>
+<tr><td>Ít ưu tiên: component chỉ hiển thị</td><td>thay đổi thường xuyên, giá trị test thấp</td></tr>
+</table>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Test component zoneless: bấm nút rồi kiểm tra DOM ngay thì chưa thấy thay đổi. Cần thêm gì?</p><div class="qo"><button type="button" class="opt">fixture.detectChanges() là bắt buộc duy nhất</button><button type="button" class="opt" data-ok>await fixture.whenStable() trước khi kiểm tra</button><button type="button" class="opt">setTimeout 1 giây</button></div><p class="why" hidden>Ứng dụng zoneless lập lịch render bất đồng bộ. whenStable chờ cho tới khi Angular render xong.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Cách đúng để test service gọi API mà không gửi request thật?</p><div class="qo"><button type="button" class="opt" data-ok>provideHttpClient() + provideHttpClientTesting(), dùng HttpTestingController.expectOne và flush</button><button type="button" class="opt">Tắt mạng máy test</button><button type="button" class="opt">Dùng vi.mock cho HttpClient</button></div><p class="why" hidden>HttpTestingController chặn mọi request, cho bạn kiểm tra URL / body và trả response giả.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Test cho ConfirmDialog</summary>
+<p>Viết test cho <code>ConfirmDialog</code> ở bài 7: (1) khi <code>open</code> là false thì không có hộp thoại, (2) bấm "Huỷ" thì <code>open</code> thành false và không phát <code>confirmed</code>, (3) bấm nút xác nhận thì phát <code>confirmed</code> đúng một lần, (4) bấm Escape thì đóng.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>fixture.componentRef.setInput('open', true)</code> và <code>setInput('title', 'Xoá?')</code> (model nhận input như input thường).</li>
+<li>Theo dõi output: <code>fixture.componentInstance.confirmed.subscribe(spy)</code>.</li>
+<li>Escape: <code>document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))</code>.</li>
+<li>Sau mỗi thao tác: <code>await fixture.whenStable()</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>confirm-dialog.spec.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { TestBed, ComponentFixture } <span class="k">from</span> <span class="s">'@angular/core/testing'</span>;
+<span class="k">import</span> { ConfirmDialog } <span class="k">from</span> <span class="s">'./confirm-dialog'</span>;
+
+<span class="f">describe</span>(<span class="s">'ConfirmDialog'</span>, () =&gt; {
+  <span class="k">let</span> fixture: ComponentFixture&lt;ConfirmDialog&gt;;
+  <span class="k">const</span> q = (sel: <span class="t">string</span>) =&gt; fixture.nativeElement.<span class="f">querySelector</span>(sel) as HTMLElement | <span class="t">null</span>;
+  <span class="k">const</span> buttons = () =&gt; <span class="t">Array</span>.<span class="k">from</span>(fixture.nativeElement.<span class="f">querySelectorAll</span>(<span class="s">'button'</span>)) as HTMLButtonElement[];
+
+  <span class="f">beforeEach</span>(<span class="k">async</span> () =&gt; {
+    TestBed.<span class="f">configureTestingModule</span>({ imports: [ConfirmDialog] });
+    fixture = TestBed.<span class="f">createComponent</span>(ConfirmDialog);
+    fixture.componentRef.<span class="f">setInput</span>(<span class="s">'title'</span>, <span class="s">'Xoá bài?'</span>);
+    fixture.componentRef.<span class="f">setInput</span>(<span class="s">'open'</span>, <span class="b">true</span>);
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+  });
+
+  <span class="f">it</span>(<span class="s">'đóng thì không có hộp thoại'</span>, <span class="k">async</span> () =&gt; {
+    fixture.componentRef.<span class="f">setInput</span>(<span class="s">'open'</span>, <span class="b">false</span>);
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+    <span class="f">expect</span>(<span class="f">q</span>(<span class="s">'[role=dialog]'</span>)).<span class="f">toBeNull</span>();
+  });
+
+  <span class="f">it</span>(<span class="s">'Huỷ: đóng và không phát confirmed'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> spy = vi.<span class="f">fn</span>();
+    fixture.componentInstance.confirmed.<span class="f">subscribe</span>(spy);
+    <span class="f">buttons</span>().<span class="f">find</span>((b) =&gt; b.textContent?.<span class="f">includes</span>(<span class="s">'Huỷ'</span>))!.<span class="f">click</span>();
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+    <span class="f">expect</span>(fixture.componentInstance.<span class="f">open</span>()).<span class="f">toBe</span>(<span class="b">false</span>);
+    <span class="f">expect</span>(spy).not.<span class="f">toHaveBeenCalled</span>();
+  });
+
+  <span class="f">it</span>(<span class="s">'Đồng ý: phát confirmed một lần rồi đóng'</span>, <span class="k">async</span> () =&gt; {
+    <span class="k">const</span> spy = vi.<span class="f">fn</span>();
+    fixture.componentInstance.confirmed.<span class="f">subscribe</span>(spy);
+    <span class="f">buttons</span>().<span class="f">find</span>((b) =&gt; b.textContent?.<span class="f">includes</span>(<span class="s">'Đồng ý'</span>))!.<span class="f">click</span>();
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+    <span class="f">expect</span>(spy).<span class="f">toHaveBeenCalledTimes</span>(<span class="n">1</span>);
+    <span class="f">expect</span>(<span class="f">q</span>(<span class="s">'[role=dialog]'</span>)).<span class="f">toBeNull</span>();
+  });
+
+  <span class="f">it</span>(<span class="s">'Escape: đóng'</span>, <span class="k">async</span> () =&gt; {
+    document.<span class="f">dispatchEvent</span>(<span class="k">new</span> <span class="f">KeyboardEvent</span>(<span class="s">'keydown'</span>, { key: <span class="s">'Escape'</span> }));
+    <span class="k">await</span> fixture.<span class="f">whenStable</span>();
+    <span class="f">expect</span>(fixture.componentInstance.<span class="f">open</span>()).<span class="f">toBe</span>(<span class="b">false</span>);
+  });
+});</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng test --watch=false</span>
+ ✓ src/app/shared/confirm-dialog.spec.ts (4 tests) 58ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)</pre></div>
+<p><b>Giải thích:</b> <code>model()</code> hoạt động như một input khi test, nên <code>setInput('open', true)</code> mở hộp thoại. Nút được tìm theo chữ thay vì vị trí để test không vỡ khi đổi thứ tự nút. Listener <code>(document:keydown.escape)</code> khai báo trong <code>host</code> nhận sự kiện bắn trên <code>document</code>.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="testing">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="hieu-nang.html"><small>Bài trước</small>Hiệu năng</a><a class="next" href="styling-ui.html"><small>Bài tiếp theo</small>Style, thư viện UI và accessibility</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#cong-cu-test-cua-angular">Công cụ test của Angular</a><a href="#test-mot-ham-va-mot-service-thuan">Test một hàm và một service thuần</a><a href="#test-service-co-inject-testbed">Test service có inject: TestBed</a><a href="#test-http-that-su-httptestingcontroller">Test HTTP thật sự: HttpTestingController</a><a href="#test-component">Test component</a><a href="#angular-testing-library-test-nhu-nguoi-dung">Angular Testing Library: test như người dùng</a><a href="#component-harness">Component harness</a><a href="#e2e-voi-playwright">E2E với Playwright</a><a href="#bao-nhieu-test-la-du">Bao nhiêu test là đủ</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>

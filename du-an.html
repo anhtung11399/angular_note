@@ -35,11 +35,267 @@
     <p class="lead">Tự xây ứng dụng cho giáo viên và phụ huynh: đăng nhập, danh sách lớp, giao bài, nộp bài có ảnh, chấm điểm, router, forms, HTTP, store, test, deploy.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Ghép mọi kiến thức thành một ứng dụng hoàn chỉnh</li><li>Có một dự án Angular để đưa vào CV</li><li>Tự tin nhận task Angular ở công ty</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="de-bai"><a href="#de-bai" class="anchor" aria-hidden="true">#</a>Đề bài</h2>
+<p>Xây ứng dụng web <b>"Sổ bài tập"</b> cho giáo viên và phụ huynh. Đây là ứng dụng thật kiểu bạn sẽ làm ở công ty: nhiều trang, phân quyền, form, danh sách dài, ảnh, trạng thái tải và lỗi, test, deploy.</p>
+<table>
+<tr><th>Vai trò</th><th>Làm được</th></tr>
+<tr><td>Giáo viên</td><td>đăng nhập; xem danh sách lớp; vào lớp xem bài tập theo môn; giao bài mới (form có nhiều câu); xem bài nộp; chấm điểm và nhận xét; xem thống kê lớp</td></tr>
+<tr><td>Phụ huynh</td><td>đăng nhập; xem bài tập của con, sắp xếp bài sắp đến hạn lên đầu; nộp ảnh bài làm cho con; xem điểm và nhận xét</td></tr>
+</table>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200/lop/1/bai-tap</span><b>Minh hoạ</b></div><div class="browser-b"><div style="display:grid;grid-template-columns:180px 1fr;gap:16px;font-size:14px">
+<nav style="border-right:1px solid #e2e8f0;padding-right:12px"><b style="color:#dd0031">Sổ bài tập</b><p style="margin:12px 0 4px;color:#64748b">Lớp 5A</p><p style="margin:4px 0;font-weight:700">Bài tập</p><p style="margin:4px 0">Chấm bài <span style="background:#dc2626;color:#fff;border-radius:99px;padding:0 6px;font-size:12px">7</span></p><p style="margin:4px 0">Học sinh</p><p style="margin:4px 0">Thống kê</p></nav>
+<div><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Bài tập · Toán</h3><button>+ Giao bài mới</button></div>
+<div style="display:flex;gap:6px;margin:10px 0"><span style="background:#dd0031;color:#fff;border-radius:99px;padding:2px 10px">Toán</span><span style="border:1px solid #cbd5e1;border-radius:99px;padding:2px 10px">Tiếng Việt</span></div>
+<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:6px 0"><b>Bài 7: Đo thời gian</b> · <span style="color:#dc2626">Hạn ngày mai</span> · đã nộp 18/30</div>
+<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:6px 0"><b>Bài 6: Phân số</b> · Còn 4 ngày · đã nộp 25/30</div></div>
+</div></div></div>
+
+<h2 id="kien-truc"><a href="#kien-truc" class="anchor" aria-hidden="true">#</a>Kiến trúc</h2>
+<figure class="dg arch"><svg viewBox="0 0 840 380" style="min-width:640px;max-width:840px" role="img" aria-label="Ba tầng: core (dùng một lần cho cả app), shared (dùng lại), features (lazy load theo route). Store của từng tính năng gọi API qua service; interceptor gắn phiên đăng nhập và bắt lỗi chung"><g class="ag ag-plain"><rect x="20" y="20" width="260" height="340" rx="8"/><text x="30" y="38" class="ag-t">core/</text></g><g class="ag ag-plain"><rect x="300" y="20" width="260" height="340" rx="8"/><text x="310" y="38" class="ag-t">features/ (lazy)</text></g><g class="ag ag-plain"><rect x="580" y="20" width="240" height="340" rx="8"/><text x="590" y="38" class="ag-t">shared/</text></g><g class="an an-dv"><rect x="68" y="68" width="44" height="44" rx="9"/><text x="90" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">SVC</text><text x="90" y="128" text-anchor="middle" class="an-l">Auth</text><text x="90" y="142" text-anchor="middle" class="an-s">user, role</text></g><g class="an an-sec"><rect x="188" y="68" width="44" height="44" rx="9"/><text x="210" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">INT</text><text x="210" y="128" text-anchor="middle" class="an-l">Interceptors</text><text x="210" y="142" text-anchor="middle" class="an-s">auth, error</text></g><g class="an an-sec"><rect x="68" y="188" width="44" height="44" rx="9"/><text x="90" y="214.5" text-anchor="middle" class="an-i" style="font-size:13px">GRD</text><text x="90" y="248" text-anchor="middle" class="an-l">Guards</text><text x="90" y="262" text-anchor="middle" class="an-s">auth, role</text></g><g class="an an-ng"><rect x="188" y="188" width="44" height="44" rx="9"/><text x="210" y="214.5" text-anchor="middle" class="an-i" style="font-size:13px">CMP</text><text x="210" y="248" text-anchor="middle" class="an-l">Layout</text><text x="210" y="262" text-anchor="middle" class="an-s">menu trái / dưới</text></g><g class="an an-dv"><rect x="128" y="288" width="44" height="44" rx="9"/><text x="150" y="314.5" text-anchor="middle" class="an-i" style="font-size:13px">SVC</text><text x="150" y="348" text-anchor="middle" class="an-l">ErrorHandler</text><text x="150" y="362" text-anchor="middle" class="an-s">Toast</text></g><g class="an an-ng"><rect x="348" y="68" width="44" height="44" rx="9"/><text x="370" y="94.5" text-anchor="middle" class="an-i" style="font-size:11px">PAGE</text><text x="370" y="128" text-anchor="middle" class="an-l">classes</text><text x="370" y="142" text-anchor="middle" class="an-s">danh sách lớp</text></g><g class="an an-ng"><rect x="468" y="68" width="44" height="44" rx="9"/><text x="490" y="94.5" text-anchor="middle" class="an-i" style="font-size:11px">PAGE</text><text x="490" y="128" text-anchor="middle" class="an-l">assignments</text><text x="490" y="142" text-anchor="middle" class="an-s">giao bài</text></g><g class="an an-ng"><rect x="348" y="188" width="44" height="44" rx="9"/><text x="370" y="214.5" text-anchor="middle" class="an-i" style="font-size:11px">PAGE</text><text x="370" y="248" text-anchor="middle" class="an-l">grading</text><text x="370" y="262" text-anchor="middle" class="an-s">chấm bài</text></g><g class="an an-ng"><rect x="468" y="188" width="44" height="44" rx="9"/><text x="490" y="214.5" text-anchor="middle" class="an-i" style="font-size:11px">PAGE</text><text x="490" y="248" text-anchor="middle" class="an-l">parent</text><text x="490" y="262" text-anchor="middle" class="an-s">phụ huynh</text></g><g class="an an-db"><rect x="408" y="288" width="44" height="44" rx="9"/><text x="430" y="314.5" text-anchor="middle" class="an-i" style="font-size:11px">STORE</text><text x="430" y="348" text-anchor="middle" class="an-l">Stores</text><text x="430" y="362" text-anchor="middle" class="an-s">service + signals</text></g><g class="an an-ng"><rect x="628" y="68" width="44" height="44" rx="9"/><text x="650" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">CMP</text><text x="650" y="128" text-anchor="middle" class="an-l">UI</text><text x="650" y="142" text-anchor="middle" class="an-s">card, dialog, empty</text></g><g class="an an-dv"><rect x="738" y="68" width="44" height="44" rx="9"/><text x="760" y="94.5" text-anchor="middle" class="an-i" style="font-size:11px">PIPE</text><text x="760" y="128" text-anchor="middle" class="an-l">Pipes</text><text x="760" y="142" text-anchor="middle" class="an-s">relativeDue, vnd</text></g><g class="an an-dv"><rect x="628" y="188" width="44" height="44" rx="9"/><text x="650" y="214.5" text-anchor="middle" class="an-i" style="font-size:13px">DIR</text><text x="650" y="248" text-anchor="middle" class="an-l">Directives</text><text x="650" y="262" text-anchor="middle" class="an-s">autofocus</text></g><g class="an an-ng"><rect x="738" y="188" width="44" height="44" rx="9"/><text x="760" y="214.5" text-anchor="middle" class="an-i" style="font-size:11px">FORM</text><text x="760" y="248" text-anchor="middle" class="an-l">Validators</text><text x="760" y="262" text-anchor="middle" class="an-s">notInPast</text></g></svg><figcaption>Ba tầng: core (dùng một lần cho cả app), shared (dùng lại), features (lazy load theo route). Store của từng tính năng gọi API qua service; interceptor gắn phiên đăng nhập và bắt lỗi chung</figcaption></figure>
+<div class="code"><div class="code-h"><span>src/app/</span><button class="copy" type="button">Sao chép</button></div><pre><code>app/
+├── core/
+│   ├── auth/            auth.ts, auth.guard.ts, role.guard.ts, auth.interceptor.ts
+│   ├── api/             error.interceptor.ts, fake-backend.interceptor.ts
+│   ├── layout/          shell.ts (menu), not-found.ts
+│   ├── toast.ts, error-handler.ts
+├── shared/              card, confirm-dialog, empty-state, skeleton, relative-due.pipe, validators
+├── models/              user.ts, classroom.ts, assignment.ts, submission.ts
+├── features/
+│   ├── auth/            login-page.ts
+│   ├── classes/         class-list-page.ts, class-layout.ts, classes.routes.ts, class-api.ts
+│   ├── assignments/     assignments-page.ts, assignment-form.ts, assignment-store.ts
+│   ├── grading/         grading-page.ts, submission-viewer.ts, grading-store.ts
+│   ├── stats/           stats-page.ts (biểu đồ, @defer)
+│   └── parent/          child-home.ts, submit-dialog.ts
+├── app.ts, app.config.ts, app.routes.ts</code></pre></div>
+
+<h2 id="backend-gia-de-lam-ngay"><a href="#backend-gia-de-lam-ngay" class="anchor" aria-hidden="true">#</a>Backend giả để làm ngay</h2>
+<p>Chưa có backend? Viết một interceptor trả dữ liệu giả, sau này thay bằng API thật mà không sửa component nào (nhờ DI và interceptor). Chỉ bật khi phát triển.</p>
+<div class="code"><div class="code-h"><span>core/api/fake-backend.interceptor.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { HttpInterceptorFn, HttpResponse } <span class="k">from</span> <span class="s">'@angular/common/http'</span>;
+<span class="k">import</span> { delay, <span class="k">of</span>, throwError } <span class="k">from</span> <span class="s">'rxjs'</span>;
+
+<span class="k">const</span> db = {
+  users: [
+    { id: <span class="n">1</span>, email: <span class="s">'gv@demo.vn'</span>, name: <span class="s">'Cô Hoa'</span>, role: <span class="s">'teacher'</span> as <span class="k">const</span> },
+    { id: <span class="n">2</span>, email: <span class="s">'ph@demo.vn'</span>, name: <span class="s">'Anh Nam'</span>, role: <span class="s">'parent'</span> as <span class="k">const</span>, childId: <span class="n">7</span> },
+  ],
+  classes: [{ id: <span class="n">1</span>, name: <span class="s">'Lớp 5A'</span>, capacity: <span class="n">30</span>, teacherId: <span class="n">1</span> }],
+  assignments: [
+    { id: <span class="n">6</span>, classId: <span class="n">1</span>, subject: <span class="s">'toan'</span>, title: <span class="s">'Bài 6: Phân số'</span>, dueDate: <span class="s">'2026-11-08'</span>, exerciseCount: <span class="n">4</span> },
+    { id: <span class="n">7</span>, classId: <span class="n">1</span>, subject: <span class="s">'toan'</span>, title: <span class="s">'Bài 7: Đo thời gian'</span>, dueDate: <span class="s">'2026-11-05'</span>, exerciseCount: <span class="n">3</span> },
+  ],
+  submissions: [] as { id: <span class="t">number</span>; assignmentId: <span class="t">number</span>; studentId: <span class="t">number</span>; score: <span class="t">number</span> | <span class="t">null</span>; comment: <span class="t">string</span>; images: <span class="t">string</span>[] }[],
+};
+<span class="k">let</span> session: (<span class="k">typeof</span> db.users)[<span class="t">number</span>] | <span class="t">null</span> = <span class="t">null</span>;
+
+<span class="k">const</span> ok = &lt;T&gt;(body: T) =&gt; <span class="k">of</span>(<span class="k">new</span> <span class="f">HttpResponse</span>({ status: <span class="n">200</span>, body })).<span class="f">pipe</span>(<span class="f">delay</span>(<span class="n">250</span>));
+<span class="k">const</span> fail = (status: <span class="t">number</span>, message: <span class="t">string</span>) =&gt;
+  <span class="f">throwError</span>(() =&gt; ({ status, error: { error: { code: <span class="f">String</span>(status), message } } })).<span class="f">pipe</span>(<span class="f">delay</span>(<span class="n">250</span>));
+
+<span class="k">export</span> <span class="k">const</span> fakeBackend: HttpInterceptorFn = (req, next) =&gt; {
+  <span class="k">if</span> (!req.url.<span class="f">startsWith</span>(<span class="s">'/api/'</span>)) <span class="k">return</span> <span class="f">next</span>(req);
+  <span class="k">const</span> path = req.url.<span class="f">replace</span>(<span class="s">'/api'</span>, <span class="s">''</span>);
+
+  <span class="k">if</span> (path === <span class="s">'/login'</span> &amp;&amp; req.method === <span class="s">'POST'</span>) {
+    <span class="k">const</span> u = db.users.<span class="f">find</span>((x) =&gt; x.email === (req.body as { email: <span class="t">string</span> }).email);
+    <span class="k">return</span> u ? ((session = u), <span class="f">ok</span>(u)) : <span class="f">fail</span>(<span class="n">401</span>, <span class="s">'Email chưa đăng ký'</span>);
+  }
+  <span class="k">if</span> (!session) <span class="k">return</span> <span class="f">fail</span>(<span class="n">401</span>, <span class="s">'Bạn cần đăng nhập'</span>);
+  <span class="k">if</span> (path === <span class="s">'/me'</span>) <span class="k">return</span> <span class="f">ok</span>(session);
+  <span class="k">if</span> (path === <span class="s">'/classes'</span>) <span class="k">return</span> <span class="f">ok</span>(db.classes.<span class="f">filter</span>((c) =&gt; c.teacherId === session!.id));
+
+  <span class="k">const</span> m = path.<span class="f">match</span>(/^\/classes\/(\d+)\/assignments$/);
+  <span class="k">if</span> (m &amp;&amp; req.method === <span class="s">'GET'</span>) {
+    <span class="k">const</span> subject = req.params.<span class="f">get</span>(<span class="s">'subject'</span>) ?? <span class="s">'toan'</span>;
+    <span class="k">return</span> <span class="f">ok</span>(db.assignments.<span class="f">filter</span>((a) =&gt; a.classId === +m[<span class="n">1</span>] &amp;&amp; a.subject === subject));
+  }
+  <span class="k">if</span> (m &amp;&amp; req.method === <span class="s">'POST'</span>) {
+    <span class="k">const</span> a = { ...(req.body as object), id: Date.<span class="f">now</span>(), classId: +m[<span class="n">1</span>] } as (<span class="k">typeof</span> db.assignments)[<span class="t">number</span>];
+    db.assignments.<span class="f">unshift</span>(a);
+    <span class="k">return</span> <span class="f">ok</span>(a);
+  }
+  <span class="k">return</span> <span class="f">fail</span>(<span class="n">404</span>, <span class="s">'Không tìm thấy'</span>);
+};</code></pre></div>
+<div class="code"><div class="code-h"><span>app.config.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>providers: [
+  <span class="f">provideHttpClient</span>(<span class="f">withFetch</span>(), <span class="f">withInterceptors</span>([
+    ...(<span class="f">isDevMode</span>() ? [fakeBackend] : []),
+    authInterceptor,
+    errorInterceptor,
+  ])),
+]</code></pre></div>
+<aside class="tip"><p>Muốn backend thật? Lộ trình "Go cho dân Frontend" (cùng tác giả) xây đúng API "Sổ bài tập" này bằng Go + PostgreSQL. Hoặc dùng <code>json-server</code> cho nhanh.</p></aside>
+
+<h2 id="cac-moc-thuc-hien"><a href="#cac-moc-thuc-hien" class="anchor" aria-hidden="true">#</a>Các mốc thực hiện</h2>
+<p>Làm theo thứ tự, mỗi mốc chạy được rồi mới sang mốc sau. Mỗi mốc ghi kèm bài cần xem lại.</p>
+<table>
+<tr><th>Mốc</th><th>Việc</th><th>Kiến thức</th><th>Xong khi</th></tr>
+<tr><td>1</td><td>Tạo dự án zoneless, cấu trúc thư mục, model, fake backend, layout có menu</td><td>bài 1, 3</td><td>chạy được, menu trái trên máy tính và menu dưới trên điện thoại</td></tr>
+<tr><td>2</td><td>Đăng nhập: service <code>Auth</code>, trang login (reactive form), guard, interceptor, chuyển hướng theo vai trò</td><td>10, 12, 11, 13</td><td>chưa đăng nhập vào <code>/lop</code> bị đưa về login kèm <code>next</code>; đăng nhập xong quay lại đúng trang</td></tr>
+<tr><td>3</td><td>Danh sách lớp, layout lớp (<code>/lop/:id</code>) với route con, tham số qua input</td><td>11, 7</td><td>đổi lớp trên URL thì tiêu đề và dữ liệu đổi theo</td></tr>
+<tr><td>4</td><td>Bài tập theo môn: thanh chọn môn trên URL (<code>?mon=</code>), <code>httpResource</code>, sắp bài sắp đến hạn lên đầu, skeleton / lỗi / rỗng</td><td>13, 5, 15</td><td>tải lại trang vẫn giữ môn đang chọn</td></tr>
+<tr><td>5</td><td>Giao bài mới trong dialog: form có FormArray câu hỏi, validator ngày không quá khứ, thêm vào danh sách ngay (không tải lại)</td><td>12, 15, 19</td><td>bài mới hiện đầu danh sách, toast "Đã giao bài"</td></tr>
+<tr><td>6</td><td>Chấm bài: danh sách bài nộp, xem ảnh, nhập điểm + nhận xét tự lưu, số "cần chấm" ở menu giảm ngay</td><td>14, 15, 6</td><td>chấm xong một em thì badge menu giảm, lỗi thì hoàn tác</td></tr>
+<tr><td>7</td><td>Phụ huynh: bài của con, nộp ảnh (chọn nhiều ảnh, xem trước, tiến trình upload)</td><td>13, 8</td><td>nộp xong trạng thái đổi thành "Đã nộp" tại chỗ</td></tr>
+<tr><td>8</td><td>Thống kê lớp: biểu đồ trong <code>@defer (on viewport)</code>, xuất Excel bằng import động</td><td>17</td><td>bundle ban đầu không chứa thư viện biểu đồ / Excel</td></tr>
+<tr><td>9</td><td>Test: store, pipe, validator, 2 component; 3 luồng E2E (đăng nhập, giao bài, chấm bài)</td><td>18</td><td><code>ng test</code> và Playwright xanh</td></tr>
+<tr><td>10</td><td>Production: budget, CSP, xử lý lỗi chunk sau deploy, PWA (tuỳ chọn), deploy lên Cloudflare Pages / Netlify, CI</td><td>22, 23, 21</td><td>có link chạy thật, push là tự deploy</td></tr>
+</table>
+
+<h2 id="ma-khung-cac-phan-quan-trong"><a href="#ma-khung-cac-phan-quan-trong" class="anchor" aria-hidden="true">#</a>Mã khung các phần quan trọng</h2>
+<h3>Routes</h3>
+<div class="code"><div class="code-h"><span>app.routes.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">const</span> routes: Routes = [
+  { path: <span class="s">'dang-nhap'</span>, loadComponent: () =&gt; <span class="k">import</span>(<span class="s">'./features/auth/login-page'</span>).<span class="f">then</span>((m) =&gt; m.LoginPage), title: <span class="s">'Đăng nhập'</span> },
+  {
+    path: <span class="s">''</span>,
+    component: Shell,
+    canActivate: [authGuard],
+    children: [
+      { path: <span class="s">''</span>, pathMatch: <span class="s">'full'</span>, redirectTo: () =&gt; (<span class="b">inject</span>(Auth).<span class="f">isTeacher</span>() ? <span class="s">'/lop'</span> : <span class="s">'/con'</span>) },
+      { path: <span class="s">'lop'</span>, canMatch: [<span class="f">roleGuard</span>(<span class="s">'teacher'</span>)], loadChildren: () =&gt; <span class="k">import</span>(<span class="s">'./features/classes/classes.routes'</span>).<span class="f">then</span>((m) =&gt; m.CLASS_ROUTES) },
+      { path: <span class="s">'con'</span>, canMatch: [<span class="f">roleGuard</span>(<span class="s">'parent'</span>)], loadChildren: () =&gt; <span class="k">import</span>(<span class="s">'./features/parent/parent.routes'</span>).<span class="f">then</span>((m) =&gt; m.PARENT_ROUTES) },
+    ],
+  },
+  { path: <span class="s">'**'</span>, loadComponent: () =&gt; <span class="k">import</span>(<span class="s">'./core/layout/not-found'</span>).<span class="f">then</span>((m) =&gt; m.NotFound) },
+];</code></pre></div>
+<h3>Thứ tự bài tập: sắp đến hạn lên đầu</h3>
+<div class="code"><div class="code-h"><span>features/assignments/sort.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">// Bài còn ≤ 1 ngày đến hạn mà chưa nộp lên đầu, rồi bài giao gần nhất</span>
+<span class="k">export</span> <span class="k">function</span> sortAssignments&lt;T <span class="k">extends</span> { dueDate: <span class="t">string</span>; id: <span class="t">number</span>; submitted?: <span class="t">boolean</span> }&gt;(list: readonly T[], today: <span class="t">string</span>): T[] {
+  <span class="k">const</span> tomorrow = <span class="f">addDays</span>(today, <span class="n">1</span>);
+  <span class="k">const</span> soon = (a: T) =&gt; !a.submitted &amp;&amp; a.dueDate &gt;= today &amp;&amp; a.dueDate &lt;= tomorrow;
+  <span class="k">return</span> [...list].<span class="f">sort</span>((a, b) =&gt; <span class="f">Number</span>(<span class="f">soon</span>(b)) - <span class="f">Number</span>(<span class="f">soon</span>(a)) || b.id - a.id);
+}
+
+<span class="k">function</span> <span class="f">addDays</span>(d: <span class="t">string</span>, n: <span class="t">number</span>) {
+  <span class="k">const</span> t = <span class="k">new</span> <span class="f">Date</span>(d + <span class="s">'T00:00:00Z'</span>);
+  t.<span class="f">setUTCDate</span>(t.<span class="f">getUTCDate</span>() + n);
+  <span class="k">return</span> t.<span class="f">toISOString</span>().<span class="f">slice</span>(<span class="n">0</span>, <span class="n">10</span>);
+}</code></pre></div>
+<h3>Store chấm bài cập nhật số đếm ở menu</h3>
+<div class="code"><div class="code-h"><span>features/grading/grading-store.ts (trích)</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Injectable</span>({ providedIn: <span class="s">'root'</span> })
+<span class="k">export</span> <span class="k">class</span> GradingCounter {
+  <span class="c">// số &quot;cần chấm&quot; theo lớp, hiển thị ở menu; tải một lần khi vào lớp</span>
+  private readonly counts = <span class="b">signal</span>&lt;<span class="t">Record</span>&lt;<span class="t">number</span>, <span class="t">number</span>&gt;&gt;({});
+  count = (classId: <span class="t">number</span>) =&gt; <span class="b">computed</span>(() =&gt; <span class="k">this</span>.<span class="f">counts</span>()[classId] ?? <span class="n">0</span>);
+  <span class="f">set</span>(classId: <span class="t">number</span>, n: <span class="t">number</span>) { <span class="k">this</span>.counts.<span class="f">update</span>((c) =&gt; ({ ...c, [classId]: n })); }
+  <span class="f">decrement</span>(classId: <span class="t">number</span>) { <span class="k">this</span>.counts.<span class="f">update</span>((c) =&gt; ({ ...c, [classId]: Math.<span class="f">max</span>(<span class="n">0</span>, (c[classId] ?? <span class="n">0</span>) - <span class="n">1</span>) })); }
+}
+
+<span class="c">// GradingStore.grade(): sau khi cập nhật lạc quan</span>
+<span class="k">this</span>.counter.<span class="f">decrement</span>(<span class="k">this</span>.classId);
+<span class="c">// lỗi thì: this.counter.set(this.classId, previousCount)</span></code></pre></div>
+
+<h2 id="tieu-chi-hoan-thanh"><a href="#tieu-chi-hoan-thanh" class="anchor" aria-hidden="true">#</a>Tiêu chí hoàn thành</h2>
+<ul>
+<li><b>Chức năng</b>: đủ các luồng ở bảng đề bài cho cả hai vai trò.</li>
+<li><b>Code</b>: standalone, signals cho mọi state hiển thị, không subscribe nào thiếu huỷ, không <code>any</code> trừ chỗ thật cần, OnPush cho mọi component.</li>
+<li><b>Trải nghiệm</b>: mọi danh sách có trạng thái đang tải, lỗi (có thử lại), rỗng; sau mỗi thao tác giao diện cập nhật ngay; dùng tốt ở màn hình 390px (không cuộn ngang).</li>
+<li><b>Hiệu năng</b>: mọi route lazy, bundle ban đầu dưới 300 KB, thư viện nặng tải lười.</li>
+<li><b>Chất lượng</b>: test pass, lint sạch, CI chạy mỗi lần push.</li>
+<li><b>Bảo mật</b>: không bypass sanitizer, không bí mật trong bundle, <code>next</code> chỉ nhận đường dẫn nội bộ.</li>
+<li><b>Deploy</b>: có link chạy thật, tải lại ở trang con không bị 404.</li>
+</ul>
+
+<h2 id="mo-rong-khi-da-xong"><a href="#mo-rong-khi-da-xong" class="anchor" aria-hidden="true">#</a>Mở rộng khi đã xong</h2>
+<ul>
+<li>Bật SSR, prerender trang giới thiệu, render server cho link mời <code>/j/:code</code> có ảnh xem trước (bài 20).</li>
+<li>Thông báo đẩy khi có bài mới bằng service worker (bài 21).</li>
+<li>Chuyển store chấm bài sang NgRx SignalStore để so sánh (bài 15).</li>
+<li>Viết lại một màn hình bằng signal forms để cảm nhận hướng đi mới của Angular (bài 12).</li>
+<li>Thêm sơ đồ chỗ ngồi kéo thả bằng CDK Drag and Drop.</li>
+</ul>
+
+<details class="ex"><summary>Mốc 2 làm mẫu: đăng nhập có chuyển hướng theo vai trò</summary>
+<p>Để bạn có điểm bắt đầu, đây là lời giải đầy đủ cho mốc khó nhất ở phần đầu.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>Auth</code> giữ <code>user</code> signal, có <code>login()</code>, <code>restore()</code> (gọi <code>/api/me</code> khi tải trang), <code>logout()</code>.</li>
+<li>Khôi phục phiên trước khi router chạy guard: <code>provideAppInitializer(() =&gt; inject(Auth).restore())</code>.</li>
+<li>Guard trả <code>UrlTree</code> tới <code>/dang-nhap?next=...</code>.</li>
+<li>Trang login: reactive form, lỗi từ server hiển thị dưới form, đăng nhập xong <code>navigateByUrl(safeNext(next))</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>core/auth/auth.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Injectable</span>({ providedIn: <span class="s">'root'</span> })
+<span class="k">export</span> <span class="k">class</span> Auth {
+  private http = <span class="b">inject</span>(HttpClient);
+  private readonly _user = <span class="b">signal</span>&lt;User | <span class="t">null</span>&gt;(<span class="t">null</span>);
+  readonly user = <span class="k">this</span>._user.<span class="f">asReadonly</span>();
+  readonly isLoggedIn = <span class="b">computed</span>(() =&gt; !!<span class="k">this</span>.<span class="f">_user</span>());
+  readonly isTeacher = <span class="b">computed</span>(() =&gt; <span class="k">this</span>.<span class="f">_user</span>()?.role === <span class="s">'teacher'</span>);
+
+  <span class="k">async</span> <span class="f">restore</span>() {
+    <span class="k">try</span> {
+      <span class="k">this</span>._user.<span class="f">set</span>(<span class="k">await</span> <span class="f">firstValueFrom</span>(<span class="k">this</span>.http.get&lt;User&gt;(<span class="s">'/api/me'</span>)));
+    } <span class="k">catch</span> {
+      <span class="k">this</span>._user.<span class="f">set</span>(<span class="t">null</span>); <span class="c">// chưa đăng nhập: bình thường</span>
+    }
+  }
+
+  <span class="k">async</span> <span class="f">login</span>(email: <span class="t">string</span>) {
+    <span class="k">this</span>._user.<span class="f">set</span>(<span class="k">await</span> <span class="f">firstValueFrom</span>(<span class="k">this</span>.http.post&lt;User&gt;(<span class="s">'/api/login'</span>, { email })));
+  }
+
+  <span class="f">logout</span>() {
+    <span class="k">this</span>._user.<span class="f">set</span>(<span class="t">null</span>);
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>core/auth/auth.guard.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">const</span> authGuard: CanActivateFn = (_r, state) =&gt;
+  <span class="b">inject</span>(Auth).<span class="f">isLoggedIn</span>() || <span class="b">inject</span>(Router).<span class="f">createUrlTree</span>([<span class="s">'/dang-nhap'</span>], { queryParams: { next: state.url } });
+
+<span class="k">export</span> <span class="k">const</span> roleGuard = (role: User[<span class="s">'role'</span>]): CanMatchFn =&gt; () =&gt; <span class="b">inject</span>(Auth).<span class="f">user</span>()?.role === role;</code></pre></div>
+<div class="code"><div class="code-h"><span>features/auth/login-page.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-login-page'</span>,
+  imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: <span class="s">`
+    &lt;form [formGroup]=&quot;form&quot; (ngSubmit)=&quot;submit()&quot;&gt;
+      &lt;h1&gt;Đăng nhập&lt;/h1&gt;
+      &lt;label for=&quot;email&quot;&gt;Email&lt;/label&gt;
+      &lt;input id=&quot;email&quot; type=&quot;email&quot; formControlName=&quot;email&quot; autocomplete=&quot;email&quot; /&gt;
+      @if (error()) { &lt;p class=&quot;err&quot; role=&quot;alert&quot;&gt;{{ error() }}&lt;/p&gt; }
+      &lt;button [disabled]=&quot;busy()&quot;&gt;{{ busy() ? 'Đang đăng nhập…' : 'Đăng nhập' }}&lt;/button&gt;
+      &lt;small&gt;Thử: gv@demo.vn hoặc ph@demo.vn&lt;/small&gt;
+    &lt;/form&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> LoginPage {
+  next = <span class="b">input</span>&lt;<span class="t">string</span>&gt;();                                <span class="c">// ?next=</span>
+  private auth = <span class="b">inject</span>(Auth);
+  private router = <span class="b">inject</span>(Router);
+  protected busy = <span class="b">signal</span>(<span class="b">false</span>);
+  protected error = <span class="b">signal</span>(<span class="s">''</span>);
+  protected form = <span class="b">inject</span>(FormBuilder).nonNullable.<span class="f">group</span>({ email: [<span class="s">''</span>, [Validators.required, Validators.email]] });
+
+  <span class="k">async</span> <span class="f">submit</span>() {
+    <span class="k">if</span> (<span class="k">this</span>.form.invalid) <span class="k">return</span> <span class="k">this</span>.form.<span class="f">markAllAsTouched</span>();
+    <span class="k">this</span>.busy.<span class="f">set</span>(<span class="b">true</span>);
+    <span class="k">this</span>.error.<span class="f">set</span>(<span class="s">''</span>);
+    <span class="k">try</span> {
+      <span class="k">await</span> <span class="k">this</span>.auth.<span class="f">login</span>(<span class="k">this</span>.form.<span class="f">getRawValue</span>().email);
+      <span class="k">this</span>.router.<span class="f">navigateByUrl</span>(<span class="f">safeNext</span>(<span class="k">this</span>.<span class="f">next</span>()));
+    } <span class="k">catch</span> (e) {
+      <span class="k">this</span>.error.<span class="f">set</span>((e as HttpErrorResponse).error?.error?.message ?? <span class="s">'Không đăng nhập được'</span>);
+    } <span class="k">finally</span> {
+      <span class="k">this</span>.busy.<span class="f">set</span>(<span class="b">false</span>);
+    }
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>app.config.ts (thêm)</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="f">provideAppInitializer</span>(() =&gt; <span class="b">inject</span>(Auth).<span class="f">restore</span>()),
+<span class="f">provideRouter</span>(routes, <span class="f">withComponentInputBinding</span>()),</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200/dang-nhap?next=%2Flop%2F1</span><b>Minh hoạ</b></div><div class="browser-b"><form style="display:grid;gap:8px;max-width:320px">
+<h1 style="margin:0">Đăng nhập</h1>
+<label>Email</label><input value="ai@demo.vn" />
+<p style="color:#dc2626;margin:0">Email chưa đăng ký</p>
+<button>Đăng nhập</button>
+<small style="color:#64748b">Thử: gv@demo.vn hoặc ph@demo.vn</small>
+</form></div></div>
+<p><b>Giải thích:</b> <code>provideAppInitializer</code> chờ <code>restore()</code> xong rồi mới cho router chạy, nên tải lại trang khi đã đăng nhập không bị đá về login trong tích tắc. Lỗi 401 từ fake backend có body đúng định dạng nên câu "Email chưa đăng ký" hiện thẳng cho người dùng. Đăng nhập bằng <code>gv@demo.vn</code> với <code>?next=/lop/1</code> sẽ vào thẳng lớp 1. Không có <code>next</code> thì vào <code>/</code>, route rỗng tự chuyển theo vai trò.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="du-an">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="trien-khai.html"><small>Bài trước</small>Build, cấu hình môi trường và triển khai</a><a class="next" href="thuat-ngu.html"><small>Tra cứu</small>Từ điển thuật ngữ backend</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#de-bai">Đề bài</a><a href="#kien-truc">Kiến trúc</a><a href="#backend-gia-de-lam-ngay">Backend giả để làm ngay</a><a href="#cac-moc-thuc-hien">Các mốc thực hiện</a><a href="#ma-khung-cac-phan-quan-trong">Mã khung các phần quan trọng</a><a href="#tieu-chi-hoan-thanh">Tiêu chí hoàn thành</a><a href="#mo-rong-khi-da-xong">Mở rộng khi đã xong</a></nav>
 </div>
 </body>
 </html>

@@ -35,11 +35,170 @@
     <p class="lead">i18n có sẵn của Angular, Transloco, định dạng ngày số tiền theo vùng, service worker và PWA, cập nhật phiên bản mới.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Làm ứng dụng nhiều ngôn ngữ</li><li>Định dạng ngày, số, tiền đúng vùng</li><li>Biến ứng dụng thành PWA và xử lý cập nhật</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="dinh-dang-theo-vung-locale"><a href="#dinh-dang-theo-vung-locale" class="anchor" aria-hidden="true">#</a>Định dạng theo vùng (locale)</h2>
+<p>Trước cả chuyện dịch chữ: ngày, số, tiền phải hiển thị đúng kiểu Việt Nam. Đăng ký locale một lần (bài 8):</p>
+<div class="code"><div class="code-h"><span>app.config.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="f">registerLocaleData</span>(localeVi);
+providers: [{ provide: LOCALE_ID, useValue: <span class="s">'vi'</span> }, { provide: DEFAULT_CURRENCY_CODE, useValue: <span class="s">'VND'</span> }]</code></pre></div>
+<table>
+<tr><th>Template</th><th>Kết quả (vi)</th></tr>
+<tr><td><code>{{ 1234567.5 | number }}</code></td><td>1.234.567,5</td></tr>
+<tr><td><code>{{ 49000 | currency }}</code></td><td>49.000 ₫</td></tr>
+<tr><td><code>{{ 0.833 | percent: '1.0-1' }}</code></td><td>83,3%</td></tr>
+<tr><td><code>{{ d | date: 'fullDate' }}</code></td><td>Thứ Tư, 4 tháng 11, 2026</td></tr>
+<tr><td><code>{{ d | date: 'dd/MM/yyyy HH:mm' }}</code></td><td>04/11/2026 14:30</td></tr>
+<tr><td><code>{{ d | date: 'HH:mm' : '+0700' }}</code></td><td>giờ theo múi giờ chỉ định</td></tr>
+</table>
+<aside class="warn"><p>Ngày dạng chuỗi <code>'2026-11-10'</code> (không có giờ) được JavaScript hiểu là nửa đêm UTC, hiển thị ở Việt Nam vẫn đúng ngày (7 giờ sáng). Nhưng ở múi giờ âm (Mỹ) sẽ lùi một ngày. Với ngày thuần (hạn nộp, ngày sinh), hiển thị bằng cách tách chuỗi hoặc truyền múi giờ <code>'UTC'</code> vào pipe.</p></aside>
+
+<h2 id="dich-giao-dien-hai-huong"><a href="#dich-giao-dien-hai-huong" class="anchor" aria-hidden="true">#</a>Dịch giao diện: hai hướng</h2>
+<table>
+<tr><th></th><th>i18n có sẵn của Angular (<code>@angular/localize</code>)</th><th>Thư viện runtime (Transloco, ngx-translate)</th></tr>
+<tr><td>Cách hoạt động</td><td>dịch lúc <b>build</b>: mỗi ngôn ngữ một bản build riêng</td><td>dịch lúc <b>chạy</b>: tải file JSON ngôn ngữ, đổi ngay không tải lại</td></tr>
+<tr><td>Đổi ngôn ngữ</td><td>chuyển sang URL / bản build khác (<code>/en/</code>, <code>/vi/</code>)</td><td>tức thì</td></tr>
+<tr><td>Hiệu năng</td><td>tốt nhất (không có lớp dịch lúc chạy)</td><td>tốt</td></tr>
+<tr><td>Giống Vue</td><td>(không có tương đương)</td><td>vue-i18n</td></tr>
+</table>
+
+<h3>i18n có sẵn</h3>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> add @angular/localize
+<span class="k">ng</span> extract-i18n --output-path src/locale     <span class="c"># tạo messages.xlf từ các chỗ đánh dấu</span></code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">h1</span> i18n=<span class="s">&quot;@@homeTitle&quot;</span>&gt;Sổ bài tậ<span class="k">p</span> củ<span class="k">a</span> lớ<span class="k">p</span>&lt;/<span class="k">h1</span>&gt;
+&lt;<span class="k">button</span> i18n-title title=<span class="s">&quot;Giao bài mới&quot;</span> i18n&gt;Giao bài&lt;/<span class="k">button</span>&gt;
+&lt;<span class="k">span</span> i18n&gt;{count, plural, =<span class="n">0</span> {Chư<span class="k">a</span> có bài nào} =<span class="n">1</span> {<span class="n">1</span> bài} other {{{count}} bài}}&lt;/<span class="k">span</span>&gt;</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">const</span> msg = $localize<span class="s">`:@@savedToast:Đã lưu điểm cho ${count} em`</span>;</code></pre></div>
+<p>Dịch file <code>messages.en.xlf</code>, cấu hình <code>"i18n": { "sourceLocale": "vi", "locales": { "en": "src/locale/messages.en.xlf" } }</code> trong <code>angular.json</code>, rồi <code>ng build --localize</code> sinh <code>dist/.../vi/</code> và <code>dist/.../en/</code>.</p>
+
+<h3>Transloco: dịch lúc chạy</h3>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> add @jsverse/transloco</code></pre></div>
+<div class="code"><div class="code-h"><span>public/i18n/vi.json</span><button class="copy" type="button">Sao chép</button></div><pre><code>{ <span class="s">&quot;home&quot;</span>: { <span class="s">&quot;title&quot;</span>: <span class="s">&quot;Sổ bài tập của lớp&quot;</span>, <span class="s">&quot;assignments&quot;</span>: <span class="s">&quot;{{ count }} bài tập&quot;</span> } }</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;ng-container *transloco=<span class="s">&quot;let t&quot;</span>&gt;
+  &lt;<span class="k">h1</span>&gt;{{ <span class="f">t</span>(<span class="s">'home.title'</span>) }}&lt;/<span class="k">h1</span>&gt;
+  &lt;<span class="k">p</span>&gt;{{ <span class="f">t</span>(<span class="s">'home.assignments'</span>, { count: <span class="f">total</span>() }) }}&lt;/<span class="k">p</span>&gt;
+&lt;/ng-container&gt;</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="b">inject</span>(TranslocoService).<span class="f">setActiveLang</span>(<span class="s">'en'</span>);   <span class="c">// đổi ngôn ngữ ngay</span></code></pre></div>
+<aside class="tip"><p>Sản phẩm chỉ phục vụ người Việt (như ứng dụng trường học trong nước): đừng thêm i18n "để sau". Viết chữ tiếng Việt thẳng trong template, chỉ cần locale <code>vi</code> cho định dạng. Thêm i18n khi thật sự có kế hoạch ngôn ngữ thứ hai.</p></aside>
+
+<h2 id="pwa-cai-len-man-hinh-va-chay-khi-mang-yeu"><a href="#pwa-cai-len-man-hinh-va-chay-khi-mang-yeu" class="anchor" aria-hidden="true">#</a>PWA: cài lên màn hình và chạy khi mạng yếu</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> add @angular/pwa</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng add @angular/pwa</span>
+CREATE ngsw-config.json (639 bytes)
+CREATE public/manifest.webmanifest (1352 bytes)
+CREATE public/icons/icon-128x128.png (1253 bytes)
+...
+UPDATE angular.json (2873 bytes)
+UPDATE src/app/app.config.ts (605 bytes)
+UPDATE src/index.html (520 bytes)</pre></div>
+<div class="code"><div class="code-h"><span>ngsw-config.json</span><button class="copy" type="button">Sao chép</button></div><pre><code>{
+  <span class="s">&quot;index&quot;</span>: <span class="s">&quot;/index.html&quot;</span>,
+  <span class="s">&quot;assetGroups&quot;</span>: [
+    { <span class="s">&quot;name&quot;</span>: <span class="s">&quot;app&quot;</span>, <span class="s">&quot;installMode&quot;</span>: <span class="s">&quot;prefetch&quot;</span>, <span class="s">&quot;resources&quot;</span>: { <span class="s">&quot;files&quot;</span>: [<span class="s">&quot;/favicon.ico&quot;</span>, <span class="s">&quot;/index.html&quot;</span>, <span class="s">&quot;/*.css&quot;</span>, <span class="s">&quot;/*.js&quot;</span>] } },
+    { <span class="s">&quot;name&quot;</span>: <span class="s">&quot;assets&quot;</span>, <span class="s">&quot;installMode&quot;</span>: <span class="s">&quot;lazy&quot;</span>, <span class="s">&quot;updateMode&quot;</span>: <span class="s">&quot;prefetch&quot;</span>, <span class="s">&quot;resources&quot;</span>: { <span class="s">&quot;files&quot;</span>: [<span class="s">&quot;/**/*.(svg|png|webp|woff2)&quot;</span>] } }
+  ],
+  <span class="s">&quot;dataGroups&quot;</span>: [
+    {
+      <span class="s">&quot;name&quot;</span>: <span class="s">&quot;api-classes&quot;</span>,
+      <span class="s">&quot;urls&quot;</span>: [<span class="s">&quot;/api/classes&quot;</span>, <span class="s">&quot;/api/assignments*&quot;</span>],
+      <span class="s">&quot;cacheConfig&quot;</span>: { <span class="s">&quot;strategy&quot;</span>: <span class="s">&quot;freshness&quot;</span>, <span class="s">&quot;maxSize&quot;</span>: <span class="n">50</span>, <span class="s">&quot;maxAge&quot;</span>: <span class="s">&quot;1d&quot;</span>, <span class="s">&quot;timeout&quot;</span>: <span class="s">&quot;3s&quot;</span> }
+    }
+  ]
+}</code></pre></div>
+<table>
+<tr><th>Phần</th><th>Nghĩa</th></tr>
+<tr><td><code>assetGroups</code></td><td>file của ứng dụng (JS, CSS, ảnh): cache theo phiên bản build</td></tr>
+<tr><td><code>dataGroups</code> <code>freshness</code></td><td>API: ưu tiên mạng, quá 3 giây hoặc mất mạng thì dùng bản cache</td></tr>
+<tr><td><code>dataGroups</code> <code>performance</code></td><td>ưu tiên cache, hợp dữ liệu ít đổi</td></tr>
+</table>
+
+<h3>Báo có phiên bản mới</h3>
+<div class="code"><div class="code-h"><span>core/update-banner.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-update-banner'</span>,
+  template: <span class="s">`
+    @if (ready()) {
+      &lt;div class=&quot;banner&quot;&gt;Đã có phiên bản mới. &lt;button (click)=&quot;reload()&quot;&gt;Tải lại&lt;/button&gt;&lt;/div&gt;
+    }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> UpdateBanner {
+  private sw = <span class="b">inject</span>(SwUpdate);
+  protected ready = <span class="b">signal</span>(<span class="b">false</span>);
+
+  <span class="f">constructor</span>() {
+    <span class="k">if</span> (!<span class="k">this</span>.sw.isEnabled) <span class="k">return</span>;
+    <span class="k">this</span>.sw.versionUpdates
+      .<span class="f">pipe</span>(<span class="f">filter</span>((e) =&gt; e.<span class="k">type</span> === <span class="s">'VERSION_READY'</span>), <span class="f">takeUntilDestroyed</span>())
+      .<span class="f">subscribe</span>(() =&gt; <span class="k">this</span>.ready.<span class="f">set</span>(<span class="b">true</span>));
+    <span class="k">this</span>.sw.unrecoverable.<span class="f">pipe</span>(<span class="f">takeUntilDestroyed</span>()).<span class="f">subscribe</span>(() =&gt; location.<span class="f">reload</span>());
+  }
+
+  protected <span class="k">async</span> <span class="f">reload</span>() {
+    <span class="k">await</span> <span class="k">this</span>.sw.<span class="f">activateUpdate</span>();
+    location.<span class="f">reload</span>();
+  }
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><div style="background:#1e293b;color:#fff;padding:10px 14px;border-radius:10px">Đã có phiên bản mới. <button>Tải lại</button></div></div></div>
+<aside class="warn"><p>Service worker cache mạnh tay: sau khi deploy, người dùng có thể vẫn chạy bản cũ cho tới khi tải lại. Luôn có thông báo "phiên bản mới" như trên, và xử lý trường hợp chunk JS của bản cũ không còn trên server (lỗi tải chunk sau deploy) bằng cách tự tải lại trang một lần.</p></aside>
+<p>Thông báo đẩy (Web Push) dùng <code>SwPush</code>: <code>requestSubscription({ serverPublicKey })</code> rồi gửi subscription lên server. Trên iPhone, Web Push chỉ hoạt động khi người dùng đã "Thêm vào màn hình chính".</p>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Ứng dụng cần đổi ngôn ngữ ngay khi người dùng chọn, không tải lại trang. Chọn gì?</p><div class="qo"><button type="button" class="opt">@angular/localize</button><button type="button" class="opt" data-ok>Thư viện dịch lúc chạy như Transloco</button><button type="button" class="opt">Pipe date</button></div><p class="why" hidden>i18n có sẵn của Angular dịch lúc build, mỗi ngôn ngữ một bản build, đổi ngôn ngữ là chuyển sang bản khác.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> dataGroups strategy 'freshness' với timeout 3s nghĩa là gì?</p><div class="qo"><button type="button" class="opt" data-ok>Gọi mạng trước; quá 3 giây hoặc lỗi mạng thì trả bản cache</button><button type="button" class="opt">Luôn trả cache, cập nhật ngầm</button><button type="button" class="opt">Cache 3 giây</button></div><p class="why" hidden>freshness ưu tiên dữ liệu mới, cache là phương án dự phòng.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Ứng dụng xem lịch học dùng được khi mất mạng</summary>
+<p>Biến ứng dụng thành PWA: trang lịch học (<code>/api/schedule</code>) vẫn xem được bản gần nhất khi mất mạng, hiện dải "Bạn đang xem bản lưu lúc HH:mm" khi offline, và hiện thông báo khi có phiên bản mới.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>ng add @angular/pwa</code>, thêm <code>dataGroups</code> freshness cho <code>/api/schedule</code>.</li>
+<li>Theo dõi trạng thái mạng: <code>host: { '(window:online)': ..., '(window:offline)': ... }</code> và signal <code>offline</code>.</li>
+<li>Lưu thời điểm tải thành công gần nhất vào localStorage (qua service an toàn).</li>
+<li>Thử: <code>ng build</code> rồi phục vụ thư mục build bằng <code>npx http-server -p 8080</code> (service worker không chạy với <code>ng serve</code>), tắt mạng trong DevTools.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>ngsw-config.json (thêm)</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="s">&quot;dataGroups&quot;</span>: [
+  { <span class="s">&quot;name&quot;</span>: <span class="s">&quot;schedule&quot;</span>, <span class="s">&quot;urls&quot;</span>: [<span class="s">&quot;/api/schedule*&quot;</span>], <span class="s">&quot;cacheConfig&quot;</span>: { <span class="s">&quot;strategy&quot;</span>: <span class="s">&quot;freshness&quot;</span>, <span class="s">&quot;maxSize&quot;</span>: <span class="n">20</span>, <span class="s">&quot;maxAge&quot;</span>: <span class="s">&quot;7d&quot;</span>, <span class="s">&quot;timeout&quot;</span>: <span class="s">&quot;4s&quot;</span> } }
+]</code></pre></div>
+<div class="code"><div class="code-h"><span>schedule-page.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-schedule-page'</span>,
+  imports: [DatePipe, UpdateBanner],
+  host: { <span class="s">'(window:online)'</span>: <span class="s">'offline.set(false)'</span>, <span class="s">'(window:offline)'</span>: <span class="s">'offline.set(true)'</span> },
+  template: <span class="s">`
+    &lt;app-update-banner /&gt;
+    @if (offline()) {
+      &lt;p class=&quot;offline&quot;&gt;Bạn đang xem bản lưu lúc {{ savedAt() | date: 'HH:mm dd/MM' }}&lt;/p&gt;
+    }
+    @for (d of schedule.value() ?? []; track d.date) {
+      &lt;h3&gt;{{ d.date | date: 'EEEE dd/MM' }}&lt;/h3&gt;
+      &lt;ul&gt;@for (p of d.periods; track p.no) { &lt;li&gt;Tiết {{ p.no }}: {{ p.subject }}&lt;/li&gt; }&lt;/ul&gt;
+    }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> SchedulePage {
+  private storage = <span class="b">inject</span>(Storage);
+  protected offline = <span class="b">signal</span>(<span class="b">false</span>);
+  protected savedAt = <span class="b">signal</span>(<span class="f">Number</span>(<span class="k">this</span>.storage.<span class="f">get</span>(<span class="s">'schedule-at'</span>) ?? <span class="n">0</span>));
+  protected schedule = <span class="b">httpResource</span>&lt;{ date: <span class="t">string</span>; periods: { no: <span class="t">number</span>; subject: <span class="t">string</span> }[] }[]&gt;(() =&gt; <span class="s">'/api/schedule'</span>);
+
+  <span class="f">constructor</span>() {
+    <span class="f">afterNextRender</span>(() =&gt; <span class="k">this</span>.offline.<span class="f">set</span>(!navigator.onLine));
+    <span class="b">effect</span>(() =&gt; {
+      <span class="k">if</span> (<span class="k">this</span>.schedule.<span class="f">hasValue</span>() &amp;&amp; !<span class="k">this</span>.<span class="f">offline</span>()) {
+        <span class="k">const</span> now = Date.<span class="f">now</span>();
+        <span class="k">this</span>.storage.<span class="f">set</span>(<span class="s">'schedule-at'</span>, <span class="f">String</span>(now));
+        <span class="f">untracked</span>(() =&gt; <span class="k">this</span>.savedAt.<span class="f">set</span>(now));
+      }
+    });
+  }
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><p style="background:#fef3c7;color:#92400e;padding:6px 10px;border-radius:8px">Bạn đang xem bản lưu lúc 07:15 04/11</p>
+<h3>Thứ Tư 04/11</h3>
+<ul><li>Tiết 1: Toán</li><li>Tiết 2: Tiếng Việt</li><li>Tiết 3: Khoa học</li></ul></div></div>
+<p><b>Giải thích:</b> khi mất mạng, service worker trả bản <code>/api/schedule</code> đã cache sau 4 giây chờ (hoặc ngay nếu trình duyệt biết đang offline), nên <code>httpResource</code> vẫn nhận dữ liệu. Thời điểm lưu chỉ cập nhật khi tải thành công lúc có mạng. <code>navigator.onLine</code> đọc trong <code>afterNextRender</code> để an toàn khi có SSR. Service worker chỉ bật ở bản build production, không chạy với <code>ng serve</code>.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="i18n-pwa">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="ssr.html"><small>Bài trước</small>SSR, hydration và prerender</a><a class="next" href="bao-mat.html"><small>Bài tiếp theo</small>Bảo mật ứng dụng Angular</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#dinh-dang-theo-vung-locale">Định dạng theo vùng (locale)</a><a href="#dich-giao-dien-hai-huong">Dịch giao diện: hai hướng</a><a href="#pwa-cai-len-man-hinh-va-chay-khi-mang-yeu">PWA: cài lên màn hình và chạy khi mạng yếu</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>

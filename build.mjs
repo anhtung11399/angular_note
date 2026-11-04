@@ -519,7 +519,11 @@ function lessonPage(l, i) {
 function extraPage(e) {
   const file = path.join(SRC, 'pages', e.slug + '.html');
   const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '<p>Trang này đang được viết.</p>';
-  const { html, toc } = render(raw);
+  const { html, toc } = render(raw.replace(/\{\{n:([a-z0-9-]+)\}\}/g, (_, s) => {
+    const k = LESSONS.findIndex((x) => x.slug === s);
+    if (k < 0) throw new Error(`${e.slug}: không có bài ${s}`);
+    return `<a href="${s}.html">${String(k).padStart(2, '0')}</a>`;
+  }));
   const body = `<article class="lesson"><header class="l-head"><div class="l-meta"><span class="ph" style="--pc:#64748b">Tra cứu</span></div><h1>${esc(e.title)}</h1><p class="lead">${esc(e.desc)}</p></header><div class="prose">${html}</div></article>`;
   return page({ title: `${e.title} · ${SITE}`, desc: e.desc, slug: e.slug, body, toc });
 }

@@ -1,0 +1,241 @@
+<h2>Build production</h2>
+<pre lang="sh">
+ng build                         # mặc định configuration production
+ng build --configuration staging # cấu hình riêng (khai báo trong angular.json)
+</pre>
+<p>Builder <code>@angular/build:application</code> (esbuild) làm: biên dịch AOT, tree-shaking, minify, tách chunk theo route / defer, đặt hash vào tên file, sinh <code>index.html</code> gắn đúng file. Kết quả nằm ở <code>dist/&lt;tên-dự-án&gt;/browser/</code>: toàn file tĩnh, phục vụ được từ bất kỳ máy chủ web hay CDN nào.</p>
+<pre lang="out" sim="1">
+$ ng build
+Initial chunk files   | Names         |  Raw size | Estimated transfer size
+main-KJ2V6MQX.js      | main          | 201.34 kB |                55.08 kB
+polyfills-B6TNHZQ6.js | polyfills     |  34.58 kB |                11.32 kB
+styles-QH7GHXCC.css   | styles        |   8.81 kB |                 2.14 kB
+
+                      | Initial total | 244.73 kB |                68.54 kB
+
+Lazy chunk files      | Names         |  Raw size | Estimated transfer size
+chunk-7Z2QD6WM.js     | grading-page  |  41.20 kB |                10.66 kB
+...
+Application bundle generation complete. [6.412 seconds]
+Output location: /Users/ban/so-bai-tap/dist/so-bai-tap
+</pre>
+
+<h2>Cấu hình theo môi trường</h2>
+<h3>Cách 1: environment lúc build</h3>
+<pre lang="sh">
+ng g environments
+</pre>
+<pre lang="ts" file="src/environments/environment.ts">
+export const environment = {
+  production: true,
+  apiUrl: 'https://api.sobaitap.vn',
+  sentryDsn: 'https://abc@o1.ingest.sentry.io/1',
+};
+</pre>
+<pre lang="ts" file="src/environments/environment.development.ts">
+export const environment = {
+  production: false,
+  apiUrl: '/api',
+  sentryDsn: '',
+};
+</pre>
+<p><code>angular.json</code> có <code>fileReplacements</code>: khi build configuration development thì file <code>environment.ts</code> được thay bằng <code>environment.development.ts</code>. Giống <code>.env.production</code> của Vite, nhưng là file TypeScript có kiểu.</p>
+<aside class="warn"><p>Mọi giá trị trong environment nằm trong bundle công khai. Chỉ đặt cấu hình công khai (URL API, khoá công khai), không bao giờ đặt bí mật.</p></aside>
+
+<h3>Cách 2: cấu hình lúc chạy (một bản build, nhiều môi trường)</h3>
+<p>Muốn cùng một bản build deploy lên staging và production (đúng chuẩn "build một lần, chạy nhiều nơi"): tải file cấu hình khi khởi động.</p>
+<pre lang="ts" file="main.ts">
+fetch('/config.json')
+  .then((r) => r.json())
+  .then((cfg: AppConfig) =>
+    bootstrapApplication(App, {
+      ...appConfig,
+      providers: [...appConfig.providers, { provide: APP_CONFIG, useValue: cfg }],
+    }),
+  );
+</pre>
+<p>Mỗi môi trường có <code>config.json</code> riêng (đặt bởi pipeline hoặc server), không cần build lại. Cũng có thể dùng <code>provideAppInitializer(() =&gt; ...)</code> để tải cấu hình trước khi ứng dụng chạy.</p>
+
+<h2>Deploy lên static hosting</h2>
+<p>Ứng dụng CSR là file tĩnh, chỉ cần một điều quan trọng: <b>mọi đường dẫn không phải file đều trả về <code>index.html</code></b> (SPA fallback), để tải lại trang <code>/lop/5</code> không bị 404.</p>
+<table>
+<tr><th>Nơi deploy</th><th>Cấu hình fallback</th></tr>
+<tr><td>Netlify</td><td><code>public/_redirects</code>: <code>/*  /index.html  200</code></td></tr>
+<tr><td>Cloudflare Pages / Workers static assets</td><td>mặc định SPA, hoặc <code>not_found_handling: "single-page-application"</code></td></tr>
+<tr><td>Firebase Hosting</td><td><code>"rewrites": [{ "source": "**", "destination": "/index.html" }]</code></td></tr>
+<tr><td>Nginx</td><td><code>try_files $uri $uri/ /index.html;</code></td></tr>
+<tr><td>S3 + CloudFront</td><td>trang lỗi 403/404 → <code>/index.html</code> mã 200</td></tr>
+</table>
+<pre lang="text" file="nginx.conf">
+server {
+  listen 80;
+  root /usr/share/nginx/html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # file có hash: cache 1 năm
+  location ~* \.(js|css|woff2|webp|png|svg)$ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+
+  # index.html: không cache, để luôn lấy bản mới
+  location = /index.html {
+    add_header Cache-Control "no-cache";
+  }
+}
+</pre>
+<aside class="tip"><p>Nguyên tắc cache: file có hash trong tên cache vĩnh viễn, <code>index.html</code> không cache. Khi deploy, <code>index.html</code> mới trỏ tới file JS mới, người dùng tự lấy bản mới ở lần tải trang tiếp theo.</p></aside>
+<aside class="warn"><p>Sau deploy, người dùng đang mở trang cũ bấm sang route lazy sẽ tải chunk của bản cũ, nếu server đã xoá thì lỗi "Failed to fetch dynamically imported module". Giữ lại file của bản trước một thời gian, hoặc bắt lỗi này trong <code>ErrorHandler</code> và tự tải lại trang một lần.</p></aside>
+
+<h2>Docker</h2>
+<pre lang="docker" file="Dockerfile">
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npx ng build
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist/so-bai-tap/browser /usr/share/nginx/html
+</pre>
+
+<h2>CI với GitHub Actions</h2>
+<pre lang="yaml" file=".github/workflows/ci.yml">
+name: ci
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx ng lint
+      - run: npx ng test --watch=false
+      - run: npx ng build               # budget vượt ngưỡng error → CI đỏ
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+</pre>
+
+<h2>Nâng cấp phiên bản Angular</h2>
+<p>Angular ra bản lớn mỗi 6 tháng, mỗi bản được hỗ trợ 18 tháng (6 tháng active + 12 tháng LTS). Đội Angular viết sẵn <b>migration</b> tự sửa code khi nâng cấp:</p>
+<pre lang="sh">
+ng update                                    # xem gói nào có bản mới
+ng update @angular/core@21 @angular/cli@21   # nâng lên bản lớn kế tiếp
+</pre>
+<pre lang="out" sim="1">
+$ ng update @angular/core@21 @angular/cli@21
+Using package manager: npm
+Collecting installed dependencies...
+Found 41 dependencies.
+Fetching dependency metadata from registry...
+    Updating package.json with dependency @angular/core @ "21.0.0" (was "20.3.4")...
+    ...
+** Executing migrations of package '@angular/core' **
+
+❯ Updates usages of deprecated APIs...
+  Migration completed (3 files modified).
+</pre>
+<ul>
+<li><b>Mỗi lần chỉ lên một bản lớn</b> (20 → 21 → 22), không nhảy cóc.</li>
+<li>Đọc <a href="https://angular.dev/update-guide" target="_blank" rel="noopener">update guide</a> chọn từ bản nào lên bản nào, nó liệt kê việc cần làm tay.</li>
+<li>Nâng thư viện bên thứ ba (Material, NgRx, PrimeNG) cùng lúc, chúng theo lịch của Angular.</li>
+<li>Chạy đủ test và build sau mỗi bước.</li>
+</ul>
+<aside class="fe"><p>Đây là điểm Angular khác hẳn Vue: nâng Vue 2 lên 3 là dự án viết lại cả tháng. Angular nâng cấp đều đặn, mỗi lần vài chục phút đến vài giờ nhờ migration tự động. Dự án nên nâng cấp mỗi 6 tháng, đừng để tụt nhiều bản.</p></aside>
+
+<h2>Theo dõi lỗi trên production</h2>
+<pre lang="ts" file="core/error-handler.ts">
+@Injectable()
+export class AppErrorHandler implements ErrorHandler {
+  private reloaded = false;
+  handleError(error: unknown) {
+    const msg = String((error as Error)?.message ?? error);
+    if (/Failed to fetch dynamically imported module|Loading chunk/.test(msg) && !this.reloaded) {
+      this.reloaded = true;
+      location.reload();                 // bản mới đã deploy: tải lại một lần
+      return;
+    }
+    console.error(error);
+    // gửi lên Sentry / công cụ theo dõi lỗi (lọc dữ liệu nhạy cảm)
+  }
+}
+
+// app.config.ts
+providers: [{ provide: ErrorHandler, useClass: AppErrorHandler }]
+</pre>
+
+<quiz q="Deploy lên Nginx, mở /lop/5 trực tiếp hoặc tải lại trang thì bị 404. Nguyên nhân?">
+- Router cấu hình sai
++ Server tìm file /lop/5 không có; cần fallback mọi đường dẫn về index.html (try_files)
+- Thiếu base href
+? SPA cần server trả index.html cho mọi đường dẫn không phải file, để router phía client xử lý.
+</quiz>
+<quiz q="Cách nâng Angular từ 18 lên 21 an toàn?">
+- Sửa package.json lên 21 rồi npm install
++ ng update lần lượt 18 → 19 → 20 → 21, chạy test sau mỗi bước
+- Tạo dự án mới rồi chép code
+? Migration được viết cho từng bước nhảy một bản lớn.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Pipeline deploy lên Cloudflare Pages</summary>
+<p>Viết workflow GitHub Actions: khi push lên <code>main</code> thì lint, test, build, rồi deploy thư mục build lên Cloudflare Pages. Đảm bảo SPA fallback, header bảo mật và cache đúng.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Deploy bằng <code>npx wrangler pages deploy dist/so-bai-tap/browser --project-name so-bai-tap</code>, cần secret <code>CLOUDFLARE_API_TOKEN</code> và <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
+<li>Cloudflare Pages tự fallback SPA khi không có file 404.html.</li>
+<li>Header: file <code>public/_headers</code> (được copy nguyên vào thư mục build).</li>
+<li>Cache: thêm quy tắc cho <code>/*.js</code>, <code>/*.css</code> trong <code>_headers</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="yaml" file=".github/workflows/deploy.yml">
+name: deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx ng lint
+      - run: npx ng test --watch=false
+      - run: npx ng build
+      - run: npx wrangler pages deploy dist/so-bai-tap/browser --project-name so-bai-tap --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+</pre>
+<pre lang="text" file="public/_headers">
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.sobaitap.vn
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+/index.html
+  Cache-Control: no-cache
+</pre>
+<pre lang="out" sim="1">
+$ npx wrangler pages deploy dist/so-bai-tap/browser --project-name so-bai-tap --branch main
+✨ Success! Uploaded 18 files (6 already uploaded) (1.42 sec)
+✨ Deployment complete! Take a peek over at https://4f2a9c1d.so-bai-tap.pages.dev
+</pre>
+<p><b>Giải thích:</b> mọi bước kiểm tra chạy trước deploy, bước nào đỏ thì không deploy. File trong <code>public/</code> được copy nguyên vào thư mục build nên <code>_headers</code> tới đúng chỗ. Bí mật Cloudflare nằm trong GitHub Secrets, không nằm trong repo. CSP chặt cần tắt inline critical CSS trong <code>angular.json</code> như bài {{n:bao-mat}}.</p>
+</details>
+</details>

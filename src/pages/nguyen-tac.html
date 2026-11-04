@@ -1,0 +1,69 @@
+<h2>Mười nguyên tắc</h2>
+<ol>
+<li><b>Standalone mọi nơi.</b> Không tạo NgModule mới. Mỗi component tự khai báo <code>imports</code>.</li>
+<li><b>Mọi state hiển thị là signal.</b> Thuộc tính thường chỉ cho hằng số và thứ không hiển thị. Giá trị suy ra dùng <code>computed</code>, không dùng <code>effect</code> để đồng bộ hai signal.</li>
+<li><b>Bất biến.</b> Không sửa object / mảng tại chỗ. Luôn <code>update(x =&gt; ({ ...x, ... }))</code>, <code>[...list, item]</code>.</li>
+<li><b>OnPush cho mọi component</b>, hướng tới ứng dụng zoneless.</li>
+<li><b>Dùng hàm thay decorator thuộc tính:</b> <code>input()</code>, <code>output()</code>, <code>model()</code>, <code>viewChild()</code>, <code>inject()</code>, <code>host: {}</code>.</li>
+<li><b>Component trang lấy dữ liệu, component con chỉ nhận input và phát output.</b></li>
+<li><b>Mỗi tính năng một thư mục, lazy load theo route.</b> Không gom theo loại file.</li>
+<li><b>Không subscribe trần.</b> Dùng <code>toSignal</code>, <code>httpResource</code>, <code>async</code>, hoặc <code>takeUntilDestroyed()</code>.</li>
+<li><b>Sau mỗi thao tác, cập nhật state tại chỗ</b>, không gọi lại API chỉ để làm mới giao diện.</li>
+<li><b>Frontend không bảo mật gì.</b> Guard và ẩn nút là trải nghiệm; server kiểm tra quyền. Không bypass sanitizer với dữ liệu người dùng, không để bí mật trong bundle.</li>
+</ol>
+
+<h2>Đặt tên và tổ chức</h2>
+<table>
+<tr><th>Thứ</th><th>Quy ước (style guide hiện tại)</th><th>Ví dụ</th></tr>
+<tr><td>File component</td><td>kebab-case, không hậu tố <code>.component</code> (từ v20)</td><td><code>class-card.ts</code>, class <code>ClassCard</code></td></tr>
+<tr><td>Selector</td><td>tiền tố dự án + kebab-case</td><td><code>app-class-card</code></td></tr>
+<tr><td>Directive selector</td><td>thuộc tính camelCase có tiền tố</td><td><code>[appAutofocus]</code></td></tr>
+<tr><td>Service</td><td>tên theo việc nó làm</td><td><code>ClassApi</code>, <code>ClassStore</code>, <code>Auth</code></td></tr>
+<tr><td>Thành viên chỉ dùng trong template</td><td><code>protected</code></td><td><code>protected isFull = computed(...)</code></td></tr>
+<tr><td>Thuộc tính không đổi</td><td><code>readonly</code></td><td><code>readonly items = this._items.asReadonly()</code></td></tr>
+<tr><td>Event handler</td><td>đặt tên theo việc nó làm, không theo sự kiện</td><td><code>(click)="saveGrade()"</code> thay vì <code>onClick()</code></td></tr>
+<tr><td>Hàm phải gọi trong injection context</td><td>tiền tố <code>inject</code></td><td><code>injectRouteNumber('id')</code></td></tr>
+</table>
+
+<h2>Checklist trước khi gộp code</h2>
+<ul class="checklist">
+<li>Component mới có <code>OnPush</code>, state là signal, không còn thuộc tính thường hiển thị trên template.</li>
+<li>Không có <code>effect</code> ghi signal mà lẽ ra là <code>computed</code>. Mỗi <code>effect</code> có lý do rõ ràng (đồng bộ ra ngoài).</li>
+<li>Không có <code>subscribe()</code> thiếu huỷ.</li>
+<li><code>@for</code> track theo id, không theo <code>$index</code> khi danh sách thay đổi được.</li>
+<li>Không có method nặng gọi trong template.</li>
+<li>Danh sách có trạng thái tải, lỗi (có thử lại), rỗng.</li>
+<li>Ô nhập có <code>label</code>, nút có chữ hoặc <code>aria-label</code>, dùng <code>button</code> / <code>a</code> đúng nghĩa.</li>
+<li>Không <code>any</code> mới, không <code>bypassSecurityTrust</code> với dữ liệu người dùng.</li>
+<li>Route mới là lazy, thư viện nặng tải bằng <code>@defer</code> hoặc <code>import()</code>.</li>
+<li>Logic mới trong store / service / pipe / validator có test.</li>
+<li>Kiểm tra trên màn hình điện thoại 390px: không cuộn ngang, chữ đủ lớn.</li>
+<li><code>ng build</code> không vượt budget, <code>ng lint</code> sạch.</li>
+</ul>
+
+<h2>Checklist trước khi lên production</h2>
+<ul class="checklist">
+<li>Budget bundle được đặt và CI chặn khi vượt.</li>
+<li>Server fallback mọi đường dẫn về <code>index.html</code>; <code>index.html</code> không cache, file có hash cache lâu.</li>
+<li>Header bảo mật: CSP, <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>, chặn nhúng iframe.</li>
+<li>Xử lý lỗi tải chunk sau deploy (tự tải lại một lần).</li>
+<li>Theo dõi lỗi (Sentry hoặc tương đương), lọc dữ liệu nhạy cảm.</li>
+<li>Không có bí mật trong <code>environment.ts</code>.</li>
+<li>Locale <code>vi</code> cho ngày, số, tiền.</li>
+<li>Lighthouse: LCP, CLS, INP đạt; ảnh dùng <code>ngSrc</code> có kích thước.</li>
+<li>Có kế hoạch nâng cấp Angular mỗi 6 tháng.</li>
+</ul>
+
+<h2>Đọc code Angular cũ: chuyển dần</h2>
+<table>
+<tr><th>Gặp</th><th>Chuyển sang</th><th>Lệnh tự động</th></tr>
+<tr><td>NgModule</td><td>standalone</td><td><code>ng g @angular/core:standalone</code></td></tr>
+<tr><td><code>*ngIf</code>, <code>*ngFor</code>, <code>ngSwitch</code></td><td><code>@if</code>, <code>@for</code>, <code>@switch</code></td><td><code>ng g @angular/core:control-flow</code></td></tr>
+<tr><td><code>constructor(private x: X)</code></td><td><code>private x = inject(X)</code></td><td><code>ng g @angular/core:inject</code></td></tr>
+<tr><td><code>@Input()</code>, <code>@Output()</code></td><td><code>input()</code>, <code>output()</code></td><td><code>ng g @angular/core:signal-input-migration</code>, <code>output-migration</code></td></tr>
+<tr><td><code>@ViewChild</code>, <code>@ContentChild</code></td><td><code>viewChild()</code>, <code>contentChild()</code></td><td><code>ng g @angular/core:signal-queries-migration</code></td></tr>
+<tr><td>route <code>loadChildren</code> module</td><td><code>loadComponent</code> / routes</td><td><code>ng g @angular/core:route-lazy-loading</code></td></tr>
+<tr><td><code>BehaviorSubject</code> trong service làm store</td><td>signal</td><td>làm tay</td></tr>
+<tr><td>guard / interceptor dạng class</td><td>hàm</td><td>làm tay</td></tr>
+</table>
+<p>Nguyên tắc khi làm dự án cũ: <b>code mới viết kiểu mới</b>, code cũ chuyển khi đang sửa file đó. Không viết lại hàng loạt khi không có lý do.</p>

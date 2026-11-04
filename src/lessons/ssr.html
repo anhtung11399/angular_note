@@ -1,0 +1,220 @@
+<h2>Ba cách render</h2>
+<table>
+<tr><th></th><th>CSR (mặc định)</th><th>SSR</th><th>Prerender (SSG)</th></tr>
+<tr><td>HTML đầu tiên</td><td>trống, chỉ có <code>&lt;app-root&gt;</code></td><td>render trên server cho mỗi request</td><td>render sẵn lúc build</td></tr>
+<tr><td>Hiện nội dung</td><td>sau khi tải và chạy JS</td><td>ngay khi HTML về</td><td>ngay, từ CDN</td></tr>
+<tr><td>SEO, xem trước link (Zalo, Facebook)</td><td>kém</td><td>tốt</td><td>tốt</td></tr>
+<tr><td>Cần server Node / edge</td><td>không</td><td>có</td><td>không</td></tr>
+<tr><td>Hợp với</td><td>ứng dụng sau đăng nhập</td><td>trang công khai có dữ liệu thay đổi</td><td>trang giới thiệu, blog, tài liệu</td></tr>
+</table>
+<aside class="fe"><p>Với Vue, SSR nghĩa là dùng Nuxt (một framework khác bọc Vue). Angular có SSR <b>ngay trong framework</b>: <code>ng add @angular/ssr</code> hoặc chọn khi <code>ng new</code>, cùng router, cùng cách viết component. Và bạn chọn chế độ render <b>cho từng route</b>.</p></aside>
+
+<h2>Bật SSR</h2>
+<pre lang="sh">
+ng add @angular/ssr
+</pre>
+<pre lang="out" sim="1">
+$ ng add @angular/ssr
+CREATE src/main.server.ts (264 bytes)
+CREATE src/server.ts (1739 bytes)
+CREATE src/app/app.config.server.ts (436 bytes)
+CREATE src/app/app.routes.server.ts (161 bytes)
+UPDATE angular.json (2856 bytes)
+UPDATE src/app/app.config.ts (538 bytes)
+UPDATE package.json (1405 bytes)
+</pre>
+<pre lang="ts" file="src/app/app.routes.server.ts">
+import { RenderMode, ServerRoute } from '@angular/ssr';
+
+export const serverRoutes: ServerRoute[] = [
+  { path: '', renderMode: RenderMode.Prerender },             // trang chủ: render sẵn lúc build
+  { path: 'bang-gia', renderMode: RenderMode.Prerender },
+  { path: 'bai-viet/:slug', renderMode: RenderMode.Prerender, async getPrerenderParams() {
+      return [{ slug: 'cach-giao-bai' }, { slug: 'nop-bai-bang-anh' }];
+  } },
+  { path: 'j/:code', renderMode: RenderMode.Server },          // link mời: render theo request (có ảnh xem trước)
+  { path: '**', renderMode: RenderMode.Client },               // phần sau đăng nhập: chỉ render ở trình duyệt
+];
+</pre>
+<pre lang="sh">
+ng build          # build cả bản browser và server, prerender các route Prerender
+node dist/so-bai-tap/server/server.mjs   # chạy server Node (Express) phục vụ SSR
+</pre>
+
+<h2>Hydration</h2>
+<arch w="840" h="230" caption="Server gửi HTML đầy đủ → người dùng thấy nội dung ngay. JS tải xong, Angular không vẽ lại mà &quot;nhận&quot; DOM có sẵn (hydration), gắn listener vào. Sự kiện người dùng bấm trong lúc chờ được ghi lại và phát lại (event replay)">
+node rq 90 110 browser "Trình duyệt" "GET /j/DEMO5A"
+node sv 300 110 ssr "Server" "render HTML"
+node html 500 110 tpl "HTML đầy đủ" "hiện ngay"
+node js 680 50 bundle "Tải JS" ""
+node hy 680 170 cmp "Hydration" "gắn sự kiện vào DOM có sẵn"
+edge rq sv ""
+edge sv html "" c=go
+path 526 110 600 110 600 50 654 50 ""
+edge js hy "" route=v c=ok
+</arch>
+<pre lang="ts" file="app.config.ts">
+import { provideClientHydration, withEventReplay, withIncrementalHydration } from '@angular/platform-browser';
+
+providers: [
+  provideClientHydration(withEventReplay(), withIncrementalHydration()),
+]
+</pre>
+<p>Hydration yêu cầu DOM do server tạo và DOM trình duyệt định tạo phải <b>khớp nhau</b>. Nếu lệch (ví dụ hiển thị <code>new Date()</code> theo giờ server khác giờ máy người dùng, hay thao tác DOM trực tiếp), Angular báo lỗi NG0500 trong console và render lại phần đó.</p>
+
+<h3>Incremental hydration</h3>
+<pre lang="html">
+@defer (hydrate on viewport) {
+  <app-reviews [items]="reviews()" />     <!-- HTML có sẵn từ server, JS chỉ tải khi cuộn tới -->
+}
+@defer (hydrate on interaction) {
+  <app-pricing-calculator />
+}
+@defer (hydrate never) {
+  <app-static-footer />                   <!-- không bao giờ cần JS -->
+}
+</pre>
+<p>Kết hợp với SSR, <code>@defer</code> có thêm trigger <code>hydrate</code>: nội dung hiển thị ngay từ HTML server, còn JavaScript của phần đó chỉ tải khi cần. Trang giới thiệu dài nhiều khối tĩnh hưởng lợi rất lớn.</p>
+
+<h2>Viết code chạy được cả hai nơi</h2>
+<p>Trên server không có <code>window</code>, <code>document</code> thật, <code>localStorage</code>, <code>navigator</code>, kích thước màn hình. Đây là nguồn lỗi chính khi bật SSR:</p>
+<pre lang="out" sim="1">
+ReferenceError: localStorage is not defined
+    at new ThemeService (src/app/core/theme.ts:8:30)
+</pre>
+<table>
+<tr><th>Cần</th><th>Cách an toàn</th></tr>
+<tr><td>Đo DOM, focus, thư viện chỉ chạy trên trình duyệt</td><td><code>afterNextRender(() =&gt; ...)</code> (không chạy trên server)</td></tr>
+<tr><td>Biết đang ở đâu</td><td><code>isPlatformBrowser(inject(PLATFORM_ID))</code></td></tr>
+<tr><td><code>document</code></td><td><code>inject(DOCUMENT)</code> (server có bản giả lập)</td></tr>
+<tr><td>localStorage</td><td>bọc trong service, server trả giá trị mặc định</td></tr>
+<tr><td>Cookie, header của request</td><td><code>inject(REQUEST)</code> từ <code>@angular/core</code> (chỉ có trên server)</td></tr>
+</table>
+<pre lang="ts" file="core/storage.ts">
+@Injectable({ providedIn: 'root' })
+export class Storage {
+  private browser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  get(key: string): string | null {
+    if (!this.browser) return null;
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  set(key: string, value: string) {
+    if (!this.browser) return;
+    try { localStorage.setItem(key, value); } catch { /* bị chặn */ }
+  }
+}
+</pre>
+
+<h2>Không gọi API hai lần: HTTP transfer cache</h2>
+<p>Server gọi API để render, rồi trình duyệt hydrate và... gọi lại API đó lần nữa? Không: <code>provideClientHydration</code> bật sẵn <b>transfer cache</b>: response của các GET trong lúc SSR được nhúng vào HTML, phía trình duyệt dùng lại thay vì gọi lại.</p>
+<pre lang="ts">
+provideClientHydration(withHttpTransferCacheOptions({ includePostRequests: false, filter: (req) => !req.url.includes('/me') }))
+</pre>
+<aside class="warn"><p>Request trên server cần <b>URL tuyệt đối</b> (server không biết "<code>/api</code>" là của ai) và cần chuyển tiếp cookie nếu API cần đăng nhập. Đừng để server render dữ liệu riêng của người dùng vào trang được cache chung (CDN).</p></aside>
+
+<h2>SEO: tiêu đề, meta</h2>
+<pre lang="ts">
+export class InvitePage {
+  code = input.required<string>();
+  private title = inject(Title);
+  private meta = inject(Meta);
+  invite = httpResource<Invite>(() => `/api/invites/${this.code()}`);
+
+  constructor() {
+    effect(() => {
+      const i = this.invite.value();
+      if (!i) return;
+      this.title.setTitle(`Tham gia ${i.className} trên Sổ bài tập`);
+      this.meta.updateTag({ property: 'og:title', content: `Tham gia ${i.className}` });
+      this.meta.updateTag({ property: 'og:image', content: i.coverUrl });
+    });
+  }
+}
+</pre>
+<p>Với SSR, các thẻ này có sẵn trong HTML server trả về, nên Zalo, Facebook, Google đọc được khi chia sẻ link.</p>
+
+<h2>Deploy SSR</h2>
+<ul>
+<li><b>Node</b>: chạy <code>server.mjs</code> (Express) trên VPS, Cloud Run, Render.</li>
+<li><b>Edge / serverless</b>: <code>@angular/ssr</code> có <code>AngularAppEngine</code> dùng Request / Response chuẩn web, chạy được trên Cloudflare Workers, Netlify, Vercel (với adapter phù hợp).</li>
+<li><b>Chỉ prerender</b>: nếu mọi route là <code>Prerender</code> hoặc <code>Client</code>, kết quả build là file tĩnh, deploy như CSR lên bất kỳ static hosting nào.</li>
+</ul>
+
+<quiz q="Bật SSR rồi gặp lỗi 'window is not defined' ở service đọc kích thước màn hình. Cách sửa đúng?">
+- Thêm window = {} toàn cục
++ Đọc kích thước trong afterNextRender, hoặc chỉ khi isPlatformBrowser
+- Tắt SSR
+? afterNextRender chỉ chạy trên trình duyệt. Code dùng API trình duyệt phải được bảo vệ khỏi môi trường server.
+</quiz>
+<quiz q="Trang giới thiệu tĩnh và khu vực quản lý sau đăng nhập trong cùng ứng dụng. Cấu hình render hợp lý?">
++ Trang giới thiệu Prerender, khu vực sau đăng nhập Client
+- Mọi route Server
+- Mọi route Prerender
+? Mỗi route chọn chế độ riêng trong app.routes.server.ts.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Trang link mời có ảnh xem trước khi chia sẻ</summary>
+<p>Bật SSR cho dự án. Trang <code>/j/:code</code> render phía server, hiển thị tên lớp và tên giáo viên lấy từ API, đặt <code>og:title</code>, <code>og:description</code>. Nút "Tham gia" dùng <code>localStorage</code> để nhớ mã lớp vừa mở. Không được lỗi khi render trên server.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>ng add @angular/ssr</code>, thêm <code>{ path: 'j/:code', renderMode: RenderMode.Server }</code>.</li>
+<li>Dữ liệu: <code>httpResource</code> theo input <code>code</code>. Dùng URL tuyệt đối từ <code>APP_CONFIG</code>.</li>
+<li>Meta: <code>effect</code> khi có dữ liệu.</li>
+<li>localStorage: qua service <code>Storage</code> ở trên, ghi khi bấm nút (sự kiện chỉ có trên trình duyệt).</li>
+<li>Kiểm tra: <code>curl http://localhost:4000/j/DEMO5A</code> phải thấy tên lớp và thẻ meta trong HTML.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="invite-page.ts">
+@Component({
+  selector: 'app-invite-page',
+  template: `
+    @if (invite.value(); as i) {
+      <h1>{{ i.className }}</h1>
+      <p>Giáo viên: {{ i.teacherName }} · mã lớp {{ code() }}</p>
+      <button (click)="join()">Tham gia lớp</button>
+    } @else if (invite.error()) {
+      <p>Link mời không tồn tại hoặc đã hết hạn.</p>
+    } @else {
+      <p>Đang tải…</p>
+    }
+  `,
+})
+export class InvitePage {
+  code = input.required<string>();
+  private cfg = inject(APP_CONFIG);
+  private storage = inject(Storage);
+  private router = inject(Router);
+  private title = inject(Title);
+  private meta = inject(Meta);
+
+  protected invite = httpResource<{ className: string; teacherName: string }>(
+    () => `${this.cfg.apiUrl}/invites/${encodeURIComponent(this.code())}`,
+  );
+
+  constructor() {
+    effect(() => {
+      const i = this.invite.value();
+      if (!i) return;
+      const t = `Tham gia ${i.className} trên Sổ bài tập`;
+      this.title.setTitle(t);
+      this.meta.updateTag({ property: 'og:title', content: t });
+      this.meta.updateTag({ property: 'og:description', content: `Giáo viên ${i.teacherName} mời bạn vào lớp.` });
+    });
+  }
+
+  protected join() {
+    this.storage.set('last-invite', this.code());
+    this.router.navigate(['/dang-nhap'], { queryParams: { ma: this.code() } });
+  }
+}
+</pre>
+<pre lang="out" sim="1">
+$ curl -s http://localhost:4000/j/DEMO5A | grep -E "og:title|<h1>"
+<meta property="og:title" content="Tham gia Lớp 5A trên Sổ bài tập">
+<h1>Lớp 5A</h1>
+</pre>
+<p><b>Giải thích:</b> HTML server trả về đã có tiêu đề lớp và thẻ meta, nên khi dán link vào Zalo hay Facebook, bản xem trước hiện đúng tên lớp. <code>localStorage</code> chỉ được đụng tới trong <code>join()</code>, vốn chỉ chạy khi người dùng bấm trên trình duyệt, và service <code>Storage</code> đã bảo vệ thêm một lớp. Response của API được nhúng vào HTML (transfer cache) nên trình duyệt không gọi lại lần hai.</p>
+</details>
+</details>

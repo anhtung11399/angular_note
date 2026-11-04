@@ -1,0 +1,121 @@
+<p>Mọi khái niệm Vue bạn đã quen và thứ tương ứng trong Angular. Cột cuối là bài học nói kỹ.</p>
+
+<h2>Component và template</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Ghi chú</th><th>Bài</th></tr>
+<tr><td>Single File Component <code>.vue</code></td><td>class có <code>@Component</code> + template / style</td><td>template inline hoặc file riêng</td><td>{{n:component}}</td></tr>
+<tr><td><code>&lt;script setup&gt;</code></td><td>thân class (thuộc tính, constructor)</td><td>template chỉ thấy thành viên public / protected</td><td>{{n:typescript}}</td></tr>
+<tr><td>đăng ký component cục bộ / import</td><td><code>imports: [...]</code> trong <code>@Component</code></td><td>bắt buộc, không có đăng ký toàn cục</td><td>{{n:component}}</td></tr>
+<tr><td>tên component <code>&lt;ClassCard&gt;</code></td><td><code>selector: 'app-class-card'</code></td><td>thẻ host thật trong DOM</td><td>{{n:component}}</td></tr>
+<tr><td><code>{{ x }}</code></td><td><code>{{ x() }}</code> (signal) / <code>{{ x }}</code></td><td>signal phải gọi hàm</td><td>{{n:template}}</td></tr>
+<tr><td><code>:prop</code>, <code>v-bind</code></td><td><code>[prop]</code></td><td><code>[attr.x]</code> cho attribute</td><td>{{n:template}}</td></tr>
+<tr><td><code>@click</code>, <code>v-on</code></td><td><code>(click)</code></td><td>không có modifier <code>.prevent</code> / <code>.stop</code></td><td>{{n:template}}</td></tr>
+<tr><td><code>v-model</code></td><td><code>[(ngModel)]</code>, <code>formControlName</code>, <code>[(x)]</code> với <code>model()</code></td><td></td><td>{{n:template}}, {{n:forms}}</td></tr>
+<tr><td><code>:class</code>, <code>:style</code></td><td><code>[class]</code>, <code>[class.x]</code>, <code>[style.width.px]</code></td><td></td><td>{{n:template}}</td></tr>
+<tr><td><code>v-if / v-else</code></td><td><code>@if / @else</code></td><td>khối, không phải thuộc tính</td><td>{{n:control-flow}}</td></tr>
+<tr><td><code>v-for</code> + <code>:key</code></td><td><code>@for (x of list; track x.id)</code></td><td>track bắt buộc, có <code>@empty</code></td><td>{{n:control-flow}}</td></tr>
+<tr><td><code>v-show</code></td><td><code>[hidden]</code></td><td></td><td>{{n:template}}</td></tr>
+<tr><td><code>v-html</code></td><td><code>[innerHTML]</code></td><td>Angular tự sanitize</td><td>{{n:bao-mat}}</td></tr>
+<tr><td><code>ref="x"</code> trong template</td><td><code>#x</code></td><td>dùng thẳng trong template</td><td>{{n:template}}</td></tr>
+<tr><td><code>useTemplateRef</code></td><td><code>viewChild()</code></td><td></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>&lt;template&gt;</code> nhóm không sinh thẻ</td><td><code>&lt;ng-container&gt;</code></td><td></td><td>{{n:template}}</td></tr>
+<tr><td><code>&lt;component :is&gt;</code></td><td><code>NgComponentOutlet</code>, <code>ViewContainerRef</code></td><td></td><td>{{n:template}}</td></tr>
+<tr><td><code>defineAsyncComponent</code>, <code>&lt;Suspense&gt;</code></td><td><code>@defer</code></td><td>tách chunk ngay trong template</td><td>{{n:control-flow}}</td></tr>
+<tr><td><code>&lt;Transition&gt;</code></td><td><code>animate.enter</code> / <code>animate.leave</code></td><td>trước đây: <code>@angular/animations</code></td><td>{{n:styling-ui}}</td></tr>
+<tr><td><code>&lt;Teleport&gt;</code></td><td>CDK Overlay / Portal</td><td></td><td>{{n:styling-ui}}</td></tr>
+<tr><td><code>&lt;style scoped&gt;</code></td><td>style mặc định (Emulated encapsulation)</td><td><code>:host</code>, <code>::ng-deep</code></td><td>{{n:styling-ui}}</td></tr>
+</table>
+
+<h2>Giao tiếp giữa component</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Bài</th></tr>
+<tr><td><code>defineProps</code></td><td><code>input()</code>, <code>input.required()</code></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>withDefaults</code></td><td>giá trị đầu của <code>input(mặcĐịnh)</code></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>defineEmits</code></td><td><code>output()</code></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>defineModel</code></td><td><code>model()</code></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>&lt;slot&gt;</code>, slot có tên</td><td><code>&lt;ng-content&gt;</code>, <code>select="..."</code></td><td>{{n:input-output}}</td></tr>
+<tr><td>scoped slot</td><td><code>ng-template</code> + <code>ngTemplateOutlet</code></td><td>{{n:input-output}}</td></tr>
+<tr><td><code>provide / inject</code></td><td>dependency injection, <code>providers</code>, <code>inject()</code></td><td>{{n:di-service}}</td></tr>
+<tr><td>attribute fallthrough</td><td><code>host: {}</code>, <code>hostDirectives</code></td><td>{{n:component}}, {{n:directive-pipe}}</td></tr>
+</table>
+
+<h2>Reactivity và vòng đời</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Bài</th></tr>
+<tr><td><code>ref</code></td><td><code>signal</code></td><td>{{n:signals}}</td></tr>
+<tr><td><code>reactive</code></td><td>signal chứa object, cập nhật bằng object mới</td><td>{{n:signals}}</td></tr>
+<tr><td><code>computed</code></td><td><code>computed</code></td><td>{{n:signals}}</td></tr>
+<tr><td><code>watchEffect</code></td><td><code>effect</code></td><td>{{n:signals}}</td></tr>
+<tr><td><code>watch(src, cb)</code></td><td><code>effect</code> + <code>untracked</code>, <code>linkedSignal</code>, hoặc <code>toObservable</code> + RxJS</td><td>{{n:signals}}, {{n:rxjs}}</td></tr>
+<tr><td><code>readonly()</code></td><td><code>.asReadonly()</code></td><td>{{n:signals}}</td></tr>
+<tr><td><code>nextTick</code></td><td><code>afterNextRender</code></td><td>{{n:lifecycle}}</td></tr>
+<tr><td><code>onMounted</code></td><td><code>afterNextRender</code> / <code>ngAfterViewInit</code></td><td>{{n:lifecycle}}</td></tr>
+<tr><td><code>onUpdated</code></td><td><code>afterRenderEffect</code></td><td>{{n:lifecycle}}</td></tr>
+<tr><td><code>onUnmounted</code></td><td><code>DestroyRef.onDestroy</code> / <code>ngOnDestroy</code></td><td>{{n:lifecycle}}</td></tr>
+<tr><td>Proxy theo dõi thay đổi</td><td>signals + zoneless (trước đây: Zone.js)</td><td>{{n:change-detection}}</td></tr>
+</table>
+
+<h2>Logic dùng chung và dữ liệu</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Bài</th></tr>
+<tr><td>composable <code>useXxx()</code></td><td>service <code>@Injectable</code>, hoặc hàm <code>injectXxx()</code></td><td>{{n:di-service}}</td></tr>
+<tr><td>Pinia store</td><td>service <code>providedIn: 'root'</code> + signals, NgRx SignalStore</td><td>{{n:state}}</td></tr>
+<tr><td>Vuex</td><td>NgRx Store</td><td>{{n:state}}</td></tr>
+<tr><td>custom directive <code>v-focus</code></td><td><code>@Directive</code> attribute directive</td><td>{{n:directive-pipe}}</td></tr>
+<tr><td>filter (Vue 2)</td><td>pipe</td><td>{{n:directive-pipe}}</td></tr>
+<tr><td>Axios / fetch</td><td><code>HttpClient</code></td><td>{{n:http}}</td></tr>
+<tr><td>Interceptor của Axios</td><td><code>HttpInterceptorFn</code></td><td>{{n:http}}</td></tr>
+<tr><td><code>useFetch</code>, TanStack Query</td><td><code>httpResource</code>, <code>resource</code></td><td>{{n:http}}</td></tr>
+<tr><td>VueUse <code>useDebounceFn</code></td><td>RxJS <code>debounceTime</code></td><td>{{n:rxjs}}</td></tr>
+<tr><td>VeeValidate, FormKit</td><td>reactive forms, signal forms</td><td>{{n:forms}}</td></tr>
+</table>
+
+<h2>Router</h2>
+<table>
+<tr><th>vue-router</th><th>Angular</th><th>Bài</th></tr>
+<tr><td><code>createRouter({ routes })</code></td><td><code>provideRouter(routes)</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>component: () =&gt; import()</code></td><td><code>loadComponent</code>, <code>loadChildren</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>&lt;RouterView&gt;</code>, <code>&lt;RouterLink&gt;</code></td><td><code>&lt;router-outlet&gt;</code>, <code>routerLink</code>, <code>routerLinkActive</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>useRoute().params</code></td><td>input của component (<code>withComponentInputBinding</code>)</td><td>{{n:router}}</td></tr>
+<tr><td><code>router.push()</code></td><td><code>router.navigate([...])</code>, <code>navigateByUrl()</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>beforeEach</code>, <code>beforeEnter</code></td><td><code>canActivate</code>, <code>canMatch</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>beforeRouteLeave</code></td><td><code>canDeactivate</code></td><td>{{n:router}}</td></tr>
+<tr><td><code>meta.title</code></td><td><code>title</code> của route</td><td>{{n:router}}</td></tr>
+</table>
+
+<h2>Công cụ và hệ sinh thái</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Bài</th></tr>
+<tr><td><code>npm create vue</code>, Vite</td><td>Angular CLI (<code>ng new</code>), builder esbuild + Vite</td><td>{{n:cai-dat}}</td></tr>
+<tr><td><code>vite.config.ts</code></td><td><code>angular.json</code></td><td>{{n:cai-dat}}</td></tr>
+<tr><td><code>main.ts</code> + <code>app.use()</code></td><td><code>main.ts</code> + <code>app.config.ts</code> (<code>provideXxx()</code>)</td><td>{{n:cai-dat}}</td></tr>
+<tr><td><code>.env.production</code></td><td><code>environments/</code> + <code>fileReplacements</code></td><td>{{n:trien-khai}}</td></tr>
+<tr><td>Volar, Vue DevTools</td><td>Angular Language Service, Angular DevTools</td><td>{{n:cai-dat}}</td></tr>
+<tr><td>Vitest + Vue Test Utils</td><td>Vitest / Jasmine + TestBed</td><td>{{n:testing}}</td></tr>
+<tr><td>Nuxt (SSR)</td><td><code>@angular/ssr</code> có sẵn</td><td>{{n:ssr}}</td></tr>
+<tr><td>vue-i18n</td><td><code>@angular/localize</code> (lúc build), Transloco (lúc chạy)</td><td>{{n:i18n-pwa}}</td></tr>
+<tr><td>vite-plugin-pwa</td><td><code>@angular/pwa</code> (service worker <code>ngsw</code>)</td><td>{{n:i18n-pwa}}</td></tr>
+<tr><td>Vuetify / PrimeVue</td><td>Angular Material + CDK / PrimeNG</td><td>{{n:styling-ui}}</td></tr>
+<tr><td>nâng cấp tay</td><td><code>ng update</code> + migration tự động</td><td>{{n:trien-khai}}</td></tr>
+</table>
+
+<h2>Thuật ngữ riêng của Angular</h2>
+<table>
+<tr><th>Thuật ngữ</th><th>Nghĩa</th><th>Bài</th></tr>
+<tr><td>standalone</td><td>component tự khai báo imports, không cần NgModule (mặc định từ v19)</td><td>{{n:component}}</td></tr>
+<tr><td>NgModule</td><td>cách tổ chức cũ: module khai báo nhóm component</td><td>{{n:component}}</td></tr>
+<tr><td>decorator</td><td><code>@Component</code>, <code>@Injectable</code>... gắn metadata vào class</td><td>{{n:typescript}}</td></tr>
+<tr><td>AOT</td><td>biên dịch template lúc build, kiểm tra kiểu template</td><td>{{n:cai-dat}}</td></tr>
+<tr><td>injector, provider</td><td>nơi tạo / giữ service, cách tạo service</td><td>{{n:di-service}}</td></tr>
+<tr><td>injection context</td><td>nơi được gọi <code>inject()</code></td><td>{{n:di-service}}</td></tr>
+<tr><td>InjectionToken</td><td>khoá để inject giá trị không phải class</td><td>{{n:di-service}}</td></tr>
+<tr><td>host</td><td>phần tử DOM chứa component / directive</td><td>{{n:component}}</td></tr>
+<tr><td>content projection</td><td>chiếu nội dung của cha vào con (<code>ng-content</code>)</td><td>{{n:input-output}}</td></tr>
+<tr><td>structural directive</td><td>directive có dấu <code>*</code>, tạo / huỷ template</td><td>{{n:control-flow}}</td></tr>
+<tr><td>change detection</td><td>cơ chế cập nhật giao diện khi dữ liệu đổi</td><td>{{n:change-detection}}</td></tr>
+<tr><td>Zone.js / zoneless</td><td>thư viện vá API async để biết khi nào cập nhật / chế độ không dùng nó</td><td>{{n:change-detection}}</td></tr>
+<tr><td>OnPush</td><td>chiến lược chỉ kiểm tra component khi có lý do</td><td>{{n:change-detection}}</td></tr>
+<tr><td>Observable, Subject, operator</td><td>khái niệm của RxJS</td><td>{{n:rxjs}}</td></tr>
+<tr><td>hydration</td><td>trình duyệt nhận lại HTML do server render và gắn sự kiện</td><td>{{n:ssr}}</td></tr>
+<tr><td>schematic, migration</td><td>trình sinh / sửa code của CLI (<code>ng g</code>, <code>ng update</code>)</td><td>{{n:cai-dat}}, {{n:trien-khai}}</td></tr>
+</table>

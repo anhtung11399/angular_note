@@ -1,0 +1,219 @@
+<h2>Angular biết khi nào phải cập nhật giao diện bằng cách nào</h2>
+<p>Vue dùng Proxy: mỗi lần bạn gán <code>count.value = 5</code>, Vue <b>biết ngay</b> component nào đọc <code>count</code> và chỉ render lại component đó. Angular trong lịch sử làm khác hẳn, và hiện đang chuyển dần về mô hình giống Vue nhờ signals. Hiểu cả hai mô hình giúp bạn đọc được code cũ và sửa những lỗi "giao diện không cập nhật".</p>
+
+<h2>Mô hình cũ: Zone.js + kiểm tra cả cây</h2>
+<arch w="840" h="270" caption="Zone.js vá setTimeout, addEventListener, Promise, XHR. Sau mỗi tác vụ bất đồng bộ, nó báo Angular &quot;có thể có gì đó đã đổi&quot;. Angular kiểm tra lại toàn bộ cây component từ gốc, so sánh từng binding với giá trị cũ">
+node ev 100 130 event "Sự kiện" "click, timer, HTTP"
+node z 300 130 zone "Zone.js" "bắt mọi tác vụ async"
+node cd 500 130 cd "Change detection" "duyệt cả cây"
+node c1 700 50 cmp "App" "kiểm tra"
+node c2 700 130 cmp "Header" "kiểm tra"
+node c3 700 210 cmp "List" "kiểm tra"
+edge ev z ""
+edge z cd "tick()" c=go
+edge cd c1 "" route=hvh
+edge cd c2 ""
+edge cd c3 "" route=hvh
+</arch>
+<p>Ưu điểm: bạn sửa thuộc tính thường (<code>this.count = 5</code>) ở bất cứ đâu, giao diện tự cập nhật, không cần ref hay signal. Nhược điểm:</p>
+<ul>
+<li>Kiểm tra <b>mọi</b> component sau <b>mọi</b> sự kiện, kể cả khi chẳng có gì đổi (cuộn chuột, mousemove, setInterval của thư viện quảng cáo).</li>
+<li>Zone.js nặng khoảng 30 KB và vá các API của trình duyệt, gây khó gỡ lỗi (stack trace dài) và không theo kịp các API mới (async / await gốc phải hạ cấp).</li>
+<li>Cập nhật từ ngoài "vùng" của Angular (thư viện tự tạo WebSocket) có thể không được phát hiện.</li>
+</ul>
+
+<h2>OnPush: chỉ kiểm tra khi cần</h2>
+<pre lang="ts">
+@Component({
+  selector: 'app-student-row',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `...`,
+})
+export class StudentRow { ... }
+</pre>
+<p>Component <code>OnPush</code> chỉ được kiểm tra lại khi:</p>
+<ul>
+<li>một input nhận <b>tham chiếu mới</b> (so sánh <code>===</code>),</li>
+<li>một sự kiện xảy ra trong template của nó hoặc con của nó,</li>
+<li>một signal mà template của nó đọc thay đổi,</li>
+<li><code>async</code> pipe trong template nhận giá trị mới,</li>
+<li>bạn gọi <code>ChangeDetectorRef.markForCheck()</code>.</li>
+</ul>
+<aside class="warn"><p>Lỗi kinh điển với OnPush: cha sửa object tại chỗ (<code>this.student.name = 'An'</code>) rồi truyền vào con OnPush. Tham chiếu không đổi nên con không cập nhật. Cách sửa luôn là: tạo object mới. Đây cũng chính là quy tắc của signals, nên viết theo kiểu bất biến là đúng với mọi chế độ.</p></aside>
+<aside class="tip"><p>Với code mới dùng signals cho mọi state, nên đặt <code>OnPush</code> cho mọi component (có thể cấu hình CLI sinh sẵn: <code>"@schematics/angular:component": { "changeDetection": "OnPush" }</code> trong <code>angular.json</code>). Từ Angular 20+ có bàn luận đưa OnPush thành mặc định, xem ghi chú phát hành của phiên bản bạn dùng.</p></aside>
+
+<h2>Mô hình mới: zoneless + signals</h2>
+<p>Ứng dụng zoneless (mặc định cho dự án mới từ Angular 21, dùng được ổn định từ v20) bỏ hẳn Zone.js. Angular chỉ chạy kiểm tra khi có tín hiệu rõ ràng:</p>
+<table>
+<tr><th>Tín hiệu</th><th>Ví dụ</th></tr>
+<tr><td>signal được đọc trong template thay đổi</td><td><code>count.set(5)</code></td></tr>
+<tr><td>sự kiện trong template</td><td><code>(click)</code>, <code>(input)</code>, listener trong <code>host</code></td></tr>
+<tr><td><code>markForCheck()</code></td><td>gọi tay, hoặc gián tiếp qua <code>async</code> pipe</td></tr>
+<tr><td>gắn / gỡ component động, input của component tạo bằng code</td><td><code>ComponentRef.setInput()</code></td></tr>
+</table>
+<arch w="840" h="230" caption="Zoneless: signal đổi → Angular biết chính xác component nào đọc nó → đánh dấu đúng component đó cần cập nhật → lập lịch một lần render. Không có Zone.js, không duyệt cả cây vô ích">
+node s 100 110 sig "count.set(5)" "signal"
+node m 330 110 cd "Đánh dấu" "component đọc count"
+node sch 560 110 eff "Lập lịch render" "1 lần cho nhiều thay đổi"
+node c 760 110 cmp "Counter" "chỉ component này"
+edge s m "" c=go
+edge m sch ""
+edge sch c "" c=ok
+</arch>
+<p>Hệ quả quan trọng: <b>thuộc tính thường của class không còn tự cập nhật giao diện</b> khi bị đổi trong <code>setTimeout</code>, <code>subscribe</code>, <code>.then()</code>, listener tự gắn.</p>
+<pre lang="ts" mark="bad">
+// ứng dụng zoneless
+loading = true;
+data: Item[] = [];
+ngOnInit() {
+  this.api.list().subscribe((d) => {
+    this.data = d;           // ✘ giao diện không biết để cập nhật
+    this.loading = false;
+  });
+}
+</pre>
+<pre lang="ts" mark="good">
+loading = signal(true);
+data = signal<Item[]>([]);
+ngOnInit() {
+  this.api.list().subscribe((d) => {
+    this.data.set(d);        // ✓
+    this.loading.set(false);
+  });
+}
+// hoặc gọn hơn: data = toSignal(this.api.list(), { initialValue: [] })
+</pre>
+<p>Chuyển ứng dụng cũ sang zoneless:</p>
+<pre lang="ts" file="app.config.ts">
+providers: [
+  provideZonelessChangeDetection(),
+  // và bỏ "zone.js" khỏi polyfills trong angular.json
+]
+</pre>
+<p>Rồi tìm các chỗ sửa state ngoài sự kiện template (subscribe, setTimeout, thư viện bên ngoài) và đổi sang signal hoặc gọi <code>markForCheck()</code>.</p>
+<aside class="fe"><p>Zoneless + signals đưa Angular về rất gần mô hình reactivity của Vue: thay đổi state được theo dõi chi tiết, giao diện cập nhật đúng chỗ. Khác biệt còn lại: Angular gộp cập nhật theo component (kiểm tra cả template của component bị đánh dấu), còn Vue gộp theo component và so sánh virtual DOM.</p></aside>
+
+<h2>Lỗi ExpressionChangedAfterItHasBeenChecked</h2>
+<p>Ở chế độ phát triển, sau mỗi lượt kiểm tra Angular chạy thêm một lượt để chắc rằng không có giá trị nào đổi trong lúc đang kiểm tra. Nếu có, bạn gặp lỗi nổi tiếng:</p>
+<pre lang="out" sim="1">
+ERROR RuntimeError: NG0100: ExpressionChangedAfterItHasBeenCheckedError: Expression has changed after it was checked.
+Previous value: 'false'. Current value: 'true'. Expression location: _ClassLayout component.
+</pre>
+<p>Nguyên nhân thường gặp: component con, trong vòng đời của nó (<code>ngAfterViewInit</code>, getter có tác dụng phụ), thay đổi state mà cha đã hiển thị. Ví dụ con báo "đang tải" lên service ngay trong <code>ngOnInit</code> trong khi cha đã render cờ loading.</p>
+<table>
+<tr><th>Cách sửa</th><th>Khi nào</th></tr>
+<tr><td>Đưa state về signal / computed, để giá trị suy ra thay vì gán qua lại</td><td>hầu hết trường hợp, sửa tận gốc</td></tr>
+<tr><td>Đặt state ở nơi sở hữu nó (cha), con chỉ phát output</td><td>con sửa state của cha trong lúc render</td></tr>
+<tr><td>Không có tác dụng phụ trong getter / method được gọi từ template</td><td>method template tạo object mới mỗi lần (<code>{{ getStyle() }}</code> trả object mới)</td></tr>
+<tr><td><code>setTimeout</code> / <code>Promise.resolve().then</code> để dời việc gán</td><td>cách chữa cháy, tránh nếu có thể</td></tr>
+</table>
+
+<h2>Template đắt và cách tránh</h2>
+<pre lang="html" mark="bad">
+<!-- chạy lại mỗi lượt kiểm tra -->
+<p>{{ computeRanking(students) }}</p>
+@for (s of students.filter(isActive); track s.id) { ... }
+</pre>
+<pre lang="ts" mark="good">
+ranking = computed(() => computeRanking(this.students()));  // chỉ tính lại khi students đổi
+active = computed(() => this.students().filter(isActive));
+</pre>
+<p>Với zoneless + OnPush + computed, số lượt kiểm tra và lượng việc mỗi lượt đều nhỏ. Angular DevTools có tab <b>Profiler</b> cho thấy mỗi lượt kiểm tra tốn bao lâu, component nào chậm nhất.</p>
+
+<quiz q="Ứng dụng zoneless, trong subscribe bạn gán <code>this.total = 10</code> (thuộc tính thường). Giao diện thế nào?">
+- Cập nhật ngay
++ Không cập nhật cho tới khi có thứ khác kích hoạt render (ví dụ người dùng click)
+- Lỗi biên dịch
+? Không có Zone.js nên Angular không biết bạn đã đổi. Dùng signal: this.total.set(10).
+</quiz>
+<quiz q="Component OnPush nhận input <code>student</code>. Cha làm <code>this.student.score = 9</code>. Con có cập nhật?">
++ Không, vì tham chiếu object không đổi
+- Có, OnPush theo dõi thuộc tính lồng nhau
+- Có nếu dùng Zone.js
+? OnPush so sánh input bằng ===. Tạo object mới: this.student = { ...this.student, score: 9 } (hoặc dùng signal update).
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Chuyển một component kiểu cũ sang zoneless</summary>
+<p>Component dưới đây chạy đúng với Zone.js nhưng "đứng hình" khi bật zoneless. Tìm mọi chỗ cần sửa và viết lại.</p>
+<pre lang="ts" mark="bad">
+@Component({
+  selector: 'app-live-board',
+  template: `
+    <p>Đã nộp: {{ submitted }} / {{ total }}</p>
+    <p>Cập nhật lúc {{ updatedAt | date: 'HH:mm:ss' }}</p>
+    @if (offline) { <p class="warn">Mất kết nối</p> }
+  `,
+})
+export class LiveBoard implements OnInit, OnDestroy {
+  submitted = 0;
+  total = 0;
+  updatedAt = new Date();
+  offline = false;
+  private ws?: WebSocket;
+  private sub?: Subscription;
+
+  constructor(private api: BoardApi) {}
+
+  ngOnInit() {
+    this.sub = this.api.summary().subscribe((s) => { this.submitted = s.submitted; this.total = s.total; });
+    this.ws = new WebSocket('wss://example.com/live');
+    this.ws.onmessage = (e) => { this.submitted = JSON.parse(e.data).submitted; this.updatedAt = new Date(); };
+    window.addEventListener('offline', () => (this.offline = true));
+    window.addEventListener('online', () => (this.offline = false));
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+    this.ws?.close();
+  }
+}
+</pre>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Mọi thứ hiển thị trên template đổi thành signal.</li>
+<li><code>subscribe</code> gán vào thuộc tính → dùng <code>toSignal</code> hoặc <code>set</code> trong subscribe.</li>
+<li>WebSocket <code>onmessage</code> và listener <code>window</code> chạy ngoài sự kiện template → phải <code>set</code> signal.</li>
+<li>Listener <code>window</code> không bao giờ được gỡ → dùng <code>host: { '(window:offline)': ... }</code> để Angular tự gỡ.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" mark="good">
+@Component({
+  selector: 'app-live-board',
+  imports: [DatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:offline)': 'offline.set(true)',
+    '(window:online)': 'offline.set(false)',
+  },
+  template: `
+    <p>Đã nộp: {{ submitted() }} / {{ total() }}</p>
+    <p>Cập nhật lúc {{ updatedAt() | date: 'HH:mm:ss' }}</p>
+    @if (offline()) { <p class="warn">Mất kết nối</p> }
+  `,
+})
+export class LiveBoard {
+  private api = inject(BoardApi);
+  protected submitted = signal(0);
+  protected total = signal(0);
+  protected updatedAt = signal(new Date());
+  protected offline = signal(!navigator.onLine);
+
+  constructor() {
+    this.api.summary().pipe(takeUntilDestroyed()).subscribe((s) => {
+      this.submitted.set(s.submitted);
+      this.total.set(s.total);
+    });
+
+    const ws = new WebSocket('wss://example.com/live');
+    ws.onmessage = (e) => {
+      this.submitted.set(JSON.parse(e.data).submitted);
+      this.updatedAt.set(new Date());
+    };
+    inject(DestroyRef).onDestroy(() => ws.close());
+  }
+}
+</pre>
+<p><b>Giải thích:</b> sau khi sửa, mọi cập nhật đi qua signal nên Angular biết đúng lúc cần render, kể cả khi dữ liệu đến từ WebSocket hay sự kiện <code>window</code>. Listener khai báo trong <code>host</code> được tự gỡ, không còn rò rỉ (bản cũ gắn listener mới mỗi lần component được tạo và không bao giờ gỡ). <code>OnPush</code> giờ an toàn vì không còn state nào nằm ngoài signal. Lưu ý <code>navigator</code> không có khi SSR: ứng dụng có SSR thì đọc trong <code>afterNextRender</code> (bài {{n:ssr}}).</p>
+</details>
+</details>

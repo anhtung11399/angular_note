@@ -1,0 +1,298 @@
+<h2>Đề bài</h2>
+<p>Xây ứng dụng web <b>"Sổ bài tập"</b> cho giáo viên và phụ huynh. Đây là ứng dụng thật kiểu bạn sẽ làm ở công ty: nhiều trang, phân quyền, form, danh sách dài, ảnh, trạng thái tải và lỗi, test, deploy.</p>
+<table>
+<tr><th>Vai trò</th><th>Làm được</th></tr>
+<tr><td>Giáo viên</td><td>đăng nhập; xem danh sách lớp; vào lớp xem bài tập theo môn; giao bài mới (form có nhiều câu); xem bài nộp; chấm điểm và nhận xét; xem thống kê lớp</td></tr>
+<tr><td>Phụ huynh</td><td>đăng nhập; xem bài tập của con, sắp xếp bài sắp đến hạn lên đầu; nộp ảnh bài làm cho con; xem điểm và nhận xét</td></tr>
+</table>
+<pre lang="ui" url="localhost:4200/lop/1/bai-tap">
+<div style="display:grid;grid-template-columns:180px 1fr;gap:16px;font-size:14px">
+<nav style="border-right:1px solid #e2e8f0;padding-right:12px"><b style="color:#dd0031">Sổ bài tập</b><p style="margin:12px 0 4px;color:#64748b">Lớp 5A</p><p style="margin:4px 0;font-weight:700">Bài tập</p><p style="margin:4px 0">Chấm bài <span style="background:#dc2626;color:#fff;border-radius:99px;padding:0 6px;font-size:12px">7</span></p><p style="margin:4px 0">Học sinh</p><p style="margin:4px 0">Thống kê</p></nav>
+<div><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Bài tập · Toán</h3><button>+ Giao bài mới</button></div>
+<div style="display:flex;gap:6px;margin:10px 0"><span style="background:#dd0031;color:#fff;border-radius:99px;padding:2px 10px">Toán</span><span style="border:1px solid #cbd5e1;border-radius:99px;padding:2px 10px">Tiếng Việt</span></div>
+<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:6px 0"><b>Bài 7: Đo thời gian</b> · <span style="color:#dc2626">Hạn ngày mai</span> · đã nộp 18/30</div>
+<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:6px 0"><b>Bài 6: Phân số</b> · Còn 4 ngày · đã nộp 25/30</div></div>
+</div>
+</pre>
+
+<h2>Kiến trúc</h2>
+<arch w="840" h="380" caption="Ba tầng: core (dùng một lần cho cả app), shared (dùng lại), features (lazy load theo route). Store của từng tính năng gọi API qua service; interceptor gắn phiên đăng nhập và bắt lỗi chung">
+group 20 20 260 340 plain "core/"
+group 300 20 260 340 plain "features/ (lazy)"
+group 580 20 240 340 plain "shared/"
+node au 90 90 ngsvc "Auth" "user, role"
+node ic 210 90 interceptor "Interceptors" "auth, error"
+node gd 90 210 guard "Guards" "auth, role"
+node ly 210 210 cmp "Layout" "menu trái / dưới"
+node eh 150 310 ngsvc "ErrorHandler" "Toast"
+node cl 370 90 page "classes" "danh sách lớp"
+node as 490 90 page "assignments" "giao bài"
+node gr 370 210 page "grading" "chấm bài"
+node pa 490 210 page "parent" "phụ huynh"
+node st 430 310 ngstore "Stores" "service + signals"
+node ui 650 90 cmp "UI" "card, dialog, empty"
+node pp 760 90 pipe "Pipes" "relativeDue, vnd"
+node dr 650 210 dir "Directives" "autofocus"
+node vd 760 210 form "Validators" "notInPast"
+</arch>
+<pre lang="text" file="src/app/">
+app/
+├── core/
+│   ├── auth/            auth.ts, auth.guard.ts, role.guard.ts, auth.interceptor.ts
+│   ├── api/             error.interceptor.ts, fake-backend.interceptor.ts
+│   ├── layout/          shell.ts (menu), not-found.ts
+│   ├── toast.ts, error-handler.ts
+├── shared/              card, confirm-dialog, empty-state, skeleton, relative-due.pipe, validators
+├── models/              user.ts, classroom.ts, assignment.ts, submission.ts
+├── features/
+│   ├── auth/            login-page.ts
+│   ├── classes/         class-list-page.ts, class-layout.ts, classes.routes.ts, class-api.ts
+│   ├── assignments/     assignments-page.ts, assignment-form.ts, assignment-store.ts
+│   ├── grading/         grading-page.ts, submission-viewer.ts, grading-store.ts
+│   ├── stats/           stats-page.ts (biểu đồ, @defer)
+│   └── parent/          child-home.ts, submit-dialog.ts
+├── app.ts, app.config.ts, app.routes.ts
+</pre>
+
+<h2>Backend giả để làm ngay</h2>
+<p>Chưa có backend? Viết một interceptor trả dữ liệu giả, sau này thay bằng API thật mà không sửa component nào (nhờ DI và interceptor). Chỉ bật khi phát triển.</p>
+<pre lang="ts" file="core/api/fake-backend.interceptor.ts">
+import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import { delay, of, throwError } from 'rxjs';
+
+const db = {
+  users: [
+    { id: 1, email: 'gv@demo.vn', name: 'Cô Hoa', role: 'teacher' as const },
+    { id: 2, email: 'ph@demo.vn', name: 'Anh Nam', role: 'parent' as const, childId: 7 },
+  ],
+  classes: [{ id: 1, name: 'Lớp 5A', capacity: 30, teacherId: 1 }],
+  assignments: [
+    { id: 6, classId: 1, subject: 'toan', title: 'Bài 6: Phân số', dueDate: '2026-11-08', exerciseCount: 4 },
+    { id: 7, classId: 1, subject: 'toan', title: 'Bài 7: Đo thời gian', dueDate: '2026-11-05', exerciseCount: 3 },
+  ],
+  submissions: [] as { id: number; assignmentId: number; studentId: number; score: number | null; comment: string; images: string[] }[],
+};
+let session: (typeof db.users)[number] | null = null;
+
+const ok = <T>(body: T) => of(new HttpResponse({ status: 200, body })).pipe(delay(250));
+const fail = (status: number, message: string) =>
+  throwError(() => ({ status, error: { error: { code: String(status), message } } })).pipe(delay(250));
+
+export const fakeBackend: HttpInterceptorFn = (req, next) => {
+  if (!req.url.startsWith('/api/')) return next(req);
+  const path = req.url.replace('/api', '');
+
+  if (path === '/login' && req.method === 'POST') {
+    const u = db.users.find((x) => x.email === (req.body as { email: string }).email);
+    return u ? ((session = u), ok(u)) : fail(401, 'Email chưa đăng ký');
+  }
+  if (!session) return fail(401, 'Bạn cần đăng nhập');
+  if (path === '/me') return ok(session);
+  if (path === '/classes') return ok(db.classes.filter((c) => c.teacherId === session!.id));
+
+  const m = path.match(/^\/classes\/(\d+)\/assignments$/);
+  if (m && req.method === 'GET') {
+    const subject = req.params.get('subject') ?? 'toan';
+    return ok(db.assignments.filter((a) => a.classId === +m[1] && a.subject === subject));
+  }
+  if (m && req.method === 'POST') {
+    const a = { ...(req.body as object), id: Date.now(), classId: +m[1] } as (typeof db.assignments)[number];
+    db.assignments.unshift(a);
+    return ok(a);
+  }
+  return fail(404, 'Không tìm thấy');
+};
+</pre>
+<pre lang="ts" file="app.config.ts">
+providers: [
+  provideHttpClient(withFetch(), withInterceptors([
+    ...(isDevMode() ? [fakeBackend] : []),
+    authInterceptor,
+    errorInterceptor,
+  ])),
+]
+</pre>
+<aside class="tip"><p>Muốn backend thật? Lộ trình "Go cho dân Frontend" (cùng tác giả) xây đúng API "Sổ bài tập" này bằng Go + PostgreSQL. Hoặc dùng <code>json-server</code> cho nhanh.</p></aside>
+
+<h2>Các mốc thực hiện</h2>
+<p>Làm theo thứ tự, mỗi mốc chạy được rồi mới sang mốc sau. Mỗi mốc ghi kèm bài cần xem lại.</p>
+<table>
+<tr><th>Mốc</th><th>Việc</th><th>Kiến thức</th><th>Xong khi</th></tr>
+<tr><td>1</td><td>Tạo dự án zoneless, cấu trúc thư mục, model, fake backend, layout có menu</td><td>bài {{n:cai-dat}}, {{n:component}}</td><td>chạy được, menu trái trên máy tính và menu dưới trên điện thoại</td></tr>
+<tr><td>2</td><td>Đăng nhập: service <code>Auth</code>, trang login (reactive form), guard, interceptor, chuyển hướng theo vai trò</td><td>{{n:di-service}}, {{n:forms}}, {{n:router}}, {{n:http}}</td><td>chưa đăng nhập vào <code>/lop</code> bị đưa về login kèm <code>next</code>; đăng nhập xong quay lại đúng trang</td></tr>
+<tr><td>3</td><td>Danh sách lớp, layout lớp (<code>/lop/:id</code>) với route con, tham số qua input</td><td>{{n:router}}, {{n:input-output}}</td><td>đổi lớp trên URL thì tiêu đề và dữ liệu đổi theo</td></tr>
+<tr><td>4</td><td>Bài tập theo môn: thanh chọn môn trên URL (<code>?mon=</code>), <code>httpResource</code>, sắp bài sắp đến hạn lên đầu, skeleton / lỗi / rỗng</td><td>{{n:http}}, {{n:control-flow}}, {{n:state}}</td><td>tải lại trang vẫn giữ môn đang chọn</td></tr>
+<tr><td>5</td><td>Giao bài mới trong dialog: form có FormArray câu hỏi, validator ngày không quá khứ, thêm vào danh sách ngay (không tải lại)</td><td>{{n:forms}}, {{n:state}}, {{n:styling-ui}}</td><td>bài mới hiện đầu danh sách, toast "Đã giao bài"</td></tr>
+<tr><td>6</td><td>Chấm bài: danh sách bài nộp, xem ảnh, nhập điểm + nhận xét tự lưu, số "cần chấm" ở menu giảm ngay</td><td>{{n:rxjs}}, {{n:state}}, {{n:signals}}</td><td>chấm xong một em thì badge menu giảm, lỗi thì hoàn tác</td></tr>
+<tr><td>7</td><td>Phụ huynh: bài của con, nộp ảnh (chọn nhiều ảnh, xem trước, tiến trình upload)</td><td>{{n:http}}, {{n:directive-pipe}}</td><td>nộp xong trạng thái đổi thành "Đã nộp" tại chỗ</td></tr>
+<tr><td>8</td><td>Thống kê lớp: biểu đồ trong <code>@defer (on viewport)</code>, xuất Excel bằng import động</td><td>{{n:hieu-nang}}</td><td>bundle ban đầu không chứa thư viện biểu đồ / Excel</td></tr>
+<tr><td>9</td><td>Test: store, pipe, validator, 2 component; 3 luồng E2E (đăng nhập, giao bài, chấm bài)</td><td>{{n:testing}}</td><td><code>ng test</code> và Playwright xanh</td></tr>
+<tr><td>10</td><td>Production: budget, CSP, xử lý lỗi chunk sau deploy, PWA (tuỳ chọn), deploy lên Cloudflare Pages / Netlify, CI</td><td>{{n:bao-mat}}, {{n:trien-khai}}, {{n:i18n-pwa}}</td><td>có link chạy thật, push là tự deploy</td></tr>
+</table>
+
+<h2>Mã khung các phần quan trọng</h2>
+<h3>Routes</h3>
+<pre lang="ts" file="app.routes.ts">
+export const routes: Routes = [
+  { path: 'dang-nhap', loadComponent: () => import('./features/auth/login-page').then((m) => m.LoginPage), title: 'Đăng nhập' },
+  {
+    path: '',
+    component: Shell,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: () => (inject(Auth).isTeacher() ? '/lop' : '/con') },
+      { path: 'lop', canMatch: [roleGuard('teacher')], loadChildren: () => import('./features/classes/classes.routes').then((m) => m.CLASS_ROUTES) },
+      { path: 'con', canMatch: [roleGuard('parent')], loadChildren: () => import('./features/parent/parent.routes').then((m) => m.PARENT_ROUTES) },
+    ],
+  },
+  { path: '**', loadComponent: () => import('./core/layout/not-found').then((m) => m.NotFound) },
+];
+</pre>
+<h3>Thứ tự bài tập: sắp đến hạn lên đầu</h3>
+<pre lang="ts" file="features/assignments/sort.ts">
+// Bài còn ≤ 1 ngày đến hạn mà chưa nộp lên đầu, rồi bài giao gần nhất
+export function sortAssignments<T extends { dueDate: string; id: number; submitted?: boolean }>(list: readonly T[], today: string): T[] {
+  const tomorrow = addDays(today, 1);
+  const soon = (a: T) => !a.submitted && a.dueDate >= today && a.dueDate <= tomorrow;
+  return [...list].sort((a, b) => Number(soon(b)) - Number(soon(a)) || b.id - a.id);
+}
+
+function addDays(d: string, n: number) {
+  const t = new Date(d + 'T00:00:00Z');
+  t.setUTCDate(t.getUTCDate() + n);
+  return t.toISOString().slice(0, 10);
+}
+</pre>
+<h3>Store chấm bài cập nhật số đếm ở menu</h3>
+<pre lang="ts" file="features/grading/grading-store.ts (trích)">
+@Injectable({ providedIn: 'root' })
+export class GradingCounter {
+  // số "cần chấm" theo lớp, hiển thị ở menu; tải một lần khi vào lớp
+  private readonly counts = signal<Record<number, number>>({});
+  count = (classId: number) => computed(() => this.counts()[classId] ?? 0);
+  set(classId: number, n: number) { this.counts.update((c) => ({ ...c, [classId]: n })); }
+  decrement(classId: number) { this.counts.update((c) => ({ ...c, [classId]: Math.max(0, (c[classId] ?? 0) - 1) })); }
+}
+
+// GradingStore.grade(): sau khi cập nhật lạc quan
+this.counter.decrement(this.classId);
+// lỗi thì: this.counter.set(this.classId, previousCount)
+</pre>
+
+<h2>Tiêu chí hoàn thành</h2>
+<ul>
+<li><b>Chức năng</b>: đủ các luồng ở bảng đề bài cho cả hai vai trò.</li>
+<li><b>Code</b>: standalone, signals cho mọi state hiển thị, không subscribe nào thiếu huỷ, không <code>any</code> trừ chỗ thật cần, OnPush cho mọi component.</li>
+<li><b>Trải nghiệm</b>: mọi danh sách có trạng thái đang tải, lỗi (có thử lại), rỗng; sau mỗi thao tác giao diện cập nhật ngay; dùng tốt ở màn hình 390px (không cuộn ngang).</li>
+<li><b>Hiệu năng</b>: mọi route lazy, bundle ban đầu dưới 300 KB, thư viện nặng tải lười.</li>
+<li><b>Chất lượng</b>: test pass, lint sạch, CI chạy mỗi lần push.</li>
+<li><b>Bảo mật</b>: không bypass sanitizer, không bí mật trong bundle, <code>next</code> chỉ nhận đường dẫn nội bộ.</li>
+<li><b>Deploy</b>: có link chạy thật, tải lại ở trang con không bị 404.</li>
+</ul>
+
+<h2>Mở rộng khi đã xong</h2>
+<ul>
+<li>Bật SSR, prerender trang giới thiệu, render server cho link mời <code>/j/:code</code> có ảnh xem trước (bài {{n:ssr}}).</li>
+<li>Thông báo đẩy khi có bài mới bằng service worker (bài {{n:i18n-pwa}}).</li>
+<li>Chuyển store chấm bài sang NgRx SignalStore để so sánh (bài {{n:state}}).</li>
+<li>Viết lại một màn hình bằng signal forms để cảm nhận hướng đi mới của Angular (bài {{n:forms}}).</li>
+<li>Thêm sơ đồ chỗ ngồi kéo thả bằng CDK Drag and Drop.</li>
+</ul>
+
+<details class="ex"><summary>Mốc 2 làm mẫu: đăng nhập có chuyển hướng theo vai trò</summary>
+<p>Để bạn có điểm bắt đầu, đây là lời giải đầy đủ cho mốc khó nhất ở phần đầu.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>Auth</code> giữ <code>user</code> signal, có <code>login()</code>, <code>restore()</code> (gọi <code>/api/me</code> khi tải trang), <code>logout()</code>.</li>
+<li>Khôi phục phiên trước khi router chạy guard: <code>provideAppInitializer(() =&gt; inject(Auth).restore())</code>.</li>
+<li>Guard trả <code>UrlTree</code> tới <code>/dang-nhap?next=...</code>.</li>
+<li>Trang login: reactive form, lỗi từ server hiển thị dưới form, đăng nhập xong <code>navigateByUrl(safeNext(next))</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="core/auth/auth.ts">
+@Injectable({ providedIn: 'root' })
+export class Auth {
+  private http = inject(HttpClient);
+  private readonly _user = signal<User | null>(null);
+  readonly user = this._user.asReadonly();
+  readonly isLoggedIn = computed(() => !!this._user());
+  readonly isTeacher = computed(() => this._user()?.role === 'teacher');
+
+  async restore() {
+    try {
+      this._user.set(await firstValueFrom(this.http.get<User>('/api/me')));
+    } catch {
+      this._user.set(null); // chưa đăng nhập: bình thường
+    }
+  }
+
+  async login(email: string) {
+    this._user.set(await firstValueFrom(this.http.post<User>('/api/login', { email })));
+  }
+
+  logout() {
+    this._user.set(null);
+  }
+}
+</pre>
+<pre lang="ts" file="core/auth/auth.guard.ts">
+export const authGuard: CanActivateFn = (_r, state) =>
+  inject(Auth).isLoggedIn() || inject(Router).createUrlTree(['/dang-nhap'], { queryParams: { next: state.url } });
+
+export const roleGuard = (role: User['role']): CanMatchFn => () => inject(Auth).user()?.role === role;
+</pre>
+<pre lang="ts" file="features/auth/login-page.ts">
+@Component({
+  selector: 'app-login-page',
+  imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <h1>Đăng nhập</h1>
+      <label for="email">Email</label>
+      <input id="email" type="email" formControlName="email" autocomplete="email" />
+      @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
+      <button [disabled]="busy()">{{ busy() ? 'Đang đăng nhập…' : 'Đăng nhập' }}</button>
+      <small>Thử: gv@demo.vn hoặc ph@demo.vn</small>
+    </form>
+  `,
+})
+export class LoginPage {
+  next = input<string>();                                // ?next=
+  private auth = inject(Auth);
+  private router = inject(Router);
+  protected busy = signal(false);
+  protected error = signal('');
+  protected form = inject(FormBuilder).nonNullable.group({ email: ['', [Validators.required, Validators.email]] });
+
+  async submit() {
+    if (this.form.invalid) return this.form.markAllAsTouched();
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.auth.login(this.form.getRawValue().email);
+      this.router.navigateByUrl(safeNext(this.next()));
+    } catch (e) {
+      this.error.set((e as HttpErrorResponse).error?.error?.message ?? 'Không đăng nhập được');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+</pre>
+<pre lang="ts" file="app.config.ts (thêm)">
+provideAppInitializer(() => inject(Auth).restore()),
+provideRouter(routes, withComponentInputBinding()),
+</pre>
+<pre lang="ui" url="localhost:4200/dang-nhap?next=%2Flop%2F1">
+<form style="display:grid;gap:8px;max-width:320px">
+<h1 style="margin:0">Đăng nhập</h1>
+<label>Email</label><input value="ai@demo.vn" />
+<p style="color:#dc2626;margin:0">Email chưa đăng ký</p>
+<button>Đăng nhập</button>
+<small style="color:#64748b">Thử: gv@demo.vn hoặc ph@demo.vn</small>
+</form>
+</pre>
+<p><b>Giải thích:</b> <code>provideAppInitializer</code> chờ <code>restore()</code> xong rồi mới cho router chạy, nên tải lại trang khi đã đăng nhập không bị đá về login trong tích tắc. Lỗi 401 từ fake backend có body đúng định dạng nên câu "Email chưa đăng ký" hiện thẳng cho người dùng. Đăng nhập bằng <code>gv@demo.vn</code> với <code>?next=/lop/1</code> sẽ vào thẳng lớp 1. Không có <code>next</code> thì vào <code>/</code>, route rỗng tự chuyển theo vai trò.</p>
+</details>
+</details>

@@ -1,0 +1,312 @@
+<h2>Công cụ test của Angular</h2>
+<table>
+<tr><th>Loại</th><th>Angular</th><th>Vue</th></tr>
+<tr><td>Test runner</td><td><b>Vitest</b> (mặc định cho dự án mới từ v21), hoặc Jasmine + Karma (dự án cũ)</td><td>Vitest</td></tr>
+<tr><td>Dựng component để test</td><td><code>TestBed</code></td><td>Vue Test Utils <code>mount()</code></td></tr>
+<tr><td>Giả lập HTTP</td><td><code>provideHttpClientTesting</code> + <code>HttpTestingController</code></td><td>MSW / mock fetch</td></tr>
+<tr><td>Thao tác component thư viện</td><td>Component harness (CDK)</td><td>tìm phần tử bằng selector</td></tr>
+<tr><td>Thư viện "test như người dùng"</td><td>Angular Testing Library</td><td>Vue Testing Library</td></tr>
+<tr><td>E2E</td><td>Playwright / Cypress</td><td>Playwright / Cypress</td></tr>
+</table>
+<pre lang="sh">
+ng test                 # chạy unit test (Vitest hoặc Karma tuỳ dự án)
+ng test --watch=false   # chạy một lần, dùng trong CI
+ng test --coverage
+</pre>
+
+<h2>Test một hàm và một service thuần</h2>
+<p>Hàm thuần và service không phụ thuộc gì test như mọi code TypeScript, không cần TestBed:</p>
+<pre lang="ts" file="relative-due.pipe.spec.ts">
+import { describe, expect, it } from 'vitest';
+import { RelativeDuePipe } from './relative-due.pipe';
+
+describe('RelativeDuePipe', () => {
+  const pipe = new RelativeDuePipe();
+  it.each([
+    ['2026-11-04', 'Hạn hôm nay'],
+    ['2026-11-05', 'Hạn ngày mai'],
+    ['2026-11-09', 'Còn 5 ngày'],
+    ['2026-11-01', 'Quá hạn 3 ngày'],
+  ])('%s → %s', (due, expected) => {
+    expect(pipe.transform(due, '2026-11-04')).toBe(expected);
+  });
+});
+</pre>
+<pre lang="out" sim="1">
+$ ng test --watch=false
+ ✓ src/app/shared/relative-due.pipe.spec.ts (4 tests) 3ms
+ ✓ src/app/features/grading/grading-store.spec.ts (5 tests) 41ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Duration  1.32s
+</pre>
+
+<h2>Test service có inject: TestBed</h2>
+<pre lang="ts" file="class-store.spec.ts">
+import { TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+
+describe('ClassStore', () => {
+  let store: ClassStore;
+  const api = {
+    list: vi.fn(() => of([{ id: 1, name: 'Lớp 5A', students: 30 }])),
+    update: vi.fn(() => of({})),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: ClassApi, useValue: api }],   // thay API thật bằng bản giả
+    });
+    store = TestBed.inject(ClassStore);
+  });
+
+  it('tải danh sách lớp', async () => {
+    await store.load();
+    expect(store.items().map((c) => c.name)).toEqual(['Lớp 5A']);
+    expect(store.totalStudents()).toBe(30);
+  });
+
+  it('đổi tên lỗi thì hoàn tác', async () => {
+    await store.load();
+    api.update.mockReturnValueOnce(throwError(() => new Error('500')));
+    await store.rename(1, 'Lớp 5A1');
+    expect(store.items()[0].name).toBe('Lớp 5A');
+    expect(store.error()).toContain('không thành công');
+  });
+});
+</pre>
+<aside class="fe"><p>Đây là chỗ DI phát huy: thay <code>ClassApi</code> bằng object giả qua <code>providers</code>, không cần <code>vi.mock('../api')</code> cấp module như ở Vue. Store không biết và không cần biết mình đang dùng API thật hay giả.</p></aside>
+
+<h2>Test HTTP thật sự: HttpTestingController</h2>
+<pre lang="ts" file="assignment-api.spec.ts">
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { firstValueFrom } from 'rxjs';
+
+describe('AssignmentApi', () => {
+  let api: AssignmentApi;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    api = TestBed.inject(AssignmentApi);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());   // báo lỗi nếu còn request chưa được xử lý
+
+  it('gửi classId và page dạng query', async () => {
+    const result = firstValueFrom(api.list(5, 2));
+    const req = http.expectOne((r) => r.url === '/api/assignments');
+    expect(req.request.params.get('classId')).toBe('5');
+    expect(req.request.params.get('page')).toBe('2');
+    req.flush({ items: [], page: 2, totalPages: 3 });       // trả response giả
+    expect((await result).totalPages).toBe(3);
+  });
+
+  it('báo lỗi 404', async () => {
+    const result = firstValueFrom(api.get(99));
+    http.expectOne('/api/assignments/99').flush({ error: { code: 'NOT_FOUND' } }, { status: 404, statusText: 'Not Found' });
+    await expect(result).rejects.toMatchObject({ status: 404 });
+  });
+});
+</pre>
+
+<h2>Test component</h2>
+<pre lang="ts" file="rating.spec.ts">
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+describe('Rating', () => {
+  let fixture: ComponentFixture<Rating>;
+  let el: HTMLElement;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [Rating] }).compileComponents(); // component standalone: đưa vào imports
+    fixture = TestBed.createComponent(Rating);
+    fixture.componentRef.setInput('value', 2);     // đặt input
+    await fixture.whenStable();                    // chờ render (zoneless)
+    el = fixture.nativeElement;
+  });
+
+  it('hiện đúng số sao đang chọn', () => {
+    expect(el.querySelectorAll('button.on').length).toBe(2);
+  });
+
+  it('bấm sao thứ 4 thì cập nhật model và giao diện', async () => {
+    const buttons = el.querySelectorAll<HTMLButtonElement>('button');
+    buttons[3].click();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.value()).toBe(4);
+    expect(el.querySelectorAll('button.on').length).toBe(4);
+  });
+});
+</pre>
+<p>Ba thao tác cơ bản: <code>setInput</code> để truyền input, thao tác DOM (<code>click()</code>, đặt <code>value</code> rồi <code>dispatchEvent(new Event('input'))</code>), rồi <code>await fixture.whenStable()</code> trước khi kiểm tra DOM.</p>
+<aside class="warn"><p>Với dự án dùng Zone.js, bạn sẽ thấy <code>fixture.detectChanges()</code> gọi khắp nơi, cùng <code>fakeAsync</code> / <code>tick()</code>. Với zoneless, <code>await fixture.whenStable()</code> là cách chính, và đồng hồ giả dùng <code>vi.useFakeTimers()</code> của Vitest.</p></aside>
+
+<h3>Test output và component có service</h3>
+<pre lang="ts">
+it('bấm Xoá phát output remove với bài tập', async () => {
+  TestBed.configureTestingModule({ imports: [AssignmentItem] });
+  const fixture = TestBed.createComponent(AssignmentItem);
+  fixture.componentRef.setInput('assignment', { id: 9, title: 'Bài 9' });
+  const spy = vi.fn();
+  fixture.componentInstance.remove.subscribe(spy);        // output có subscribe()
+  await fixture.whenStable();
+  (fixture.nativeElement.querySelector('button.remove') as HTMLButtonElement).click();
+  expect(spy).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }));
+});
+</pre>
+
+<h2>Angular Testing Library: test như người dùng</h2>
+<pre lang="sh">
+npm i -D @testing-library/angular @testing-library/user-event
+</pre>
+<pre lang="ts">
+import { render, screen } from '@testing-library/angular';
+import userEvent from '@testing-library/user-event';
+
+it('lọc học sinh theo ô tìm', async () => {
+  await render(StudentPicker);
+  await userEvent.type(screen.getByPlaceholderText('Tìm học sinh'), 'lan');
+  expect(screen.getByText('Đỗ Lan')).toBeTruthy();
+  expect(screen.queryByText('Trần Bình')).toBeNull();
+});
+</pre>
+<p>Tìm phần tử theo chữ, nhãn, vai trò (như người dùng nhìn thấy) thay vì class CSS: test ít vỡ khi bạn đổi cấu trúc HTML.</p>
+
+<h2>Component harness</h2>
+<p>Khi dùng component của Angular Material / CDK, test qua <b>harness</b> thay vì tìm DOM bên trong (vốn có thể đổi giữa các phiên bản):</p>
+<pre lang="ts">
+const loader = TestbedHarnessEnvironment.loader(fixture);
+const select = await loader.getHarness(MatSelectHarness.with({ selector: '[formControlName=subject]' }));
+await select.open();
+await select.clickOptions({ text: 'Tiếng Việt' });
+expect(await select.getValueText()).toBe('Tiếng Việt');
+</pre>
+
+<h2>E2E với Playwright</h2>
+<pre lang="sh">
+npm init playwright@latest
+</pre>
+<pre lang="ts" file="e2e/giao-bai.spec.ts">
+import { expect, test } from '@playwright/test';
+
+test('giáo viên giao bài mới', async ({ page }) => {
+  await page.goto('/dang-nhap');
+  await page.getByLabel('Email').fill('gv@demo.vn');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+
+  await page.getByRole('link', { name: 'Lớp 5A' }).click();
+  await page.getByRole('button', { name: 'Giao bài mới' }).click();
+  await page.getByLabel('Tên bài').fill('Bài 7: Đo thời gian');
+  await page.getByLabel('Hạn nộp').fill('2026-11-20');
+  await page.getByRole('button', { name: 'Giao bài' }).click();
+
+  await expect(page.getByText('Đã giao bài')).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Bài 7: Đo thời gian' })).toBeVisible();
+});
+</pre>
+<pre lang="out" sim="1">
+$ npx playwright test
+Running 6 tests using 3 workers
+  ✓  1 [chromium] › giao-bai.spec.ts:3:5 › giáo viên giao bài mới (3.2s)
+  ✓  2 [chromium] › nop-bai.spec.ts:3:5 › phụ huynh nộp ảnh bài làm (4.1s)
+  ...
+  6 passed (11.4s)
+</pre>
+
+<h2>Bao nhiêu test là đủ</h2>
+<table>
+<tr><th>Ưu tiên test</th><th>Vì sao</th></tr>
+<tr><td>Store / service chứa logic nghiệp vụ</td><td>nhiều nhánh, dễ test, lỗi ở đây ảnh hưởng nhiều màn hình</td></tr>
+<tr><td>Pipe, validator, hàm tiện ích</td><td>thuần, test rất rẻ</td></tr>
+<tr><td>Component có logic tương tác phức tạp (form động, bảng chấm điểm)</td><td>lỗi tương tác khó thấy bằng mắt</td></tr>
+<tr><td>Vài luồng E2E quan trọng nhất (đăng nhập, giao bài, nộp bài, thanh toán)</td><td>bắt lỗi tích hợp mà unit test bỏ qua</td></tr>
+<tr><td>Ít ưu tiên: component chỉ hiển thị</td><td>thay đổi thường xuyên, giá trị test thấp</td></tr>
+</table>
+
+<quiz q="Test component zoneless: bấm nút rồi kiểm tra DOM ngay thì chưa thấy thay đổi. Cần thêm gì?">
+- fixture.detectChanges() là bắt buộc duy nhất
++ await fixture.whenStable() trước khi kiểm tra
+- setTimeout 1 giây
+? Ứng dụng zoneless lập lịch render bất đồng bộ. whenStable chờ cho tới khi Angular render xong.
+</quiz>
+<quiz q="Cách đúng để test service gọi API mà không gửi request thật?">
++ provideHttpClient() + provideHttpClientTesting(), dùng HttpTestingController.expectOne và flush
+- Tắt mạng máy test
+- Dùng vi.mock cho HttpClient
+? HttpTestingController chặn mọi request, cho bạn kiểm tra URL / body và trả response giả.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Test cho ConfirmDialog</summary>
+<p>Viết test cho <code>ConfirmDialog</code> ở bài {{n:input-output}}: (1) khi <code>open</code> là false thì không có hộp thoại, (2) bấm "Huỷ" thì <code>open</code> thành false và không phát <code>confirmed</code>, (3) bấm nút xác nhận thì phát <code>confirmed</code> đúng một lần, (4) bấm Escape thì đóng.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>fixture.componentRef.setInput('open', true)</code> và <code>setInput('title', 'Xoá?')</code> (model nhận input như input thường).</li>
+<li>Theo dõi output: <code>fixture.componentInstance.confirmed.subscribe(spy)</code>.</li>
+<li>Escape: <code>document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))</code>.</li>
+<li>Sau mỗi thao tác: <code>await fixture.whenStable()</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="confirm-dialog.spec.ts">
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ConfirmDialog } from './confirm-dialog';
+
+describe('ConfirmDialog', () => {
+  let fixture: ComponentFixture<ConfirmDialog>;
+  const q = (sel: string) => fixture.nativeElement.querySelector(sel) as HTMLElement | null;
+  const buttons = () => Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({ imports: [ConfirmDialog] });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    fixture.componentRef.setInput('title', 'Xoá bài?');
+    fixture.componentRef.setInput('open', true);
+    await fixture.whenStable();
+  });
+
+  it('đóng thì không có hộp thoại', async () => {
+    fixture.componentRef.setInput('open', false);
+    await fixture.whenStable();
+    expect(q('[role=dialog]')).toBeNull();
+  });
+
+  it('Huỷ: đóng và không phát confirmed', async () => {
+    const spy = vi.fn();
+    fixture.componentInstance.confirmed.subscribe(spy);
+    buttons().find((b) => b.textContent?.includes('Huỷ'))!.click();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.open()).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('Đồng ý: phát confirmed một lần rồi đóng', async () => {
+    const spy = vi.fn();
+    fixture.componentInstance.confirmed.subscribe(spy);
+    buttons().find((b) => b.textContent?.includes('Đồng ý'))!.click();
+    await fixture.whenStable();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(q('[role=dialog]')).toBeNull();
+  });
+
+  it('Escape: đóng', async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await fixture.whenStable();
+    expect(fixture.componentInstance.open()).toBe(false);
+  });
+});
+</pre>
+<pre lang="out" sim="1">
+$ ng test --watch=false
+ ✓ src/app/shared/confirm-dialog.spec.ts (4 tests) 58ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+</pre>
+<p><b>Giải thích:</b> <code>model()</code> hoạt động như một input khi test, nên <code>setInput('open', true)</code> mở hộp thoại. Nút được tìm theo chữ thay vì vị trí để test không vỡ khi đổi thứ tự nút. Listener <code>(document:keydown.escape)</code> khai báo trong <code>host</code> nhận sự kiện bắn trên <code>document</code>.</p>
+</details>
+</details>

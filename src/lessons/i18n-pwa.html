@@ -1,0 +1,201 @@
+<h2>Định dạng theo vùng (locale)</h2>
+<p>Trước cả chuyện dịch chữ: ngày, số, tiền phải hiển thị đúng kiểu Việt Nam. Đăng ký locale một lần (bài {{n:directive-pipe}}):</p>
+<pre lang="ts" file="app.config.ts">
+registerLocaleData(localeVi);
+providers: [{ provide: LOCALE_ID, useValue: 'vi' }, { provide: DEFAULT_CURRENCY_CODE, useValue: 'VND' }]
+</pre>
+<table>
+<tr><th>Template</th><th>Kết quả (vi)</th></tr>
+<tr><td><code>{{ 1234567.5 | number }}</code></td><td>1.234.567,5</td></tr>
+<tr><td><code>{{ 49000 | currency }}</code></td><td>49.000 ₫</td></tr>
+<tr><td><code>{{ 0.833 | percent: '1.0-1' }}</code></td><td>83,3%</td></tr>
+<tr><td><code>{{ d | date: 'fullDate' }}</code></td><td>Thứ Tư, 4 tháng 11, 2026</td></tr>
+<tr><td><code>{{ d | date: 'dd/MM/yyyy HH:mm' }}</code></td><td>04/11/2026 14:30</td></tr>
+<tr><td><code>{{ d | date: 'HH:mm' : '+0700' }}</code></td><td>giờ theo múi giờ chỉ định</td></tr>
+</table>
+<aside class="warn"><p>Ngày dạng chuỗi <code>'2026-11-10'</code> (không có giờ) được JavaScript hiểu là nửa đêm UTC, hiển thị ở Việt Nam vẫn đúng ngày (7 giờ sáng). Nhưng ở múi giờ âm (Mỹ) sẽ lùi một ngày. Với ngày thuần (hạn nộp, ngày sinh), hiển thị bằng cách tách chuỗi hoặc truyền múi giờ <code>'UTC'</code> vào pipe.</p></aside>
+
+<h2>Dịch giao diện: hai hướng</h2>
+<table>
+<tr><th></th><th>i18n có sẵn của Angular (<code>@angular/localize</code>)</th><th>Thư viện runtime (Transloco, ngx-translate)</th></tr>
+<tr><td>Cách hoạt động</td><td>dịch lúc <b>build</b>: mỗi ngôn ngữ một bản build riêng</td><td>dịch lúc <b>chạy</b>: tải file JSON ngôn ngữ, đổi ngay không tải lại</td></tr>
+<tr><td>Đổi ngôn ngữ</td><td>chuyển sang URL / bản build khác (<code>/en/</code>, <code>/vi/</code>)</td><td>tức thì</td></tr>
+<tr><td>Hiệu năng</td><td>tốt nhất (không có lớp dịch lúc chạy)</td><td>tốt</td></tr>
+<tr><td>Giống Vue</td><td>(không có tương đương)</td><td>vue-i18n</td></tr>
+</table>
+
+<h3>i18n có sẵn</h3>
+<pre lang="sh">
+ng add @angular/localize
+ng extract-i18n --output-path src/locale     # tạo messages.xlf từ các chỗ đánh dấu
+</pre>
+<pre lang="html">
+<h1 i18n="@@homeTitle">Sổ bài tập của lớp</h1>
+<button i18n-title title="Giao bài mới" i18n>Giao bài</button>
+<span i18n>{count, plural, =0 {Chưa có bài nào} =1 {1 bài} other {{{count}} bài}}</span>
+</pre>
+<pre lang="ts">
+const msg = $localize`:@@savedToast:Đã lưu điểm cho ${count} em`;
+</pre>
+<p>Dịch file <code>messages.en.xlf</code>, cấu hình <code>"i18n": { "sourceLocale": "vi", "locales": { "en": "src/locale/messages.en.xlf" } }</code> trong <code>angular.json</code>, rồi <code>ng build --localize</code> sinh <code>dist/.../vi/</code> và <code>dist/.../en/</code>.</p>
+
+<h3>Transloco: dịch lúc chạy</h3>
+<pre lang="sh">
+ng add @jsverse/transloco
+</pre>
+<pre lang="json" file="public/i18n/vi.json">
+{ "home": { "title": "Sổ bài tập của lớp", "assignments": "{{ count }} bài tập" } }
+</pre>
+<pre lang="html">
+<ng-container *transloco="let t">
+  <h1>{{ t('home.title') }}</h1>
+  <p>{{ t('home.assignments', { count: total() }) }}</p>
+</ng-container>
+</pre>
+<pre lang="ts">
+inject(TranslocoService).setActiveLang('en');   // đổi ngôn ngữ ngay
+</pre>
+<aside class="tip"><p>Sản phẩm chỉ phục vụ người Việt (như ứng dụng trường học trong nước): đừng thêm i18n "để sau". Viết chữ tiếng Việt thẳng trong template, chỉ cần locale <code>vi</code> cho định dạng. Thêm i18n khi thật sự có kế hoạch ngôn ngữ thứ hai.</p></aside>
+
+<h2>PWA: cài lên màn hình và chạy khi mạng yếu</h2>
+<pre lang="sh">
+ng add @angular/pwa
+</pre>
+<pre lang="out" sim="1">
+$ ng add @angular/pwa
+CREATE ngsw-config.json (639 bytes)
+CREATE public/manifest.webmanifest (1352 bytes)
+CREATE public/icons/icon-128x128.png (1253 bytes)
+...
+UPDATE angular.json (2873 bytes)
+UPDATE src/app/app.config.ts (605 bytes)
+UPDATE src/index.html (520 bytes)
+</pre>
+<pre lang="json" file="ngsw-config.json">
+{
+  "index": "/index.html",
+  "assetGroups": [
+    { "name": "app", "installMode": "prefetch", "resources": { "files": ["/favicon.ico", "/index.html", "/*.css", "/*.js"] } },
+    { "name": "assets", "installMode": "lazy", "updateMode": "prefetch", "resources": { "files": ["/**/*.(svg|png|webp|woff2)"] } }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-classes",
+      "urls": ["/api/classes", "/api/assignments*"],
+      "cacheConfig": { "strategy": "freshness", "maxSize": 50, "maxAge": "1d", "timeout": "3s" }
+    }
+  ]
+}
+</pre>
+<table>
+<tr><th>Phần</th><th>Nghĩa</th></tr>
+<tr><td><code>assetGroups</code></td><td>file của ứng dụng (JS, CSS, ảnh): cache theo phiên bản build</td></tr>
+<tr><td><code>dataGroups</code> <code>freshness</code></td><td>API: ưu tiên mạng, quá 3 giây hoặc mất mạng thì dùng bản cache</td></tr>
+<tr><td><code>dataGroups</code> <code>performance</code></td><td>ưu tiên cache, hợp dữ liệu ít đổi</td></tr>
+</table>
+
+<h3>Báo có phiên bản mới</h3>
+<pre lang="ts" file="core/update-banner.ts">
+@Component({
+  selector: 'app-update-banner',
+  template: `
+    @if (ready()) {
+      <div class="banner">Đã có phiên bản mới. <button (click)="reload()">Tải lại</button></div>
+    }
+  `,
+})
+export class UpdateBanner {
+  private sw = inject(SwUpdate);
+  protected ready = signal(false);
+
+  constructor() {
+    if (!this.sw.isEnabled) return;
+    this.sw.versionUpdates
+      .pipe(filter((e) => e.type === 'VERSION_READY'), takeUntilDestroyed())
+      .subscribe(() => this.ready.set(true));
+    this.sw.unrecoverable.pipe(takeUntilDestroyed()).subscribe(() => location.reload());
+  }
+
+  protected async reload() {
+    await this.sw.activateUpdate();
+    location.reload();
+  }
+}
+</pre>
+<pre lang="ui">
+<div style="background:#1e293b;color:#fff;padding:10px 14px;border-radius:10px">Đã có phiên bản mới. <button>Tải lại</button></div>
+</pre>
+<aside class="warn"><p>Service worker cache mạnh tay: sau khi deploy, người dùng có thể vẫn chạy bản cũ cho tới khi tải lại. Luôn có thông báo "phiên bản mới" như trên, và xử lý trường hợp chunk JS của bản cũ không còn trên server (lỗi tải chunk sau deploy) bằng cách tự tải lại trang một lần.</p></aside>
+<p>Thông báo đẩy (Web Push) dùng <code>SwPush</code>: <code>requestSubscription({ serverPublicKey })</code> rồi gửi subscription lên server. Trên iPhone, Web Push chỉ hoạt động khi người dùng đã "Thêm vào màn hình chính".</p>
+
+<quiz q="Ứng dụng cần đổi ngôn ngữ ngay khi người dùng chọn, không tải lại trang. Chọn gì?">
+- @angular/localize
++ Thư viện dịch lúc chạy như Transloco
+- Pipe date
+? i18n có sẵn của Angular dịch lúc build, mỗi ngôn ngữ một bản build, đổi ngôn ngữ là chuyển sang bản khác.
+</quiz>
+<quiz q="dataGroups strategy 'freshness' với timeout 3s nghĩa là gì?">
++ Gọi mạng trước; quá 3 giây hoặc lỗi mạng thì trả bản cache
+- Luôn trả cache, cập nhật ngầm
+- Cache 3 giây
+? freshness ưu tiên dữ liệu mới, cache là phương án dự phòng.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Ứng dụng xem lịch học dùng được khi mất mạng</summary>
+<p>Biến ứng dụng thành PWA: trang lịch học (<code>/api/schedule</code>) vẫn xem được bản gần nhất khi mất mạng, hiện dải "Bạn đang xem bản lưu lúc HH:mm" khi offline, và hiện thông báo khi có phiên bản mới.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>ng add @angular/pwa</code>, thêm <code>dataGroups</code> freshness cho <code>/api/schedule</code>.</li>
+<li>Theo dõi trạng thái mạng: <code>host: { '(window:online)': ..., '(window:offline)': ... }</code> và signal <code>offline</code>.</li>
+<li>Lưu thời điểm tải thành công gần nhất vào localStorage (qua service an toàn).</li>
+<li>Thử: <code>ng build</code> rồi phục vụ thư mục build bằng <code>npx http-server -p 8080</code> (service worker không chạy với <code>ng serve</code>), tắt mạng trong DevTools.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="json" file="ngsw-config.json (thêm)">
+"dataGroups": [
+  { "name": "schedule", "urls": ["/api/schedule*"], "cacheConfig": { "strategy": "freshness", "maxSize": 20, "maxAge": "7d", "timeout": "4s" } }
+]
+</pre>
+<pre lang="ts" file="schedule-page.ts">
+@Component({
+  selector: 'app-schedule-page',
+  imports: [DatePipe, UpdateBanner],
+  host: { '(window:online)': 'offline.set(false)', '(window:offline)': 'offline.set(true)' },
+  template: `
+    <app-update-banner />
+    @if (offline()) {
+      <p class="offline">Bạn đang xem bản lưu lúc {{ savedAt() | date: 'HH:mm dd/MM' }}</p>
+    }
+    @for (d of schedule.value() ?? []; track d.date) {
+      <h3>{{ d.date | date: 'EEEE dd/MM' }}</h3>
+      <ul>@for (p of d.periods; track p.no) { <li>Tiết {{ p.no }}: {{ p.subject }}</li> }</ul>
+    }
+  `,
+})
+export class SchedulePage {
+  private storage = inject(Storage);
+  protected offline = signal(false);
+  protected savedAt = signal(Number(this.storage.get('schedule-at') ?? 0));
+  protected schedule = httpResource<{ date: string; periods: { no: number; subject: string }[] }[]>(() => '/api/schedule');
+
+  constructor() {
+    afterNextRender(() => this.offline.set(!navigator.onLine));
+    effect(() => {
+      if (this.schedule.hasValue() && !this.offline()) {
+        const now = Date.now();
+        this.storage.set('schedule-at', String(now));
+        untracked(() => this.savedAt.set(now));
+      }
+    });
+  }
+}
+</pre>
+<pre lang="ui">
+<p style="background:#fef3c7;color:#92400e;padding:6px 10px;border-radius:8px">Bạn đang xem bản lưu lúc 07:15 04/11</p>
+<h3>Thứ Tư 04/11</h3>
+<ul><li>Tiết 1: Toán</li><li>Tiết 2: Tiếng Việt</li><li>Tiết 3: Khoa học</li></ul>
+</pre>
+<p><b>Giải thích:</b> khi mất mạng, service worker trả bản <code>/api/schedule</code> đã cache sau 4 giây chờ (hoặc ngay nếu trình duyệt biết đang offline), nên <code>httpResource</code> vẫn nhận dữ liệu. Thời điểm lưu chỉ cập nhật khi tải thành công lúc có mạng. <code>navigator.onLine</code> đọc trong <code>afterNextRender</code> để an toàn khi có SSR. Service worker chỉ bật ở bản build production, không chạy với <code>ng serve</code>.</p>
+</details>
+</details>

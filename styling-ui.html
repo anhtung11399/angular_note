@@ -35,11 +35,207 @@
     <p class="lead">View encapsulation, :host, biến CSS, Tailwind, Angular Material và CDK, animation, accessibility. So với scoped style của Vue.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Viết style component không rò rỉ</li><li>Dùng Angular Material / CDK</li><li>Làm giao diện truy cập được bằng bàn phím và trình đọc màn hình</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="view-encapsulation-style-tu-scoped"><a href="#view-encapsulation-style-tu-scoped" class="anchor" aria-hidden="true">#</a>View encapsulation: style tự scoped</h2>
+<p>Style viết trong <code>styles</code> / <code>styleUrl</code> của component <b>chỉ áp cho template của component đó</b>, giống <code>&lt;style scoped&gt;</code> của Vue. Angular làm bằng cách gắn thuộc tính riêng vào phần tử và selector:</p>
+<div class="code"><div class="code-h"><span>DOM thật</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-class-card _nghost-ng-c123&gt;
+  &lt;<span class="k">h3</span> _ngcontent-ng-c123&gt;Lớ<span class="k">p</span> 5A&lt;/<span class="k">h3</span>&gt;
+&lt;/app-class-card&gt;
+&lt;style&gt;<span class="k">h3</span>[_ngcontent-ng-c123] { color: #dd0031; }&lt;/style&gt;</code></pre></div>
+<table>
+<tr><th>Chế độ</th><th>Ý nghĩa</th></tr>
+<tr><td><code>ViewEncapsulation.Emulated</code> (mặc định)</td><td>giả lập scoped bằng thuộc tính như trên</td></tr>
+<tr><td><code>ViewEncapsulation.None</code></td><td>style thành toàn cục (giống <code>&lt;style&gt;</code> không scoped)</td></tr>
+<tr><td><code>ViewEncapsulation.ShadowDom</code></td><td>dùng Shadow DOM thật của trình duyệt</td></tr>
+</table>
+
+<h2 id="cac-selector-dac-biet"><a href="#cac-selector-dac-biet" class="anchor" aria-hidden="true">#</a>Các selector đặc biệt</h2>
+<div class="code"><div class="code-h"><span>class-card.css</span><button class="copy" type="button">Sao chép</button></div><pre><code>:<span class="k">host</span> {                         <span class="c">/* chính thẻ &lt;app-class-card&gt; */</span>
+  display: block;
+  border: 1px solid <span class="f">var</span>(--line);
+  border-radius: 12px;
+}
+:<span class="k">host</span>(.selected) { border-color: #dd0031; }        <span class="c">/* host có class selected */</span>
+:<span class="k">host</span>-<span class="f">context</span>(.dark) h3 { color: #fff; }           <span class="c">/* khi một tổ tiên có class dark */</span>
+
+<span class="c">/* Chọc vào component con / nội dung chiếu vào — hạn chế dùng */</span>
+:<span class="k">host</span> ::ng-deep .mat-mdc-card-title { font-size: 18px; }</code></pre></div>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td>phần tử gốc của template</td><td><code>:host</code> (vì Angular có thẻ host bao ngoài)</td></tr>
+<tr><td><code>:deep(.x)</code></td><td><code>::ng-deep .x</code> (đã đánh dấu sắp bỏ nhưng vẫn chạy, nên kèm <code>:host</code> phía trước)</td></tr>
+<tr><td><code>:slotted(p)</code></td><td>style nội dung chiếu vào: dùng <code>::ng-deep</code> hoặc style toàn cục</td></tr>
+<tr><td><code>v-bind()</code> trong CSS</td><td>biến CSS gán qua host: <code>host: { '[style.--accent]': 'color()' }</code></td></tr>
+</table>
+<aside class="tip"><p>Muốn cho bên ngoài tuỳ biến component mà không cần <code>::ng-deep</code>: dùng <b>biến CSS</b>. Component đọc <code>var(--card-radius, 12px)</code>, nơi dùng đặt <code>app-class-card { --card-radius: 4px; }</code>. Biến CSS xuyên qua mọi ranh giới encapsulation.</p></aside>
+
+<h2 id="style-toan-cuc-va-token-thiet-ke"><a href="#style-toan-cuc-va-token-thiet-ke" class="anchor" aria-hidden="true">#</a>Style toàn cục và token thiết kế</h2>
+<div class="code"><div class="code-h"><span>src/styles.css</span><button class="copy" type="button">Sao chép</button></div><pre><code>:root {
+  --brand: #dd0031;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --radius: 12px;
+  --space: 8px;
+}
+@<span class="k">media</span> (prefers-color-scheme: dark) {
+  :root { --fg: #e2e8f0; --muted: #94a3b8; --line: #<span class="n">334155</span>; }
+}
+[hidden] { display: <span class="b">none</span> !<span class="b">important</span>; }
+body { margin: <span class="n">0</span>; font-family: system-ui, sans-serif; color: <span class="f">var</span>(--fg); }</code></pre></div>
+<p>File <code>styles.css</code> (khai báo trong <code>angular.json</code>) là CSS toàn cục, chỗ đặt reset, token, font, style cho thư viện.</p>
+
+<h2 id="tailwind-css"><a href="#tailwind-css" class="anchor" aria-hidden="true">#</a>Tailwind CSS</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">npm</span> install tailwindcss @tailwindcss/postcss postcss</code></pre></div>
+<div class="code"><div class="code-h"><span>.postcssrc.json</span><button class="copy" type="button">Sao chép</button></div><pre><code>{ <span class="s">&quot;plugins&quot;</span>: { <span class="s">&quot;@tailwindcss/postcss&quot;</span>: {} } }</code></pre></div>
+<div class="code"><div class="code-h"><span>src/styles.css</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="k">import</span> <span class="s">&quot;tailwindcss&quot;</span>;</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">div</span> class=<span class="s">&quot;rounded-xl border border-slate-200 p-4&quot;</span> [class.border-red-<span class="n">500</span>]=<span class="s">&quot;late()&quot;</span>&gt;
+  &lt;<span class="k">h3</span> class=<span class="s">&quot;text-lg font-semibold&quot;</span>&gt;{{ <span class="f">title</span>() }}&lt;/<span class="k">h3</span>&gt;
+&lt;/<span class="k">div</span>&gt;</code></pre></div>
+<p>Tailwind chạy tốt với Angular CLI (builder application hỗ trợ PostCSS). Lưu ý: class viết trong chuỗi động (<code>'text-' + color</code>) không được Tailwind phát hiện, hãy viết đủ tên class.</p>
+
+<h2 id="angular-material-va-cdk"><a href="#angular-material-va-cdk" class="anchor" aria-hidden="true">#</a>Angular Material và CDK</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> add @angular/material</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng add @angular/material</span>
+✔ Determining Package Manager
+✔ Searching for compatible package version
+✔ Loading package information from registry
+✔ Choose a prebuilt theme name, or &quot;custom&quot; for a custom theme: Azure/Blue
+✔ Set up global Angular Material typography styles? Yes
+UPDATE package.json (1127 bytes)
+UPDATE src/styles.scss (312 bytes)
+UPDATE src/index.html (590 bytes)</pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { MatButtonModule } <span class="k">from</span> <span class="s">'@angular/material/button'</span>;
+<span class="k">import</span> { MatFormFieldModule } <span class="k">from</span> <span class="s">'@angular/material/form-field'</span>;
+<span class="k">import</span> { MatInputModule } <span class="k">from</span> <span class="s">'@angular/material/input'</span>;
+<span class="k">import</span> { MatDialog } <span class="k">from</span> <span class="s">'@angular/material/dialog'</span>;
+
+@<span class="f">Component</span>({
+  imports: [MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
+  template: <span class="s">`
+    &lt;mat-form-field appearance=&quot;outline&quot;&gt;
+      &lt;mat-label&gt;Tên lớp&lt;/mat-label&gt;
+      &lt;input matInput [formControl]=&quot;name&quot; /&gt;
+      &lt;mat-error&gt;Không được để trống&lt;/mat-error&gt;
+    &lt;/mat-form-field&gt;
+    &lt;button mat-flat-button (click)=&quot;openHelp()&quot;&gt;Hướng dẫn&lt;/button&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> ClassForm {
+  name = <span class="k">new</span> <span class="f">FormControl</span>(<span class="s">''</span>, { nonNullable: <span class="b">true</span>, validators: Validators.required });
+  private dialog = <span class="b">inject</span>(MatDialog);
+  <span class="f">openHelp</span>() {
+    <span class="k">this</span>.dialog.<span class="f">open</span>(HelpDialog, { data: { topic: <span class="s">'tao-lop'</span> } });
+  }
+}</code></pre></div>
+<p>Material theo Material Design 3, đầy đủ, accessible. Nếu thiết kế của bạn không theo Material, dùng <b>Angular CDK</b>: các "khối hành vi" không có style: overlay, dialog, drag & drop, virtual scroll, a11y (focus trap, live announcer), table, menu, listbox.</p>
+<div class="code"><div class="code-h"><span>dùng CDK Dialog với giao diện tự thiết kế</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Dialog, DialogRef, DIALOG_DATA } <span class="k">from</span> <span class="s">'@angular/cdk/dialog'</span>;
+
+private dialog = <span class="b">inject</span>(Dialog);
+<span class="f">open</span>() {
+  <span class="k">const</span> ref = <span class="k">this</span>.dialog.open&lt;<span class="t">boolean</span>&gt;(ConfirmBox, { data: { text: <span class="s">'Xoá bài?'</span> } });
+  ref.closed.<span class="f">subscribe</span>((ok) =&gt; ok &amp;&amp; <span class="k">this</span>.<span class="f">remove</span>());
+}</code></pre></div>
+<table>
+<tr><th>Thư viện</th><th>Đặc điểm</th><th>Giống bên Vue</th></tr>
+<tr><td>Angular Material + CDK</td><td>chính chủ, chắc chắn, cập nhật cùng Angular</td><td>Vuetify (Material)</td></tr>
+<tr><td>PrimeNG</td><td>rất nhiều component (bảng dữ liệu, lịch), có theme</td><td>PrimeVue</td></tr>
+<tr><td>Spartan / ng-zorro / Taiga UI</td><td>headless kiểu shadcn / Ant Design / bộ đầy đủ</td><td>shadcn-vue / Ant Design Vue</td></tr>
+</table>
+
+<h2 id="animation"><a href="#animation" class="anchor" aria-hidden="true">#</a>Animation</h2>
+<p>Từ Angular 20.2, hướng khuyên dùng là animation bằng CSS kèm <code>animate.enter</code> / <code>animate.leave</code> thay cho gói <code>@angular/animations</code> cũ:</p>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="t">if</span> (<span class="f">open</span>()) {
+  &lt;<span class="k">div</span> class=<span class="s">&quot;toast&quot;</span> animate.enter=<span class="s">&quot;slide-in&quot;</span> animate.leave=<span class="s">&quot;fade-out&quot;</span>&gt;Đã lưu&lt;/<span class="k">div</span>&gt;
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>SCSS</span><button class="copy" type="button">Sao chép</button></div><pre><code>.slide-in { animation: slide-in .<span class="n">2s</span> ease-out; }
+.fade-out { animation: fade-out .<span class="n">15s</span> ease-in forwards; }
+@<span class="k">keyframes</span> slide-in { from { transform: <span class="f">translateY</span>(12px); opacity: <span class="n">0</span>; } }
+@<span class="k">keyframes</span> fade-out { to { opacity: <span class="n">0</span>; } }</code></pre></div>
+<aside class="fe"><p>Tương đương <code>&lt;Transition name="slide"&gt;</code> của Vue: Angular gắn class khi phần tử vào và chờ animation <code>leave</code> chạy xong mới gỡ phần tử. Code cũ dùng <code>trigger()</code>, <code>state()</code>, <code>transition()</code> của <code>@angular/animations</code>, vẫn đọc được khi gặp.</p></aside>
+
+<h2 id="accessibility"><a href="#accessibility" class="anchor" aria-hidden="true">#</a>Accessibility</h2>
+<ul>
+<li><b>Dùng phần tử đúng nghĩa</b>: <code>&lt;button&gt;</code> cho hành động, <code>&lt;a routerLink&gt;</code> cho điều hướng. Không gắn <code>(click)</code> lên <code>div</code>.</li>
+<li><b>Nhãn cho ô nhập</b>: <code>&lt;label for&gt;</code> hoặc <code>aria-label</code>.</li>
+<li><b>Focus</b>: hộp thoại phải giữ focus bên trong và trả focus khi đóng (CDK <code>cdkTrapFocus</code>, Dialog làm sẵn). Đổi trang thì đưa focus về tiêu đề chính.</li>
+<li><b>Thông báo động</b>: <code>LiveAnnouncer</code> của CDK đọc thông báo cho trình đọc màn hình (<code>announcer.announce('Đã lưu điểm')</code>).</li>
+<li><b>Kiểm tra</b>: ESLint có bộ luật template accessibility (<code>@angular-eslint/template/accessibility</code>), Lighthouse, axe DevTools.</li>
+</ul>
+<div class="code"><div class="code-h"><span>eslint.config.js (ý tưởng)</span><button class="copy" type="button">Sao chép</button></div><pre><code>{
+  <span class="s">&quot;files&quot;</span>: [<span class="s">&quot;**/*.html&quot;</span>],
+  <span class="s">&quot;extends&quot;</span>: [<span class="s">&quot;plugin:@angular-eslint/template/recommended&quot;</span>, <span class="s">&quot;plugin:@angular-eslint/template/accessibility&quot;</span>]
+}</code></pre></div>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Muốn nơi dùng đổi được màu viền của component mà không phá encapsulation. Cách tốt nhất?</p><div class="qo"><button type="button" class="opt">Dùng ViewEncapsulation.None</button><button type="button" class="opt">Nơi dùng viết ::ng-deep</button><button type="button" class="opt" data-ok>Component dùng var(--card-border, #e2e8f0); nơi dùng đặt biến CSS trên thẻ</button></div><p class="why" hidden>Biến CSS đi xuyên mọi ranh giới encapsulation, là "API style" rõ ràng của component.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Cần hộp thoại có giao diện hoàn toàn theo thiết kế riêng nhưng vẫn đúng accessibility (giữ focus, Escape, trả focus). Dùng gì?</p><div class="qo"><button type="button" class="opt" data-ok>Angular CDK Dialog</button><button type="button" class="opt">Tự viết div position fixed</button><button type="button" class="opt">MatDialog rồi ghi đè hết style</button></div><p class="why" hidden>CDK cung cấp hành vi, không áp style. MatDialog cũng được nhưng phải chống lại style Material.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Thẻ lớp học có chủ đề màu và hai chế độ sáng tối</summary>
+<p>Viết component <code>ClassTile</code> có input <code>accent</code> (màu), hiển thị tên lớp, số học sinh, thanh tiến độ nộp bài. Màu nhấn đổi theo input qua biến CSS. Tự động đổi màu nền / chữ theo chế độ tối của hệ điều hành. Thẻ có thể chọn bằng bàn phím (Enter / Space) và có viền focus rõ.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>host: { '[style.--accent]': 'accent()', role: 'button', tabindex: '0', '(keydown.enter)': ..., '(keydown.space)': ... }</code>.</li>
+<li>Style dùng <code>var(--accent)</code> cho viền trái và thanh tiến độ.</li>
+<li>Chế độ tối: biến <code>--tile-bg</code>, <code>--tile-fg</code> đổi trong <code>@media (prefers-color-scheme: dark)</code> đặt trong <code>:host</code>.</li>
+<li><code>:host(:focus-visible) { outline: 3px solid var(--accent); }</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>class-tile.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">computed</span>, <span class="b">input</span>, <span class="b">output</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-class-tile'</span>,
+  host: {
+    role: <span class="s">'button'</span>,
+    tabindex: <span class="s">'0'</span>,
+    <span class="s">'[style.--accent]'</span>: <span class="s">'accent()'</span>,
+    <span class="s">'[attr.aria-label]'</span>: <span class="s">'&quot;Mở &quot; + name()'</span>,
+    <span class="s">'(click)'</span>: <span class="s">'opened.emit()'</span>,
+    <span class="s">'(keydown.enter)'</span>: <span class="s">'opened.emit()'</span>,
+    <span class="s">'(keydown.space)'</span>: <span class="s">'$event.preventDefault(); opened.emit()'</span>,
+  },
+  template: <span class="s">`
+    &lt;h3&gt;{{ name() }}&lt;/h3&gt;
+    &lt;p&gt;{{ students() }} học sinh · đã nộp {{ percent() }}%&lt;/p&gt;
+    &lt;div class=&quot;bar&quot;&gt;&lt;i [style.width.%]=&quot;percent()&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+  `</span>,
+  styles: <span class="s">`
+    :host {
+      --tile-bg: #fff; --tile-fg: #0f172a; --tile-track: #e2e8f0;
+      display: block; padding: 14px 16px; border-radius: 12px; cursor: pointer;
+      background: var(--tile-bg); color: var(--tile-fg);
+      border: 1px solid var(--tile-track); border-left: 6px solid var(--accent, #dd0031);
+    }
+    @media (prefers-color-scheme: dark) {
+      :host { --tile-bg: #1e293b; --tile-fg: #e2e8f0; --tile-track: #334155; }
+    }
+    :host(:focus-visible) { outline: 3px solid var(--accent, #dd0031); outline-offset: 2px; }
+    h3 { margin: 0 0 4px; } p { margin: 0 0 8px; opacity: .8; }
+    .bar { height: 8px; border-radius: 99px; background: var(--tile-track); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--accent, #dd0031); }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> ClassTile {
+  name = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  students = <span class="b">input</span>(<span class="n">0</span>);
+  submitted = <span class="b">input</span>(<span class="n">0</span>);
+  accent = <span class="b">input</span>(<span class="s">'#dd0031'</span>);
+  opened = <span class="b">output</span>();
+  protected percent = <span class="b">computed</span>(() =&gt; (<span class="k">this</span>.<span class="f">students</span>() ? Math.<span class="f">round</span>((<span class="n">100</span> * <span class="k">this</span>.<span class="f">submitted</span>()) / <span class="k">this</span>.<span class="f">students</span>()) : <span class="n">0</span>));
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>nơi dùng</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-class-tile name=<span class="s">&quot;Lớp 5A&quot;</span> [students]=<span class="s">&quot;30&quot;</span> [submitted]=<span class="s">&quot;24&quot;</span> accent=<span class="s">&quot;#2563eb&quot;</span> (opened)=<span class="s">&quot;open(1)&quot;</span> /&gt;
+&lt;app-class-tile name=<span class="s">&quot;Lớp 5B&quot;</span> [students]=<span class="s">&quot;28&quot;</span> [submitted]=<span class="s">&quot;9&quot;</span> accent=<span class="s">&quot;#d97706&quot;</span> (opened)=<span class="s">&quot;open(2)&quot;</span> /&gt;</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><div style="display:grid;gap:10px;max-width:380px">
+<div style="padding:14px 16px;border-radius:12px;border:1px solid #e2e8f0;border-left:6px solid #2563eb"><h3 style="margin:0 0 4px">Lớp 5A</h3><p style="margin:0 0 8px;opacity:.8">30 học sinh · đã nộp 80%</p><div style="height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i style="display:block;height:100%;width:80%;background:#2563eb"></i></div></div>
+<div style="padding:14px 16px;border-radius:12px;border:1px solid #e2e8f0;border-left:6px solid #d97706;outline:3px solid #d97706;outline-offset:2px"><h3 style="margin:0 0 4px">Lớp 5B</h3><p style="margin:0 0 8px;opacity:.8">28 học sinh · đã nộp 32%</p><div style="height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i style="display:block;height:100%;width:32%;background:#d97706"></i></div></div>
+</div></div></div>
+<p><b>Giải thích:</b> <code>[style.--accent]</code> đặt biến CSS ngay trên thẻ host, mọi style bên trong đọc lại bằng <code>var(--accent)</code>. Chế độ tối chỉ đổi giá trị biến, không phải viết lại style. <code>role="button"</code> + <code>tabindex="0"</code> + Enter / Space khiến thẻ dùng được bằng bàn phím như một nút thật; thẻ thứ hai trong hình đang được focus bằng phím Tab nên có viền. Space gọi <code>preventDefault</code> để trang không bị cuộn.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="styling-ui">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="testing.html"><small>Bài trước</small>Kiểm thử</a><a class="next" href="ssr.html"><small>Bài tiếp theo</small>SSR, hydration và prerender</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#view-encapsulation-style-tu-scoped">View encapsulation: style tự scoped</a><a href="#cac-selector-dac-biet">Các selector đặc biệt</a><a href="#style-toan-cuc-va-token-thiet-ke">Style toàn cục và token thiết kế</a><a href="#tailwind-css">Tailwind CSS</a><a href="#angular-material-va-cdk">Angular Material và CDK</a><a href="#animation">Animation</a><a href="#accessibility">Accessibility</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>

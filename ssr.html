@@ -35,11 +35,187 @@
     <p class="lead">Render phía server, hydration, incremental hydration, prerender trang tĩnh, viết code chạy được cả server lẫn trình duyệt. So với Nuxt.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Bật SSR và hiểu luồng hydration</li><li>Tránh lỗi dùng window / localStorage trên server</li><li>Chọn SSR, prerender hay CSR cho từng route</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="ba-cach-render"><a href="#ba-cach-render" class="anchor" aria-hidden="true">#</a>Ba cách render</h2>
+<table>
+<tr><th></th><th>CSR (mặc định)</th><th>SSR</th><th>Prerender (SSG)</th></tr>
+<tr><td>HTML đầu tiên</td><td>trống, chỉ có <code>&lt;app-root&gt;</code></td><td>render trên server cho mỗi request</td><td>render sẵn lúc build</td></tr>
+<tr><td>Hiện nội dung</td><td>sau khi tải và chạy JS</td><td>ngay khi HTML về</td><td>ngay, từ CDN</td></tr>
+<tr><td>SEO, xem trước link (Zalo, Facebook)</td><td>kém</td><td>tốt</td><td>tốt</td></tr>
+<tr><td>Cần server Node / edge</td><td>không</td><td>có</td><td>không</td></tr>
+<tr><td>Hợp với</td><td>ứng dụng sau đăng nhập</td><td>trang công khai có dữ liệu thay đổi</td><td>trang giới thiệu, blog, tài liệu</td></tr>
+</table>
+<aside class="fe"><p>Với Vue, SSR nghĩa là dùng Nuxt (một framework khác bọc Vue). Angular có SSR <b>ngay trong framework</b>: <code>ng add @angular/ssr</code> hoặc chọn khi <code>ng new</code>, cùng router, cùng cách viết component. Và bạn chọn chế độ render <b>cho từng route</b>.</p></aside>
+
+<h2 id="bat-ssr"><a href="#bat-ssr" class="anchor" aria-hidden="true">#</a>Bật SSR</h2>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> add @angular/ssr</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng add @angular/ssr</span>
+CREATE src/main.server.ts (264 bytes)
+CREATE src/server.ts (1739 bytes)
+CREATE src/app/app.config.server.ts (436 bytes)
+CREATE src/app/app.routes.server.ts (161 bytes)
+UPDATE angular.json (2856 bytes)
+UPDATE src/app/app.config.ts (538 bytes)
+UPDATE package.json (1405 bytes)</pre></div>
+<div class="code"><div class="code-h"><span>src/app/app.routes.server.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { RenderMode, ServerRoute } <span class="k">from</span> <span class="s">'@angular/ssr'</span>;
+
+<span class="k">export</span> <span class="k">const</span> serverRoutes: ServerRoute[] = [
+  { path: <span class="s">''</span>, renderMode: RenderMode.Prerender },             <span class="c">// trang chủ: render sẵn lúc build</span>
+  { path: <span class="s">'bang-gia'</span>, renderMode: RenderMode.Prerender },
+  { path: <span class="s">'bai-viet/:slug'</span>, renderMode: RenderMode.Prerender, <span class="k">async</span> <span class="f">getPrerenderParams</span>() {
+      <span class="k">return</span> [{ slug: <span class="s">'cach-giao-bai'</span> }, { slug: <span class="s">'nop-bai-bang-anh'</span> }];
+  } },
+  { path: <span class="s">'j/:code'</span>, renderMode: RenderMode.Server },          <span class="c">// link mời: render theo request (có ảnh xem trước)</span>
+  { path: <span class="s">'**'</span>, renderMode: RenderMode.Client },               <span class="c">// phần sau đăng nhập: chỉ render ở trình duyệt</span>
+];</code></pre></div>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> build          <span class="c"># build cả bản browser và server, prerender các route Prerender</span>
+<span class="k">node</span> dist/so-bai-tap/server/server.mjs   <span class="c"># chạy server Node (Express) phục vụ SSR</span></code></pre></div>
+
+<h2 id="hydration"><a href="#hydration" class="anchor" aria-hidden="true">#</a>Hydration</h2>
+<figure class="dg arch"><svg viewBox="0 0 840 230" style="min-width:640px;max-width:840px" role="img" aria-label="Server gửi HTML đầy đủ → người dùng thấy nội dung ngay. JS tải xong, Angular không vẽ lại mà &amp;quot;nhận&amp;quot; DOM có sẵn (hydration), gắn listener vào. Sự kiện người dùng bấm trong lúc chờ được ghi lại và phát lại (event replay)"><path d="M116.0 110.0 L274.0 110.0" class="ae" marker-end="url(#ar)"/><path d="M326.0 110.0 L474.0 110.0" class="ae ae-go" marker-end="url(#ar)"/><path d="M526.0 110.0 L600.0 110.0 L600.0 50.0 L654.0 50.0" class="ae" marker-end="url(#ar)"/><path d="M680.0 94.0 L680.0 144.0" class="ae ae-ok" marker-end="url(#ar)"/><g class="an an-gen"><rect x="68" y="88" width="44" height="44" rx="9"/><text x="90" y="114.5" text-anchor="middle" class="an-i" style="font-size:13px">WEB</text><text x="90" y="148" text-anchor="middle" class="an-l">Trình duyệt</text><text x="90" y="162" text-anchor="middle" class="an-s">GET /j/DEMO5A</text></g><g class="an an-cp"><rect x="278" y="88" width="44" height="44" rx="9"/><text x="300" y="114.5" text-anchor="middle" class="an-i" style="font-size:13px">SSR</text><text x="300" y="148" text-anchor="middle" class="an-l">Server</text><text x="300" y="162" text-anchor="middle" class="an-s">render HTML</text></g><g class="an an-ng"><rect x="478" y="88" width="44" height="44" rx="9"/><text x="500" y="114.5" text-anchor="middle" class="an-i" style="font-size:11px">HTML</text><text x="500" y="148" text-anchor="middle" class="an-l">HTML đầy đủ</text><text x="500" y="162" text-anchor="middle" class="an-s">hiện ngay</text></g><g class="an an-cp"><rect x="658" y="28" width="44" height="44" rx="9"/><text x="680" y="54.5" text-anchor="middle" class="an-i" style="font-size:13px">JS</text><text x="680" y="88" text-anchor="middle" class="an-l">Tải JS</text></g><g class="an an-ng"><rect x="658" y="148" width="44" height="44" rx="9"/><text x="680" y="174.5" text-anchor="middle" class="an-i" style="font-size:13px">CMP</text><text x="680" y="208" text-anchor="middle" class="an-l">Hydration</text><text x="680" y="222" text-anchor="middle" class="an-s">gắn sự kiện vào DOM có sẵn</text></g></svg><figcaption>Server gửi HTML đầy đủ → người dùng thấy nội dung ngay. JS tải xong, Angular không vẽ lại mà &quot;nhận&quot; DOM có sẵn (hydration), gắn listener vào. Sự kiện người dùng bấm trong lúc chờ được ghi lại và phát lại (event replay)</figcaption></figure>
+<div class="code"><div class="code-h"><span>app.config.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { provideClientHydration, withEventReplay, withIncrementalHydration } <span class="k">from</span> <span class="s">'@angular/platform-browser'</span>;
+
+providers: [
+  <span class="f">provideClientHydration</span>(<span class="f">withEventReplay</span>(), <span class="f">withIncrementalHydration</span>()),
+]</code></pre></div>
+<p>Hydration yêu cầu DOM do server tạo và DOM trình duyệt định tạo phải <b>khớp nhau</b>. Nếu lệch (ví dụ hiển thị <code>new Date()</code> theo giờ server khác giờ máy người dùng, hay thao tác DOM trực tiếp), Angular báo lỗi NG0500 trong console và render lại phần đó.</p>
+
+<h3>Incremental hydration</h3>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="t">defer</span> (hydrate on viewport) {
+  &lt;app-reviews [items]=<span class="s">&quot;reviews()&quot;</span> /&gt;     <span class="c">&lt;!-- HTML có sẵn từ server, JS chỉ tải khi cuộn tới --&gt;</span>
+}
+@<span class="t">defer</span> (hydrate on interaction) {
+  &lt;app-pricing-calculator /&gt;
+}
+@<span class="t">defer</span> (hydrate never) {
+  &lt;app-static-<span class="k">footer</span> /&gt;                   <span class="c">&lt;!-- không bao giờ cần JS --&gt;</span>
+}</code></pre></div>
+<p>Kết hợp với SSR, <code>@defer</code> có thêm trigger <code>hydrate</code>: nội dung hiển thị ngay từ HTML server, còn JavaScript của phần đó chỉ tải khi cần. Trang giới thiệu dài nhiều khối tĩnh hưởng lợi rất lớn.</p>
+
+<h2 id="viet-code-chay-duoc-ca-hai-noi"><a href="#viet-code-chay-duoc-ca-hai-noi" class="anchor" aria-hidden="true">#</a>Viết code chạy được cả hai nơi</h2>
+<p>Trên server không có <code>window</code>, <code>document</code> thật, <code>localStorage</code>, <code>navigator</code>, kích thước màn hình. Đây là nguồn lỗi chính khi bật SSR:</p>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre>ReferenceError: localStorage is not defined
+    at new ThemeService (src/app/core/theme.ts:8:30)</pre></div>
+<table>
+<tr><th>Cần</th><th>Cách an toàn</th></tr>
+<tr><td>Đo DOM, focus, thư viện chỉ chạy trên trình duyệt</td><td><code>afterNextRender(() =&gt; ...)</code> (không chạy trên server)</td></tr>
+<tr><td>Biết đang ở đâu</td><td><code>isPlatformBrowser(inject(PLATFORM_ID))</code></td></tr>
+<tr><td><code>document</code></td><td><code>inject(DOCUMENT)</code> (server có bản giả lập)</td></tr>
+<tr><td>localStorage</td><td>bọc trong service, server trả giá trị mặc định</td></tr>
+<tr><td>Cookie, header của request</td><td><code>inject(REQUEST)</code> từ <code>@angular/core</code> (chỉ có trên server)</td></tr>
+</table>
+<div class="code"><div class="code-h"><span>core/storage.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Injectable</span>({ providedIn: <span class="s">'root'</span> })
+<span class="k">export</span> <span class="k">class</span> Storage {
+  private browser = <span class="f">isPlatformBrowser</span>(<span class="b">inject</span>(PLATFORM_ID));
+
+  <span class="f">get</span>(key: <span class="t">string</span>): <span class="t">string</span> | <span class="t">null</span> {
+    <span class="k">if</span> (!<span class="k">this</span>.browser) <span class="k">return</span> <span class="t">null</span>;
+    <span class="k">try</span> { <span class="k">return</span> localStorage.<span class="f">getItem</span>(key); } <span class="k">catch</span> { <span class="k">return</span> <span class="t">null</span>; }
+  }
+  <span class="f">set</span>(key: <span class="t">string</span>, value: <span class="t">string</span>) {
+    <span class="k">if</span> (!<span class="k">this</span>.browser) <span class="k">return</span>;
+    <span class="k">try</span> { localStorage.<span class="f">setItem</span>(key, value); } <span class="k">catch</span> { <span class="c">/* bị chặn */</span> }
+  }
+}</code></pre></div>
+
+<h2 id="khong-goi-api-hai-lan-http-transfer-cache"><a href="#khong-goi-api-hai-lan-http-transfer-cache" class="anchor" aria-hidden="true">#</a>Không gọi API hai lần: HTTP transfer cache</h2>
+<p>Server gọi API để render, rồi trình duyệt hydrate và... gọi lại API đó lần nữa? Không: <code>provideClientHydration</code> bật sẵn <b>transfer cache</b>: response của các GET trong lúc SSR được nhúng vào HTML, phía trình duyệt dùng lại thay vì gọi lại.</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="f">provideClientHydration</span>(<span class="f">withHttpTransferCacheOptions</span>({ includePostRequests: <span class="b">false</span>, filter: (req) =&gt; !req.url.<span class="f">includes</span>(<span class="s">'/me'</span>) }))</code></pre></div>
+<aside class="warn"><p>Request trên server cần <b>URL tuyệt đối</b> (server không biết "<code>/api</code>" là của ai) và cần chuyển tiếp cookie nếu API cần đăng nhập. Đừng để server render dữ liệu riêng của người dùng vào trang được cache chung (CDN).</p></aside>
+
+<h2 id="seo-tieu-de-meta"><a href="#seo-tieu-de-meta" class="anchor" aria-hidden="true">#</a>SEO: tiêu đề, meta</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> InvitePage {
+  code = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  private title = <span class="b">inject</span>(Title);
+  private meta = <span class="b">inject</span>(Meta);
+  invite = <span class="b">httpResource</span>&lt;Invite&gt;(() =&gt; <span class="s">`/api/invites/${this.code()}`</span>);
+
+  <span class="f">constructor</span>() {
+    <span class="b">effect</span>(() =&gt; {
+      <span class="k">const</span> i = <span class="k">this</span>.invite.<span class="f">value</span>();
+      <span class="k">if</span> (!i) <span class="k">return</span>;
+      <span class="k">this</span>.title.<span class="f">setTitle</span>(<span class="s">`Tham gia ${i.className} trên Sổ bài tập`</span>);
+      <span class="k">this</span>.meta.<span class="f">updateTag</span>({ property: <span class="s">'og:title'</span>, content: <span class="s">`Tham gia ${i.className}`</span> });
+      <span class="k">this</span>.meta.<span class="f">updateTag</span>({ property: <span class="s">'og:image'</span>, content: i.coverUrl });
+    });
+  }
+}</code></pre></div>
+<p>Với SSR, các thẻ này có sẵn trong HTML server trả về, nên Zalo, Facebook, Google đọc được khi chia sẻ link.</p>
+
+<h2 id="deploy-ssr"><a href="#deploy-ssr" class="anchor" aria-hidden="true">#</a>Deploy SSR</h2>
+<ul>
+<li><b>Node</b>: chạy <code>server.mjs</code> (Express) trên VPS, Cloud Run, Render.</li>
+<li><b>Edge / serverless</b>: <code>@angular/ssr</code> có <code>AngularAppEngine</code> dùng Request / Response chuẩn web, chạy được trên Cloudflare Workers, Netlify, Vercel (với adapter phù hợp).</li>
+<li><b>Chỉ prerender</b>: nếu mọi route là <code>Prerender</code> hoặc <code>Client</code>, kết quả build là file tĩnh, deploy như CSR lên bất kỳ static hosting nào.</li>
+</ul>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Bật SSR rồi gặp lỗi 'window is not defined' ở service đọc kích thước màn hình. Cách sửa đúng?</p><div class="qo"><button type="button" class="opt">Thêm window = {} toàn cục</button><button type="button" class="opt" data-ok>Đọc kích thước trong afterNextRender, hoặc chỉ khi isPlatformBrowser</button><button type="button" class="opt">Tắt SSR</button></div><p class="why" hidden>afterNextRender chỉ chạy trên trình duyệt. Code dùng API trình duyệt phải được bảo vệ khỏi môi trường server.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Trang giới thiệu tĩnh và khu vực quản lý sau đăng nhập trong cùng ứng dụng. Cấu hình render hợp lý?</p><div class="qo"><button type="button" class="opt" data-ok>Trang giới thiệu Prerender, khu vực sau đăng nhập Client</button><button type="button" class="opt">Mọi route Server</button><button type="button" class="opt">Mọi route Prerender</button></div><p class="why" hidden>Mỗi route chọn chế độ riêng trong app.routes.server.ts.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Trang link mời có ảnh xem trước khi chia sẻ</summary>
+<p>Bật SSR cho dự án. Trang <code>/j/:code</code> render phía server, hiển thị tên lớp và tên giáo viên lấy từ API, đặt <code>og:title</code>, <code>og:description</code>. Nút "Tham gia" dùng <code>localStorage</code> để nhớ mã lớp vừa mở. Không được lỗi khi render trên server.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>ng add @angular/ssr</code>, thêm <code>{ path: 'j/:code', renderMode: RenderMode.Server }</code>.</li>
+<li>Dữ liệu: <code>httpResource</code> theo input <code>code</code>. Dùng URL tuyệt đối từ <code>APP_CONFIG</code>.</li>
+<li>Meta: <code>effect</code> khi có dữ liệu.</li>
+<li>localStorage: qua service <code>Storage</code> ở trên, ghi khi bấm nút (sự kiện chỉ có trên trình duyệt).</li>
+<li>Kiểm tra: <code>curl http://localhost:4000/j/DEMO5A</code> phải thấy tên lớp và thẻ meta trong HTML.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>invite-page.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-invite-page'</span>,
+  template: <span class="s">`
+    @if (invite.value(); as i) {
+      &lt;h1&gt;{{ i.className }}&lt;/h1&gt;
+      &lt;p&gt;Giáo viên: {{ i.teacherName }} · mã lớp {{ code() }}&lt;/p&gt;
+      &lt;button (click)=&quot;join()&quot;&gt;Tham gia lớp&lt;/button&gt;
+    } @else if (invite.error()) {
+      &lt;p&gt;Link mời không tồn tại hoặc đã hết hạn.&lt;/p&gt;
+    } @else {
+      &lt;p&gt;Đang tải…&lt;/p&gt;
+    }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> InvitePage {
+  code = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  private cfg = <span class="b">inject</span>(APP_CONFIG);
+  private storage = <span class="b">inject</span>(Storage);
+  private router = <span class="b">inject</span>(Router);
+  private title = <span class="b">inject</span>(Title);
+  private meta = <span class="b">inject</span>(Meta);
+
+  protected invite = <span class="b">httpResource</span>&lt;{ className: <span class="t">string</span>; teacherName: <span class="t">string</span> }&gt;(
+    () =&gt; <span class="s">`${this.cfg.apiUrl}/invites/${encodeURIComponent(this.code())}`</span>,
+  );
+
+  <span class="f">constructor</span>() {
+    <span class="b">effect</span>(() =&gt; {
+      <span class="k">const</span> i = <span class="k">this</span>.invite.<span class="f">value</span>();
+      <span class="k">if</span> (!i) <span class="k">return</span>;
+      <span class="k">const</span> t = <span class="s">`Tham gia ${i.className} trên Sổ bài tập`</span>;
+      <span class="k">this</span>.title.<span class="f">setTitle</span>(t);
+      <span class="k">this</span>.meta.<span class="f">updateTag</span>({ property: <span class="s">'og:title'</span>, content: t });
+      <span class="k">this</span>.meta.<span class="f">updateTag</span>({ property: <span class="s">'og:description'</span>, content: <span class="s">`Giáo viên ${i.teacherName} mời bạn vào lớp.`</span> });
+    });
+  }
+
+  protected <span class="f">join</span>() {
+    <span class="k">this</span>.storage.<span class="f">set</span>(<span class="s">'last-invite'</span>, <span class="k">this</span>.<span class="f">code</span>());
+    <span class="k">this</span>.router.<span class="f">navigate</span>([<span class="s">'/dang-nhap'</span>], { queryParams: { ma: <span class="k">this</span>.<span class="f">code</span>() } });
+  }
+}</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">curl -s http://localhost:4000/j/DEMO5A | grep -E &quot;og:title|&lt;h1&gt;&quot;</span>
+&lt;meta property=&quot;og:title&quot; content=&quot;Tham gia Lớp 5A trên Sổ bài tập&quot;&gt;
+&lt;h1&gt;Lớp 5A&lt;/h1&gt;</pre></div>
+<p><b>Giải thích:</b> HTML server trả về đã có tiêu đề lớp và thẻ meta, nên khi dán link vào Zalo hay Facebook, bản xem trước hiện đúng tên lớp. <code>localStorage</code> chỉ được đụng tới trong <code>join()</code>, vốn chỉ chạy khi người dùng bấm trên trình duyệt, và service <code>Storage</code> đã bảo vệ thêm một lớp. Response của API được nhúng vào HTML (transfer cache) nên trình duyệt không gọi lại lần hai.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="ssr">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="styling-ui.html"><small>Bài trước</small>Style, thư viện UI và accessibility</a><a class="next" href="i18n-pwa.html"><small>Bài tiếp theo</small>Đa ngôn ngữ và PWA</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#ba-cach-render">Ba cách render</a><a href="#bat-ssr">Bật SSR</a><a href="#hydration">Hydration</a><a href="#viet-code-chay-duoc-ca-hai-noi">Viết code chạy được cả hai nơi</a><a href="#khong-goi-api-hai-lan-http-transfer-cache">Không gọi API hai lần: HTTP transfer cache</a><a href="#seo-tieu-de-meta">SEO: tiêu đề, meta</a><a href="#deploy-ssr">Deploy SSR</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>

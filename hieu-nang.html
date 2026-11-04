@@ -35,11 +35,162 @@
     <p class="lead">Lazy loading, @defer, track, NgOptimizedImage, virtual scroll, đo bằng Angular DevTools và Lighthouse, bundle budget và phân tích bundle.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Giảm kích thước bundle ban đầu</li><li>Tìm và sửa chỗ render chậm</li><li>Đặt budget để không phình bundle</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="do-truoc-toi-uu-sau"><a href="#do-truoc-toi-uu-sau" class="anchor" aria-hidden="true">#</a>Đo trước, tối ưu sau</h2>
+<p>Hai loại chậm cần phân biệt:</p>
+<table>
+<tr><th>Loại</th><th>Triệu chứng</th><th>Đo bằng</th></tr>
+<tr><td><b>Tải chậm</b></td><td>trắng màn hình lâu, LCP cao</td><td>Lighthouse, tab Network, kết quả <code>ng build</code></td></tr>
+<tr><td><b>Chạy chậm</b></td><td>gõ bị giật, cuộn khựng, bấm nút trễ (INP cao)</td><td>Angular DevTools Profiler, tab Performance của Chrome</td></tr>
+</table>
+
+<h2 id="giam-bundle-ban-dau"><a href="#giam-bundle-ban-dau" class="anchor" aria-hidden="true">#</a>Giảm bundle ban đầu</h2>
+<figure class="dg arch"><svg viewBox="0 0 840 220" style="min-width:640px;max-width:840px" role="img" aria-label="Mục tiêu: main.js chỉ chứa thứ cần cho màn hình đầu tiên. Mọi trang khác lazy load theo route; phần nặng trong trang dùng @defer; thư viện lớn import động khi cần"><path d="M146.0 100.0 L240.0 100.0 L240.0 40.0 L334.0 40.0" class="ae" marker-end="url(#ar)"/><path d="M146.0 100.0 L240.0 100.0 L240.0 160.0 L334.0 160.0" class="ae" marker-end="url(#ar)"/><path d="M386.0 40.0 L480.0 40.0 L480.0 100.0 L574.0 100.0" class="ae" marker-end="url(#ar)"/><path d="M386.0 160.0 L480.0 160.0 L480.0 100.0 L574.0 100.0" class="ae" marker-end="url(#ar)"/><path d="M626.0 100.0 L754.0 100.0" class="ae" marker-end="url(#ar)"/><g class="an an-cp"><rect x="98" y="78" width="44" height="44" rx="9"/><text x="120" y="104.5" text-anchor="middle" class="an-i" style="font-size:13px">JS</text><text x="120" y="138" text-anchor="middle" class="an-l">main.js</text><text x="120" y="152" text-anchor="middle" class="an-s">App, layout, trang đầu</text></g><g class="an an-cp"><rect x="338" y="18" width="44" height="44" rx="9"/><text x="360" y="44.5" text-anchor="middle" class="an-i" style="font-size:13px">JS</text><text x="360" y="78" text-anchor="middle" class="an-l">Route lazy</text><text x="360" y="92" text-anchor="middle" class="an-s">loadComponent</text></g><g class="an an-cp"><rect x="338" y="138" width="44" height="44" rx="9"/><text x="360" y="164.5" text-anchor="middle" class="an-i" style="font-size:13px">JS</text><text x="360" y="198" text-anchor="middle" class="an-l">@defer</text><text x="360" y="212" text-anchor="middle" class="an-s">biểu đồ, editor</text></g><g class="an an-cp"><rect x="578" y="78" width="44" height="44" rx="9"/><text x="600" y="104.5" text-anchor="middle" class="an-i" style="font-size:13px">JS</text><text x="600" y="138" text-anchor="middle" class="an-l">import()</text><text x="600" y="152" text-anchor="middle" class="an-s">xlsx, pdf.js, qrcode</text></g><g class="an an-gen"><rect x="758" y="78" width="44" height="44" rx="9"/><text x="780" y="104.5" text-anchor="middle" class="an-i" style="font-size:13px">WEB</text><text x="780" y="138" text-anchor="middle" class="an-l">Trình duyệt</text><text x="780" y="152" text-anchor="middle" class="an-s">tải khi cần</text></g></svg><figcaption>Mục tiêu: main.js chỉ chứa thứ cần cho màn hình đầu tiên. Mọi trang khác lazy load theo route; phần nặng trong trang dùng @defer; thư viện lớn import động khi cần</figcaption></figure>
+<ol>
+<li><b>Lazy load mọi route</b> bằng <code>loadComponent</code> / <code>loadChildren</code> (bài 11).</li>
+<li><b>@defer</b> cho phần nặng ít khi cần ngay: biểu đồ, trình soạn thảo, bản đồ, phần cuối trang (bài 5).</li>
+<li><b>Import động</b> cho thư viện chỉ dùng khi người dùng bấm:
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">async</span> <span class="f">exportExcel</span>() {
+  <span class="k">const</span> XLSX = <span class="k">await</span> <span class="k">import</span>(<span class="s">'xlsx'</span>);                 <span class="c">// chỉ tải khi bấm nút</span>
+  <span class="k">const</span> ws = XLSX.utils.<span class="f">json_to_sheet</span>(<span class="k">this</span>.<span class="f">rows</span>());
+  ...
+}</code></pre></div></li>
+<li><b>Chọn thư viện nhẹ</b>: <code>date-fns</code> thay <code>moment</code>, import từng icon thay vì cả bộ, kiểm tra kích thước trên bundlephobia trước khi cài.</li>
+</ol>
+
+<h3>Xem bundle gồm những gì</h3>
+<div class="code"><div class="code-h"><span>Terminal</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">ng</span> build --stats-json
+<span class="k">npx</span> esbuild-visualizer --metadata dist/so-bai-tap/stats.json --open
+<span class="c"># hoặc: npx source-map-explorer dist/so-bai-tap/browser/*.js</span></code></pre></div>
+<p>Biểu đồ treemap cho thấy thư viện nào chiếm nhiều nhất. Thủ phạm hay gặp: một thư viện UI import cả gói, <code>lodash</code> đầy đủ, locale của thư viện ngày tháng.</p>
+
+<h3>Budget: chặn bundle phình to</h3>
+<div class="code"><div class="code-h"><span>angular.json (trích)</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="s">&quot;configurations&quot;</span>: {
+  <span class="s">&quot;production&quot;</span>: {
+    <span class="s">&quot;budgets&quot;</span>: [
+      { <span class="s">&quot;type&quot;</span>: <span class="s">&quot;initial&quot;</span>, <span class="s">&quot;maximumWarning&quot;</span>: <span class="s">&quot;400kB&quot;</span>, <span class="s">&quot;maximumError&quot;</span>: <span class="s">&quot;600kB&quot;</span> },
+      { <span class="s">&quot;type&quot;</span>: <span class="s">&quot;anyComponentStyle&quot;</span>, <span class="s">&quot;maximumWarning&quot;</span>: <span class="s">&quot;6kB&quot;</span>, <span class="s">&quot;maximumError&quot;</span>: <span class="s">&quot;10kB&quot;</span> }
+    ]
+  }
+}</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng build</span>
+▲ [WARNING] bundle initial exceeded maximum budget. Budget 400.00 kB was not met by 38.12 kB with a total of 438.12 kB.</pre></div>
+<p>Vượt <code>maximumError</code> thì build thất bại: CI chặn ngay pull request làm phình bundle.</p>
+
+<h2 id="anh-ngoptimizedimage"><a href="#anh-ngoptimizedimage" class="anchor" aria-hidden="true">#</a>Ảnh: NgOptimizedImage</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { NgOptimizedImage } <span class="k">from</span> <span class="s">'@angular/common'</span>;
+
+@<span class="f">Component</span>({
+  imports: [NgOptimizedImage],
+  template: <span class="s">`
+    &lt;img ngSrc=&quot;/brand/hero.webp&quot; width=&quot;1200&quot; height=&quot;630&quot; priority alt=&quot;Sổ bài tập&quot; /&gt;   &lt;!-- ảnh LCP --&gt;
+    &lt;img ngSrc=&quot;/avatars/{{ id() }}.webp&quot; width=&quot;48&quot; height=&quot;48&quot; alt=&quot;&quot; /&gt;                &lt;!-- tự lazy --&gt;
+  `</span>,
+})</code></pre></div>
+<p><code>ngSrc</code> bắt buộc có <code>width</code> / <code>height</code> (tránh nhảy bố cục), tự thêm <code>loading="lazy"</code>, <code>priority</code> thêm <code>fetchpriority="high"</code> và cảnh báo nếu ảnh LCP bị lazy. Có loader cho CDN ảnh (Cloudinary, imgix, Cloudflare) để tự sinh <code>srcset</code>.</p>
+
+<h2 id="danh-sach-dai"><a href="#danh-sach-dai" class="anchor" aria-hidden="true">#</a>Danh sách dài</h2>
+<ul>
+<li><b>Luôn <code>track</code> theo id</b>: tránh tạo lại DOM.</li>
+<li><b>Phân trang ở server</b> thay vì tải 5.000 dòng.</li>
+<li><b>Virtual scroll</b> khi buộc phải hiện nhiều dòng: chỉ render các dòng đang nằm trong khung nhìn.</li>
+</ul>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { ScrollingModule } <span class="k">from</span> <span class="s">'@angular/cdk/scrolling'</span>;
+
+@<span class="f">Component</span>({
+  imports: [ScrollingModule],
+  template: <span class="s">`
+    &lt;cdk-virtual-scroll-viewport itemSize=&quot;48&quot; class=&quot;list&quot;&gt;
+      &lt;div *cdkVirtualFor=&quot;let s of students(); trackBy: byId&quot; class=&quot;row&quot;&gt;{{ s.name }}&lt;/div&gt;
+    &lt;/cdk-virtual-scroll-viewport&gt;
+  `</span>,
+  styles: <span class="s">`.list { height: 480px; } .row { height: 48px; }`</span>,
+})</code></pre></div>
+
+<h2 id="chay-muot"><a href="#chay-muot" class="anchor" aria-hidden="true">#</a>Chạy mượt</h2>
+<table>
+<tr><th>Vấn đề</th><th>Cách sửa</th></tr>
+<tr><td>Method nặng gọi trong template</td><td><code>computed</code> hoặc pure pipe</td></tr>
+<tr><td>Cả cây bị kiểm tra sau mỗi sự kiện</td><td>zoneless + signals, hoặc <code>OnPush</code></td></tr>
+<tr><td>Sự kiện tần suất cao (scroll, mousemove, resize)</td><td>throttle / debounce; với Zone.js thì chạy ngoài zone: <code>inject(NgZone).runOutsideAngular(...)</code></td></tr>
+<tr><td>Gõ ô tìm kiếm gọi API liên tục</td><td><code>debounceTime</code> + <code>switchMap</code> (bài 14)</td></tr>
+<tr><td>Ảnh lớn, nhiều</td><td><code>NgOptimizedImage</code>, định dạng webp / avif</td></tr>
+<tr><td>Tải lại dữ liệu sau mỗi thao tác</td><td>cập nhật state tại chỗ (bài 15)</td></tr>
+</table>
+
+<h2 id="angular-devtools-profiler"><a href="#angular-devtools-profiler" class="anchor" aria-hidden="true">#</a>Angular DevTools Profiler</h2>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>Chrome DevTools › Angular › Profiler</span><b>Minh hoạ</b></div><div class="browser-b"><div style="font-family:system-ui;font-size:13px">
+<div style="display:flex;gap:4px;align-items:flex-end;height:80px;border-bottom:1px solid #e2e8f0">
+<div style="width:18px;height:20px;background:#93c5fd"></div><div style="width:18px;height:24px;background:#93c5fd"></div><div style="width:18px;height:72px;background:#f87171"></div><div style="width:18px;height:18px;background:#93c5fd"></div><div style="width:18px;height:22px;background:#93c5fd"></div>
+</div>
+<p style="margin:8px 0 4px"><b>Lượt 3</b> · 41,2 ms · nguồn: input event</p>
+<div style="background:#fee2e2;padding:4px 8px;margin:2px 0;width:90%">StudentTable · 36,8 ms</div>
+<div style="background:#f1f5f9;padding:4px 8px;margin:2px 0;width:20%">Header · 1,1 ms</div>
+<div style="background:#f1f5f9;padding:4px 8px;margin:2px 0;width:12%">Sidebar · 0,6 ms</div>
+</div></div></div>
+<p>Mỗi cột là một lượt kiểm tra giao diện, cột cao là lượt chậm. Bấm vào cột để xem component nào tốn thời gian nhất. Ở ví dụ trên, <code>StudentTable</code> chiếm 36,8 ms trong một lượt kích hoạt bởi gõ phím: chỗ cần tìm method nặng trong template.</p>
+
+<h2 id="core-web-vitals-voi-angular"><a href="#core-web-vitals-voi-angular" class="anchor" aria-hidden="true">#</a>Core Web Vitals với Angular</h2>
+<table>
+<tr><th>Chỉ số</th><th>Nghĩa</th><th>Angular giúp gì</th></tr>
+<tr><td>LCP</td><td>thời gian hiện phần nội dung lớn nhất</td><td>SSR / prerender (bài 20), <code>priority</code> cho ảnh chính, bundle nhỏ</td></tr>
+<tr><td>INP</td><td>độ trễ phản hồi tương tác</td><td>zoneless, computed, tránh việc nặng trong event handler</td></tr>
+<tr><td>CLS</td><td>độ nhảy bố cục</td><td><code>ngSrc</code> có kích thước, skeleton đúng kích thước nội dung, <code>@placeholder</code> của defer</td></tr>
+</table>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Trang danh sách lớp có nút 'Xuất Excel' dùng thư viện xlsx nặng 400 KB. Cách giảm bundle tốt nhất?</p><div class="qo"><button type="button" class="opt">Đặt nút trong @if</button><button type="button" class="opt" data-ok>import('xlsx') động trong hàm xử lý khi bấm nút</button><button type="button" class="opt">Dùng OnPush</button></div><p class="why" hidden>Import động tách thư viện thành chunk riêng, chỉ tải khi người dùng thật sự xuất file.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Budget initial maximumError là 600kB và bundle lên 620kB. Chuyện gì xảy ra?</p><div class="qo"><button type="button" class="opt" data-ok>ng build thất bại, CI chặn lại</button><button type="button" class="opt">Chỉ in cảnh báo</button><button type="button" class="opt">Angular tự nén thêm</button></div><p class="why" hidden>maximumWarning chỉ cảnh báo, maximumError làm build lỗi.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Giảm thời gian tải trang chấm bài</summary>
+<p>Trang chấm bài hiện có trong bundle chính: thư viện xem ảnh có zoom (120 KB), thư viện vẽ biểu đồ điểm (180 KB) hiển thị ở cuối trang, và thư viện xuất PDF (250 KB) dùng khi bấm "In bảng điểm". Trang đang được import thẳng trong <code>app.routes.ts</code>. Hãy sắp xếp lại để main.js nhỏ nhất, và đặt budget.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Route: đổi <code>component: GradingPage</code> thành <code>loadComponent</code>.</li>
+<li>Xem ảnh: cần ngay khi mở bài nộp, nhưng chỉ khi người dùng bấm vào ảnh mới cần zoom → <code>@defer (on interaction)</code>.</li>
+<li>Biểu đồ cuối trang → <code>@defer (on viewport)</code> có placeholder đúng kích thước.</li>
+<li>PDF → <code>await import()</code> trong hàm in.</li>
+<li>Budget initial 400kB / 500kB.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>app.routes.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>{ path: <span class="s">'lop/:classId/cham-bai'</span>, loadComponent: () =&gt; <span class="k">import</span>(<span class="s">'./grading/grading-page'</span>).<span class="f">then</span>((m) =&gt; m.GradingPage) },</code></pre></div>
+<div class="code"><div class="code-h"><span>grading-page.html</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-submission-<span class="k">header</span> [sub]=<span class="s">&quot;current()&quot;</span> /&gt;
+
+@<span class="t">defer</span> (on interaction) {
+  &lt;app-zoom-viewer [images]=<span class="s">&quot;current().images&quot;</span> /&gt;
+} @<span class="t">placeholder</span> {
+  &lt;<span class="k">img</span> [ngSrc]=<span class="s">&quot;current().images[0].thumb&quot;</span> width=<span class="s">&quot;640&quot;</span> height=<span class="s">&quot;480&quot;</span> alt=<span class="s">&quot;Bài làm&quot;</span> class=<span class="s">&quot;thumb&quot;</span> /&gt;
+}
+
+&lt;app-score-<span class="k">form</span> [sub]=<span class="s">&quot;current()&quot;</span> /&gt;
+
+@<span class="t">defer</span> (on viewport) {
+  &lt;app-score-chart [scores]=<span class="s">&quot;scores()&quot;</span> /&gt;
+} @<span class="t">placeholder</span> {
+  &lt;<span class="k">div</span> class=<span class="s">&quot;chart-ph&quot;</span> style=<span class="s">&quot;height: 260px&quot;</span>&gt;&lt;/<span class="k">div</span>&gt;
+}
+
+&lt;<span class="k">button</span> (click)=<span class="s">&quot;print()&quot;</span>&gt;In bảng điểm&lt;/<span class="k">button</span>&gt;</code></pre></div>
+<div class="code"><div class="code-h"><span>grading-page.ts (trích)</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">async</span> <span class="f">print</span>() {
+  <span class="k">const</span> { exportScoresPdf } = <span class="k">await</span> <span class="k">import</span>(<span class="s">'./pdf-export'</span>);   <span class="c">// pdf-export.ts import thư viện PDF</span>
+  <span class="k">await</span> <span class="f">exportScoresPdf</span>(<span class="k">this</span>.<span class="f">scores</span>());
+}</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">ng build</span>
+Initial chunk files   | Names                 |  Raw size | Estimated transfer size
+main-MZ7Q2KJX.js      | main                  | 198.40 kB |                54.12 kB
+
+Lazy chunk files      | Names                 |  Raw size | Estimated transfer size
+chunk-6PQAWB3D.js     | grading-page          |  38.71 kB |                10.30 kB
+chunk-KC4Z2M7N.js     | zoom-viewer           | 126.05 kB |                38.44 kB
+chunk-2RJ5T8YH.js     | score-chart           | 184.92 kB |                57.80 kB
+chunk-XW3N9QEF.js     | pdf-export            | 256.13 kB |                81.09 kB</pre></div>
+<p><b>Giải thích:</b> trước khi sửa, cả ~550 KB nằm trong lần tải đầu của mọi trang. Sau khi sửa, main.js còn ~198 KB, trang chấm bài tải thêm 38 KB, ba thư viện nặng chỉ tải khi thật sự cần. Placeholder ảnh dùng ảnh thu nhỏ đúng kích thước nên không bị nhảy bố cục. Placeholder biểu đồ cao đúng 260px vì cùng lý do. Kích thước trong kết quả là minh hoạ, máy bạn sẽ ra số khác.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="hieu-nang">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="change-detection.html"><small>Bài trước</small>Change detection: zone.js, OnPush, zoneless</a><a class="next" href="testing.html"><small>Bài tiếp theo</small>Kiểm thử</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#do-truoc-toi-uu-sau">Đo trước, tối ưu sau</a><a href="#giam-bundle-ban-dau">Giảm bundle ban đầu</a><a href="#anh-ngoptimizedimage">Ảnh: NgOptimizedImage</a><a href="#danh-sach-dai">Danh sách dài</a><a href="#chay-muot">Chạy mượt</a><a href="#angular-devtools-profiler">Angular DevTools Profiler</a><a href="#core-web-vitals-voi-angular">Core Web Vitals với Angular</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>
