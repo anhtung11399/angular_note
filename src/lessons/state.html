@@ -1,0 +1,304 @@
+<h2>Ba mức quản lý state</h2>
+<table>
+<tr><th>Mức</th><th>Ở đâu</th><th>Vue</th><th>Ví dụ</th></tr>
+<tr><td>1. Cục bộ</td><td>signal trong component</td><td><code>ref</code> trong component</td><td>ô mở / đóng, tab đang chọn</td></tr>
+<tr><td>2. Dùng chung</td><td>service + signals</td><td>Pinia store</td><td>người dùng đăng nhập, danh sách lớp, giỏ chọn</td></tr>
+<tr><td>3. Thư viện</td><td>NgRx SignalStore / NgRx Store</td><td>Pinia có plugin, hoặc Vuex</td><td>ứng dụng lớn, nhiều đội, cần quy ước chặt, devtools</td></tr>
+</table>
+<p>Lời khuyên của chính đội Angular và cộng đồng: bắt đầu từ mức 1, lên mức 2 khi hai component không cha con cần cùng dữ liệu, và chỉ lên mức 3 khi có lý do rõ ràng.</p>
+
+<h2>Store bằng service + signals</h2>
+<pre lang="ts" file="features/classes/class-store.ts">
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+
+interface ClassState {
+  items: readonly Classroom[];
+  loading: boolean;
+  error: string | null;
+  selectedId: number | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ClassStore {
+  private api = inject(ClassApi);
+  private readonly state = signal<ClassState>({ items: [], loading: false, error: null, selectedId: null });
+
+  // "getters" — chỉ đọc
+  readonly items = computed(() => this.state().items);
+  readonly loading = computed(() => this.state().loading);
+  readonly error = computed(() => this.state().error);
+  readonly selected = computed(() => this.state().items.find((c) => c.id === this.state().selectedId) ?? null);
+  readonly totalStudents = computed(() => this.state().items.reduce((t, c) => t + c.students, 0));
+
+  // "actions"
+  async load() {
+    this.patch({ loading: true, error: null });
+    try {
+      const items = await firstValueFrom(this.api.list());
+      this.patch({ items, loading: false });
+    } catch {
+      this.patch({ loading: false, error: 'Không tải được danh sách lớp' });
+    }
+  }
+
+  select(id: number | null) {
+    this.patch({ selectedId: id });
+  }
+
+  async rename(id: number, name: string) {
+    const before = this.state().items;
+    this.patch({ items: before.map((c) => (c.id === id ? { ...c, name } : c)) }); // cập nhật lạc quan
+    try {
+      await firstValueFrom(this.api.update(id, { name }));
+    } catch {
+      this.patch({ items: before, error: 'Đổi tên không thành công' });         // hoàn tác
+    }
+  }
+
+  private patch(p: Partial<ClassState>) {
+    this.state.update((s) => ({ ...s, ...p }));
+  }
+}
+</pre>
+<pre lang="ts" file="dùng trong component">
+export class ClassListPage {
+  protected store = inject(ClassStore);
+  constructor() {
+    this.store.load();
+  }
+}
+</pre>
+<pre lang="html">
+@if (store.loading()) { <app-skeleton /> }
+@for (c of store.items(); track c.id) {
+  <app-class-card [name]="c.name" (click)="store.select(c.id)" />
+}
+<p>Tổng: {{ store.totalStudents() }} học sinh</p>
+</pre>
+<table>
+<tr><th>Pinia</th><th>Service + signals</th></tr>
+<tr><td><code>state: () =&gt; ({...})</code></td><td><code>private state = signal({...})</code></td></tr>
+<tr><td><code>getters</code></td><td><code>computed</code> public</td></tr>
+<tr><td><code>actions</code></td><td>method public</td></tr>
+<tr><td><code>storeToRefs</code></td><td>không cần, đọc thẳng <code>store.items()</code></td></tr>
+<tr><td><code>$patch</code></td><td>method <code>patch</code> tự viết</td></tr>
+<tr><td>Vue DevTools xem store</td><td>Angular DevTools xem signal của service (hạn chế hơn), hoặc NgRx devtools</td></tr>
+</table>
+<arch w="820" h="265" caption="Dữ liệu chảy một chiều: component gọi action → store cập nhật signal → mọi component đọc computed tự cập nhật. Component không sửa state trực tiếp">
+node c1 120 60 page "ClassListPage" "store.load()"
+node c2 120 190 cmp "Header" "đọc totalStudents()"
+node st 430 125 ngstore "ClassStore" "signal state"
+node api 700 125 api "API" ""
+path 146 60 300 60 300 110 404 110 "action" c=go
+path 404 140 300 140 300 190 146 190 "computed" c=ok
+edge st api "" both
+</arch>
+
+<h2>Cập nhật lạc quan và đồng bộ với server</h2>
+<p>Hai nguyên tắc cho trải nghiệm tốt:</p>
+<ul>
+<li><b>Sau mỗi thao tác, cập nhật state tại chỗ</b>, không gọi lại API chỉ để làm mới danh sách. Ví dụ chấm điểm xong: sửa đúng phần tử đó và giảm số "cần chấm" ở menu.</li>
+<li><b>Cập nhật lạc quan</b> cho thao tác gần như luôn thành công (đổi tên, đánh dấu): đổi giao diện ngay, gọi API, lỗi thì hoàn tác và báo.</li>
+</ul>
+<pre lang="ts">
+async grade(subId: number, score: number) {
+  const s = this.state();
+  this.patch({
+    subs: s.subs.map((x) => (x.id === subId ? { ...x, score, status: 'graded' as const } : x)),
+    toGrade: s.toGrade - 1,                         // số đếm ở menu cập nhật ngay
+  });
+  try {
+    await firstValueFrom(this.api.grade(subId, score));
+  } catch (e) {
+    this.patch({ subs: s.subs, toGrade: s.toGrade });  // hoàn tác về đúng ảnh chụp trước đó
+    throw e;
+  }
+}
+</pre>
+
+<h2>NgRx SignalStore</h2>
+<p>NgRx (thư viện state phổ biến nhất của Angular) có <b>SignalStore</b>: gọn, dựa trên signals, có plugin cho entity, devtools, lưu localStorage. Gần với Pinia hơn NgRx Store cổ điển.</p>
+<pre lang="sh">
+npm install @ngrx/signals
+</pre>
+<pre lang="ts" file="class-store.ts (bản NgRx SignalStore)">
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+
+export const ClassStore = signalStore(
+  { providedIn: 'root' },
+  withState({ items: [] as Classroom[], loading: false, query: '' }),
+  withComputed(({ items, query }) => ({
+    filtered: computed(() => items().filter((c) => c.name.toLowerCase().includes(query().toLowerCase()))),
+    total: computed(() => items().length),
+  })),
+  withMethods((store, api = inject(ClassApi)) => ({
+    setQuery(query: string) {
+      patchState(store, { query });
+    },
+    async load() {
+      patchState(store, { loading: true });
+      const items = await firstValueFrom(api.list());
+      patchState(store, { items, loading: false });
+    },
+  })),
+);
+</pre>
+<pre lang="ts">
+store = inject(ClassStore);
+// template: store.filtered(), store.loading(), store.setQuery('5A')
+</pre>
+<p>Mỗi trường trong <code>withState</code> tự trở thành signal chỉ đọc (<code>store.items()</code>), chỉ sửa được qua <code>patchState</code> bên trong method. Có <code>withEntities</code> cho danh sách có id, <code>withHooks</code> cho onInit / onDestroy, và <code>rxMethod</code> khi cần RxJS.</p>
+
+<h2>NgRx Store cổ điển (Redux)</h2>
+<p>Ở dự án doanh nghiệp lâu năm, bạn sẽ gặp NgRx Store: action, reducer, selector, effect. Cần đọc được dòng chảy:</p>
+<arch w="840" h="340" caption="Component dispatch action → reducer tạo state mới → selector đọc ra cho component. Effect nghe action để gọi API rồi dispatch action thành công / thất bại">
+node cp 100 160 cmp "Component" "dispatch / select"
+node ac 330 60 event "Action" "[Lớp] Tải"
+node rd 580 60 ngstore "Reducer" "state mới"
+node sl 580 180 comp "Selector" "selectClasses"
+node ef 330 280 rx "Effect" "gọi API"
+node api 580 280 api "API" ""
+edge cp ac "dispatch" route=hvh mid=210 c=go
+edge ac rd ""
+edge rd sl "" route=v
+edge sl cp "select" route=hvh mid=210 c=ok
+edge ac ef "nghe action" route=v dash
+edge ef api "" both
+</arch>
+<pre lang="ts">
+// actions
+export const ClassActions = createActionGroup({
+  source: 'Lớp',
+  events: {
+    'Tải': emptyProps(),
+    'Tải thành công': props<{ items: Classroom[] }>(),
+    'Tải thất bại': props<{ error: string }>(),
+  },
+});
+
+// reducer
+export const classesFeature = createFeature({
+  name: 'classes',
+  reducer: createReducer(
+    { items: [] as Classroom[], loading: false },
+    on(ClassActions.tải, (s) => ({ ...s, loading: true })),
+    on(ClassActions.tảiThànhCông, (s, { items }) => ({ ...s, items, loading: false })),
+  ),
+});
+
+// component
+private store = inject(Store);
+classes = this.store.selectSignal(classesFeature.selectItems);
+ngOnInit() { this.store.dispatch(ClassActions.tải()); }
+</pre>
+<aside class="tip"><p>Đặt tên action bằng tiếng Anh ở dự án thật (ví dụ <code>'Load'</code>, <code>'Load Success'</code>), ví dụ trên chỉ minh hoạ. NgRx Store mạnh ở ứng dụng rất lớn (lịch sử thay đổi, time-travel debug, quy ước chặt cho nhiều đội), nhưng nhiều chữ. Dự án mới cỡ vừa thường chọn service + signals hoặc SignalStore.</p></aside>
+
+<h2>State trên URL</h2>
+<p>Bộ lọc, trang hiện tại, tab đang mở nên nằm trên URL (<code>?mon=toan&amp;page=2</code>): tải lại trang vẫn giữ, chia sẻ link được, nút Back hoạt động. Với <code>withComponentInputBinding</code>, query param chính là input:</p>
+<pre lang="ts">
+export class AssignmentsPage {
+  mon = input('toan');                         // ?mon=
+  page = input(1, { transform: numberAttribute }); // ?page=
+  private router = inject(Router);
+
+  setPage(p: number) {
+    this.router.navigate([], { queryParams: { page: p }, queryParamsHandling: 'merge' });
+  }
+}
+</pre>
+
+<quiz q="Hai component ở hai nhánh khác nhau của cây cần cùng danh sách lớp và cùng cập nhật khi đổi tên. Cách đơn giản nhất đúng chuẩn?">
+- Truyền qua input từ App xuống mọi tầng
++ Service providedIn root giữ signal, cả hai inject và đọc
+- Lưu vào localStorage rồi đọc lại
+? Service singleton là "store" tự nhiên của Angular.
+</quiz>
+<quiz q="Sau khi chấm điểm một bài, cách cập nhật số 'cần chấm' trên menu tốt nhất?">
+- Gọi lại API đếm số bài cần chấm
++ Giảm giá trị trong store ngay sau thao tác, chỉ đồng bộ lại khi tải lại trang
+- Tải lại cả trang
+? Cập nhật state tại chỗ cho giao diện tức thì và không tốn request.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Store chấm bài có cập nhật lạc quan</summary>
+<p>Viết <code>GradingStore</code> (service + signals) giữ danh sách bài nộp của một bài tập: tải danh sách, chấm điểm một bài (lạc quan, hoàn tác khi lỗi), số bài còn phải chấm, điểm trung bình. Viết component hiển thị và một ô nhập điểm cho mỗi bài. API giả trả lỗi khi điểm bằng 0 để thử hoàn tác.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>State: <code>signal&lt;readonly Sub[]&gt;</code>, <code>toGrade = computed(() =&gt; subs().filter(s =&gt; s.status === 'submitted').length)</code>.</li>
+<li><code>grade(id, score)</code>: lưu bản trước, cập nhật, gọi API, catch thì set lại bản trước và báo lỗi.</li>
+<li>Component chấm: <code>providers: [GradingStore]</code> nếu muốn mỗi trang một bản, hoặc providedIn root.</li>
+<li>Ô nhập điểm: <code>(change)="store.grade(s.id, +$any($event.target).value)"</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="grading-store.ts">
+import { Injectable, computed, signal } from '@angular/core';
+
+export interface Sub { id: number; student: string; status: 'submitted' | 'graded'; score: number | null }
+
+const fakeApi = {
+  grade: (id: number, score: number) =>
+    new Promise<void>((ok, fail) => setTimeout(() => (score === 0 ? fail(new Error('Điểm 0 cần lý do')) : ok()), 500)),
+};
+
+@Injectable()
+export class GradingStore {
+  private readonly _subs = signal<readonly Sub[]>([
+    { id: 1, student: 'An', status: 'submitted', score: null },
+    { id: 2, student: 'Bình', status: 'submitted', score: null },
+    { id: 3, student: 'Chi', status: 'graded', score: 8 },
+  ]);
+  readonly subs = this._subs.asReadonly();
+  readonly error = signal<string | null>(null);
+  readonly toGrade = computed(() => this._subs().filter((s) => s.status === 'submitted').length);
+  readonly average = computed(() => {
+    const g = this._subs().filter((s) => s.score != null);
+    return g.length ? g.reduce((t, s) => t + s.score!, 0) / g.length : null;
+  });
+
+  async grade(id: number, score: number) {
+    const before = this._subs();
+    this.error.set(null);
+    this._subs.set(before.map((s) => (s.id === id ? { ...s, score, status: 'graded' } : s)));
+    try {
+      await fakeApi.grade(id, score);
+    } catch (e) {
+      this._subs.set(before);
+      this.error.set((e as Error).message);
+    }
+  }
+}
+</pre>
+<pre lang="ts" file="grading-page.ts">
+@Component({
+  selector: 'app-grading-page',
+  providers: [GradingStore],
+  imports: [DecimalPipe],
+  template: `
+    <p>Còn {{ store.toGrade() }} bài cần chấm · TB {{ (store.average() | number: '1.1-1') ?? '—' }}</p>
+    @if (store.error(); as e) { <p class="err">{{ e }}</p> }
+    @for (s of store.subs(); track s.id) {
+      <div class="row">
+        {{ s.student }}
+        <input type="number" min="0" max="10" [value]="s.score ?? ''" (change)="store.grade(s.id, +$any($event.target).value)" />
+        {{ s.status === 'graded' ? '✓' : '' }}
+      </div>
+    }
+  `,
+  styles: `.row { display: flex; gap: 10px; align-items: center; margin: 4px 0; } input { width: 64px; } .err { color: #dc2626; }`,
+})
+export class GradingPage {
+  protected store = inject(GradingStore);
+}
+</pre>
+<pre lang="ui">
+<p>Còn 1 bài cần chấm · TB 8.5</p>
+<p style="color:#dc2626">Điểm 0 cần lý do</p>
+<div style="display:flex;gap:10px;align-items:center;margin:4px 0">An <input type="number" value="9" style="width:64px" /> ✓</div>
+<div style="display:flex;gap:10px;align-items:center;margin:4px 0">Bình <input type="number" value="" style="width:64px" /></div>
+<div style="display:flex;gap:10px;align-items:center;margin:4px 0">Chi <input type="number" value="8" style="width:64px" /> ✓</div>
+</pre>
+<p><b>Giải thích:</b> nhập 9 cho An: số "còn cần chấm" giảm ngay từ 2 xuống 1, trung bình thành 8,5, không chờ API. Nhập 0 cho Bình: giao diện tạm đổi, nửa giây sau API lỗi, store đặt lại danh sách cũ nên ô của Bình trở về trống và hiện lỗi. Vì <code>providers: [GradingStore]</code> nằm ở component, mỗi lần mở trang có store mới, rời trang thì store bị huỷ.</p>
+</details>
+</details>

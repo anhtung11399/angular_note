@@ -1,0 +1,264 @@
+<h2>Vấn đề DI giải quyết</h2>
+<p>Ở Vue, khi nhiều component cần cùng một logic (gọi API lớp học, giữ người dùng đăng nhập), bạn viết composable <code>useClasses()</code> hoặc store Pinia, rồi import thẳng vào component. Angular giải bằng <b>service</b> và <b>dependency injection (DI)</b>: component không tự tạo hay import trực tiếp đối tượng nó cần, mà "xin" Angular đưa cho.</p>
+<pre lang="ts" file="features/classes/class-api.ts">
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Injectable({ providedIn: 'root' })   // một bản duy nhất cho cả ứng dụng, tạo khi lần đầu cần
+export class ClassApi {
+  private http = inject(HttpClient);   // service cũng inject service khác
+
+  list() {
+    return this.http.get<Classroom[]>('/api/classes');
+  }
+}
+</pre>
+<pre lang="ts" file="features/classes/class-list-page.ts">
+export class ClassListPage {
+  private api = inject(ClassApi);      // xin Angular đưa bản ClassApi
+  classes = toSignal(this.api.list(), { initialValue: [] });
+}
+</pre>
+<arch w="820" h="250" caption="Injector giữ các bản service. Component gọi inject(ClassApi): injector tạo (lần đầu) hoặc đưa lại bản đã có. ClassApi lại cần HttpClient: injector tạo luôn cả chuỗi">
+node p1 110 60 page "ClassListPage" "inject(ClassApi)"
+node p2 110 190 page "GradingPage" "inject(ClassApi)"
+node inj 390 125 injector "Root injector" "giữ các singleton"
+node api 600 125 ngsvc "ClassApi" "1 bản dùng chung"
+node http 760 125 httpc "HttpClient" ""
+edge p1 inj "" dash
+edge p2 inj "" dash
+edge inj api "tạo 1 lần" c=go
+edge api http ""
+</arch>
+<aside class="fe"><p>So với Vue: <code>providedIn: 'root'</code> giống một store Pinia (singleton toàn ứng dụng). <code>inject()</code> giống cả <code>useStore()</code> lẫn <code>inject()</code> của Vue. Khác biệt lớn: Angular có <b>cây injector</b>, nên bạn có thể cho một nhánh component dùng một bản service riêng, hoặc thay hẳn cài đặt (khi test, khi chạy SSR) mà không sửa component.</p></aside>
+
+<h2>inject(): chỉ gọi được ở đâu</h2>
+<p><code>inject()</code> chỉ chạy trong <b>injection context</b>:</p>
+<ul>
+<li>khởi tạo thuộc tính của class (<code>private api = inject(ClassApi)</code>),</li>
+<li>constructor của component, directive, pipe, service,</li>
+<li>hàm factory của provider, guard / resolver / interceptor dạng hàm,</li>
+<li>trong <code>runInInjectionContext(injector, () =&gt; ...)</code>.</li>
+</ul>
+<pre lang="ts" mark="bad">
+save() {
+  const api = inject(ClassApi);   // ✘ NG0203: inject() must be called from an injection context
+}
+</pre>
+<p>Cách cũ (vẫn hợp lệ) là inject qua tham số constructor: <code>constructor(private api: ClassApi) {}</code>. Cách mới gọn hơn, chạy tốt với kế thừa và hàm.</p>
+
+<h2>Service giữ state: thay cho Pinia</h2>
+<pre lang="ts" file="core/auth.ts">
+@Injectable({ providedIn: 'root' })
+export class Auth {
+  private http = inject(HttpClient);
+  private readonly _user = signal<User | null>(null);
+
+  readonly user = this._user.asReadonly();            // bên ngoài chỉ đọc
+  readonly isLoggedIn = computed(() => this._user() !== null);
+  readonly isTeacher = computed(() => this._user()?.role === 'teacher');
+
+  async login(email: string, password: string) {
+    const u = await firstValueFrom(this.http.post<User>('/api/login', { email, password }));
+    this._user.set(u);
+  }
+
+  logout() {
+    this._user.set(null);
+  }
+}
+</pre>
+<pre lang="ts" file="dùng ở bất kỳ component nào">
+export class Header {
+  protected auth = inject(Auth);
+}
+</pre>
+<pre lang="html">
+@if (auth.user(); as u) {
+  <span>{{ u.name }}</span> <button (click)="auth.logout()">Đăng xuất</button>
+} @else {
+  <a routerLink="/dang-nhap">Đăng nhập</a>
+}
+</pre>
+<p>Mẫu "signal private + asReadonly public + method thay đổi" giữ cho chỉ service mới sửa được state, giống <code>state</code> / <code>getters</code> / <code>actions</code> của Pinia. Bài {{n:state}} đi sâu hơn.</p>
+
+<h2>Phạm vi của service</h2>
+<table>
+<tr><th>Khai báo</th><th>Số bản</th><th>Sống tới khi</th><th>Dùng khi</th></tr>
+<tr><td><code>@Injectable({ providedIn: 'root' })</code></td><td>1 cho cả app</td><td>app đóng</td><td>hầu hết service: API, auth, store toàn cục</td></tr>
+<tr><td><code>providers: [X]</code> trong route</td><td>1 cho nhánh route đó</td><td>(thường) app đóng</td><td>service chỉ dùng trong một tính năng lazy load</td></tr>
+<tr><td><code>providers: [X]</code> trong <code>@Component</code></td><td>1 cho mỗi instance component</td><td>component bị huỷ</td><td>state riêng của một component và con của nó (ví dụ một form wizard)</td></tr>
+<tr><td><code>@Injectable()</code> không providedIn</td><td>phải tự khai báo provider ở đâu đó</td><td></td><td>service chỉ được phép dùng ở một nhánh</td></tr>
+</table>
+<pre lang="ts" file="mỗi trang chấm bài có store riêng">
+@Injectable()                          // không providedIn
+export class GradingSession {
+  current = signal<Submission | null>(null);
+}
+
+@Component({
+  selector: 'app-grading-page',
+  providers: [GradingSession],         // mỗi lần mở trang: một bản mới, con cháu dùng chung bản này
+  template: `<app-submission-viewer /> <app-score-form />`,
+})
+export class GradingPage {}
+</pre>
+<p>Component con tìm service bằng cách đi ngược lên cây: tìm ở chính nó, rồi cha, rồi ông... tới root injector. Bản gần nhất được dùng.</p>
+<aside class="fe"><p>Đây chính là <code>provide()</code> trong component cha và <code>inject()</code> trong con của Vue, nhưng tự động hơn: bạn đăng ký <b>class</b>, Angular tự tạo instance, tự inject cả phụ thuộc của nó.</p></aside>
+
+<h2>Injection token: inject thứ không phải class</h2>
+<pre lang="ts" file="core/config.ts">
+import { InjectionToken } from '@angular/core';
+
+export interface AppConfig {
+  apiUrl: string;
+  maxUploadMb: number;
+}
+
+export const APP_CONFIG = new InjectionToken<AppConfig>('APP_CONFIG');
+</pre>
+<pre lang="ts" file="app.config.ts">
+providers: [
+  { provide: APP_CONFIG, useValue: { apiUrl: 'https://api.sobaitap.vn', maxUploadMb: 5 } },
+]
+</pre>
+<pre lang="ts">
+private cfg = inject(APP_CONFIG);
+url = `${this.cfg.apiUrl}/classes`;
+</pre>
+<p>Token có thể có giá trị mặc định, không cần đăng ký provider:</p>
+<pre lang="ts">
+export const PAGE_SIZE = new InjectionToken<number>('PAGE_SIZE', { providedIn: 'root', factory: () => 20 });
+</pre>
+
+<h2>Các loại provider</h2>
+<pre lang="ts">
+providers: [
+  ClassApi,                                                     // viết tắt của { provide: ClassApi, useClass: ClassApi }
+  { provide: ClassApi, useClass: FakeClassApi },                // thay cài đặt (test, demo)
+  { provide: APP_CONFIG, useValue: config },                    // giá trị có sẵn
+  { provide: STORAGE, useFactory: () => (typeof localStorage !== 'undefined' ? localStorage : memoryStorage()) }, // tính lúc tạo
+  { provide: Logger, useExisting: ConsoleLogger },              // bí danh cho một provider khác
+  { provide: VALIDATORS, useValue: phoneValidator, multi: true }, // nhiều giá trị cho cùng token → mảng
+]
+</pre>
+<p>Ví dụ thật: thay <code>ClassApi</code> bằng bản giả để chạy demo không cần backend.</p>
+<pre lang="ts" file="features/classes/fake-class-api.ts">
+@Injectable()
+export class FakeClassApi extends ClassApi {
+  override list() {
+    return of([{ id: 1, name: 'Lớp 5A', capacity: 30, schoolYear: '2026-2027' as const }]).pipe(delay(300));
+  }
+}
+
+// main.demo.ts hoặc trong test
+providers: [{ provide: ClassApi, useClass: FakeClassApi }]
+</pre>
+
+<h2>Tuỳ chọn khi inject</h2>
+<pre lang="ts">
+private logger = inject(Logger, { optional: true });   // null nếu không có provider, thay vì lỗi
+private parent = inject(GradingSession, { skipSelf: true }); // bỏ qua chính mình, tìm từ cha
+private local = inject(GradingSession, { self: true });  // chỉ tìm ở chính component này
+private host = inject(FormGroupDirective, { host: true }); // dừng tìm ở component host
+</pre>
+
+<h2>Hàm inject kiểu composable</h2>
+<p>Vì <code>inject()</code> là hàm, bạn viết được "composable" của Angular: hàm tiện ích gọi inject bên trong, dùng trong khởi tạo thuộc tính.</p>
+<pre lang="ts" file="shared/use-route-id.ts">
+export function injectRouteNumber(name: string) {
+  const route = inject(ActivatedRoute);
+  return toSignal(route.paramMap.pipe(map((p) => Number(p.get(name)))), { initialValue: NaN });
+}
+
+// trong component
+classId = injectRouteNumber('id');
+</pre>
+<aside class="tip"><p>Quy ước đặt tên: hàm phải gọi trong injection context thường bắt đầu bằng <code>inject</code> (<code>injectRouteNumber</code>) để người đọc biết không được gọi trong method thường.</p></aside>
+
+<quiz q="Muốn mỗi lần mở trang chấm bài có một bản <code>GradingSession</code> mới, dùng chung cho các component con của trang. Khai báo thế nào?">
+- @Injectable({ providedIn: 'root' })
++ @Injectable() và thêm GradingSession vào providers của component trang
+- Tạo bằng new GradingSession() trong mỗi component con
+? Provider ở component tạo một bản cho mỗi instance và chia sẻ cho cây con. new thì mỗi con một bản riêng, không dùng chung được.
+</quiz>
+<quiz q="Gọi <code>inject(Auth)</code> trong method <code>onClick()</code>. Kết quả?">
+- Hoạt động bình thường
++ Lỗi NG0203 vì không ở trong injection context
+- Trả về undefined
+? Inject ở khởi tạo thuộc tính rồi dùng trong method.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Service thông báo (toast) dùng toàn ứng dụng</summary>
+<p>Viết service <code>Toast</code> có <code>success(msg)</code>, <code>error(msg)</code>, tự ẩn sau 3 giây, tối đa 3 thông báo cùng lúc. Viết component <code>ToastHost</code> đặt một lần trong <code>App</code> để hiển thị. Gọi thử từ một component khác.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Service: <code>items = signal&lt;readonly ToastItem[]&gt;([])</code>, mỗi item có <code>id</code>, <code>kind</code>, <code>text</code>.</li>
+<li><code>show()</code> thêm item (cắt còn 3 cái mới nhất bằng <code>slice(-3)</code>), đặt <code>setTimeout</code> 3 giây để xoá theo id.</li>
+<li><code>ToastHost</code> inject <code>Toast</code> và lặp <code>@for</code> qua <code>toast.items()</code>.</li>
+<li>Component khác chỉ cần <code>inject(Toast).success('Đã lưu')</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="core/toast.ts">
+import { Injectable, signal } from '@angular/core';
+
+export interface ToastItem { id: number; kind: 'success' | 'error'; text: string }
+
+@Injectable({ providedIn: 'root' })
+export class Toast {
+  private seq = 0;
+  private readonly _items = signal<readonly ToastItem[]>([]);
+  readonly items = this._items.asReadonly();
+
+  success(text: string) { this.show('success', text); }
+  error(text: string) { this.show('error', text); }
+
+  dismiss(id: number) {
+    this._items.update((list) => list.filter((t) => t.id !== id));
+  }
+
+  private show(kind: ToastItem['kind'], text: string) {
+    const id = ++this.seq;
+    this._items.update((list) => [...list, { id, kind, text }].slice(-3));
+    setTimeout(() => this.dismiss(id), 3000);
+  }
+}
+</pre>
+<pre lang="ts" file="core/toast-host.ts">
+@Component({
+  selector: 'app-toast-host',
+  template: `
+    <div class="stack" aria-live="polite">
+      @for (t of toast.items(); track t.id) {
+        <div class="toast" [class.error]="t.kind === 'error'" (click)="toast.dismiss(t.id)">{{ t.text }}</div>
+      }
+    </div>
+  `,
+  styles: `
+    .stack { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 50; }
+    .toast { background: #166534; color: #fff; padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+    .error { background: #b91c1c; }
+  `,
+})
+export class ToastHost {
+  protected toast = inject(Toast);
+}
+</pre>
+<pre lang="ts" file="dùng thử ở component bất kỳ">
+export class SaveButton {
+  private toast = inject(Toast);
+  save() {
+    this.toast.success('Đã lưu điểm cho 12 em');
+  }
+}
+</pre>
+<pre lang="ui">
+<div style="display:grid;gap:8px;justify-items:end">
+<div style="background:#166534;color:#fff;padding:10px 14px;border-radius:10px">Đã lưu điểm cho 12 em</div>
+<div style="background:#b91c1c;color:#fff;padding:10px 14px;border-radius:10px">Không tải được ảnh bài làm</div>
+</div>
+</pre>
+<p><b>Giải thích:</b> <code>Toast</code> là singleton nên mọi component gọi vào cùng một danh sách, <code>ToastHost</code> đặt một lần ở gốc là đủ. <code>aria-live="polite"</code> giúp trình đọc màn hình đọc thông báo mới. Mảng được tạo mới mỗi lần (spread, filter, slice) để signal báo cập nhật. Bản thật nên cho thông báo lỗi ở lâu hơn và có nút đóng rõ ràng.</p>
+</details>
+</details>

@@ -35,11 +35,394 @@
     <p class="lead">Template-driven vs reactive forms, typed forms, validator tự viết và bất đồng bộ, FormArray, hiển thị lỗi, signal forms. So với v-model + VeeValidate.</p>
     <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Xây form phức tạp bằng reactive forms có kiểu</li><li>Viết validator đồng bộ và bất đồng bộ</li><li>Biết hướng đi signal forms của Angular</li></ul></div>
   </header>
-  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="prose"><h2 id="ba-cach-lam-form-trong-angular"><a href="#ba-cach-lam-form-trong-angular" class="anchor" aria-hidden="true">#</a>Ba cách làm form trong Angular</h2>
+<table>
+<tr><th></th><th>Template-driven (<code>ngModel</code>)</th><th>Reactive forms</th><th>Signal forms</th></tr>
+<tr><td>State nằm ở</td><td>template</td><td>class (<code>FormGroup</code>)</td><td>signal chứa model</td></tr>
+<tr><td>Giống Vue</td><td><code>v-model</code> từng ô</td><td>VeeValidate / FormKit với schema</td><td><code>v-model</code> + validate theo schema</td></tr>
+<tr><td>Kiểu dữ liệu</td><td>yếu</td><td>chặt (typed forms, từ v14)</td><td>chặt</td></tr>
+<tr><td>Hợp với</td><td>form 2–3 ô đơn giản</td><td><b>mặc định cho form thật</b>: nhiều trường, validator, trường động</td><td>hướng đi mới (thử nghiệm từ v21), nên theo dõi</td></tr>
+</table>
+<p>Bài này tập trung vào <b>reactive forms</b> vì đó là thứ bạn gặp ở 90% dự án, rồi giới thiệu signal forms.</p>
+
+<h2 id="template-driven-nhanh-cho-form-nho"><a href="#template-driven-nhanh-cho-form-nho" class="anchor" aria-hidden="true">#</a>Template-driven: nhanh cho form nhỏ</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  imports: [FormsModule],
+  template: <span class="s">`
+    &lt;form #f=&quot;ngForm&quot; (ngSubmit)=&quot;search()&quot;&gt;
+      &lt;input name=&quot;q&quot; [(ngModel)]=&quot;q&quot; required minlength=&quot;2&quot; #qCtrl=&quot;ngModel&quot; /&gt;
+      @if (qCtrl.invalid &amp;&amp; qCtrl.touched) { &lt;small&gt;Nhập ít nhất 2 ký tự&lt;/small&gt; }
+      &lt;button [disabled]=&quot;f.invalid&quot;&gt;Tìm&lt;/button&gt;
+    &lt;/form&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> QuickSearch {
+  q = <span class="b">signal</span>(<span class="s">''</span>);
+  <span class="f">search</span>() { <span class="c">/* ... */</span> }
+}</code></pre></div>
+<p>Validator viết như thuộc tính HTML (<code>required</code>, <code>minlength</code>, <code>email</code>, <code>pattern</code>). Gọn nhưng logic nằm rải trong template, khó test, khó làm form động. Dùng cho ô tìm kiếm, bộ lọc.</p>
+
+<h2 id="reactive-forms"><a href="#reactive-forms" class="anchor" aria-hidden="true">#</a>Reactive forms</h2>
+<div class="code"><div class="code-h"><span>assignment-form.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">inject</span>, <span class="b">output</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+<span class="k">import</span> { FormBuilder, ReactiveFormsModule, Validators } <span class="k">from</span> <span class="s">'@angular/forms'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-assignment-form'</span>,
+  imports: [ReactiveFormsModule],
+  templateUrl: <span class="s">'./assignment-form.html'</span>,
+})
+<span class="k">export</span> <span class="k">class</span> AssignmentForm {
+  private fb = <span class="b">inject</span>(FormBuilder).nonNullable;   <span class="c">// nonNullable: reset() về giá trị đầu chứ không về null</span>
+  saved = <span class="b">output</span>&lt;NewAssignment&gt;();
+
+  form = <span class="k">this</span>.fb.<span class="f">group</span>({
+    title: [<span class="s">''</span>, [Validators.required, Validators.<span class="f">maxLength</span>(<span class="n">200</span>)]],
+    subject: [<span class="s">'toan'</span>, Validators.required],
+    dueDate: [<span class="s">''</span>, Validators.required],
+    exerciseCount: [<span class="n">1</span>, [Validators.required, Validators.<span class="f">min</span>(<span class="n">1</span>), Validators.<span class="f">max</span>(<span class="n">20</span>)]],
+    note: [<span class="s">''</span>, Validators.<span class="f">maxLength</span>(<span class="n">500</span>)],
+  });
+
+  <span class="f">submit</span>() {
+    <span class="k">if</span> (<span class="k">this</span>.form.invalid) {
+      <span class="k">this</span>.form.<span class="f">markAllAsTouched</span>();     <span class="c">// hiện lỗi ở mọi ô</span>
+      <span class="k">return</span>;
+    }
+    <span class="k">this</span>.saved.<span class="f">emit</span>(<span class="k">this</span>.form.<span class="f">getRawValue</span>()); <span class="c">// kiểu: { title: string; subject: string; ... }</span>
+    <span class="k">this</span>.form.<span class="f">reset</span>();
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>assignment-form.html</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">form</span> [formGroup]=<span class="s">&quot;form&quot;</span> (ngSubmit)=<span class="s">&quot;submit()&quot;</span>&gt;
+  &lt;<span class="k">label</span>&gt;Tên bài &lt;<span class="k">span</span> class=<span class="s">&quot;req&quot;</span>&gt;*&lt;/<span class="k">span</span>&gt;
+    &lt;<span class="k">input</span> formControlName=<span class="s">&quot;title&quot;</span> maxlength=<span class="s">&quot;200&quot;</span> /&gt;
+  &lt;/<span class="k">label</span>&gt;
+  @<span class="t">if</span> (<span class="k">form</span>.controls.title.touched &amp;&amp; <span class="k">form</span>.controls.title.<span class="f">hasError</span>(<span class="s">'required'</span>)) {
+    &lt;small class=<span class="s">&quot;err&quot;</span>&gt;Nhậ<span class="k">p</span> tên bài&lt;/small&gt;
+  }
+
+  &lt;<span class="k">label</span>&gt;Môn
+    &lt;<span class="k">select</span> formControlName=<span class="s">&quot;subject&quot;</span>&gt;
+      &lt;<span class="k">option</span> value=<span class="s">&quot;toan&quot;</span>&gt;Toán&lt;/<span class="k">option</span>&gt;
+      &lt;<span class="k">option</span> value=<span class="s">&quot;tieng-viet&quot;</span>&gt;Tiếng Việt&lt;/<span class="k">option</span>&gt;
+    &lt;/<span class="k">select</span>&gt;
+  &lt;/<span class="k">label</span>&gt;
+
+  &lt;<span class="k">label</span>&gt;Hạn nộ<span class="k">p</span> &lt;<span class="k">input</span> type=<span class="s">&quot;date&quot;</span> formControlName=<span class="s">&quot;dueDate&quot;</span> /&gt;&lt;/<span class="k">label</span>&gt;
+  &lt;<span class="k">label</span>&gt;Số bài &lt;<span class="k">input</span> type=<span class="s">&quot;number&quot;</span> formControlName=<span class="s">&quot;exerciseCount&quot;</span> /&gt;&lt;/<span class="k">label</span>&gt;
+  @<span class="t">if</span> (<span class="k">form</span>.controls.exerciseCount.errors?.[<span class="s">'max'</span>]; <span class="b">as</span> e) {
+    &lt;small class=<span class="s">&quot;err&quot;</span>&gt;Tối đ<span class="k">a</span> {{ e.max }} bài&lt;/small&gt;
+  }
+
+  &lt;<span class="k">label</span>&gt;Ghi chú &lt;<span class="k">textarea</span> formControlName=<span class="s">&quot;note&quot;</span> maxlength=<span class="s">&quot;500&quot;</span>&gt;&lt;/<span class="k">textarea</span>&gt;&lt;/<span class="k">label</span>&gt;
+  &lt;small&gt;{{ <span class="k">form</span>.controls.note.value.length }}/<span class="n">500</span>&lt;/small&gt;
+
+  &lt;<span class="k">button</span> type=<span class="s">&quot;submit&quot;</span> [disabled]=<span class="s">&quot;form.pending&quot;</span>&gt;Giao bài&lt;/<span class="k">button</span>&gt;
+&lt;/<span class="k">form</span>&gt;</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><form style="display:grid;gap:8px;max-width:420px">
+<label>Tên bài <span style="color:#dc2626">*</span><br><input style="width:100%;border-color:#dc2626" /></label>
+<small style="color:#dc2626">Nhập tên bài</small>
+<label>Môn<br><select style="padding:6px 10px;border-radius:8px"><option>Toán</option></select></label>
+<label>Hạn nộp<br><input type="date" value="2026-11-10" /></label>
+<label>Số bài<br><input type="number" value="25" /></label>
+<small style="color:#dc2626">Tối đa 20 bài</small>
+<label>Ghi chú<br><textarea style="width:100%"></textarea></label><small>0/500</small>
+<button>Giao bài</button>
+</form></div></div>
+<figure class="dg arch"><svg viewBox="0 0 820 230" style="min-width:640px;max-width:820px" role="img" aria-label="FormGroup giữ giá trị, trạng thái (valid, touched, dirty) và lỗi của từng FormControl. Directive formControlName nối hai chiều giữa ô nhập và control"><path d="M166.0 110.0 L270.0 110.0 L270.0 50.0 L374.0 50.0" class="ae" marker-end="url(#ar)"/><path d="M166.0 110.0 L270.0 110.0 L270.0 170.0 L374.0 170.0" class="ae" marker-end="url(#ar)"/><path d="M426.0 50.0 L624.0 50.0" class="ae" marker-end="url(#ar)" marker-start="url(#ar)"/><path d="M426.0 170.0 L624.0 170.0" class="ae" marker-end="url(#ar)" marker-start="url(#ar)"/><g class="an an-ng"><rect x="118" y="88" width="44" height="44" rx="9"/><text x="140" y="114.5" text-anchor="middle" class="an-i" style="font-size:11px">FORM</text><text x="140" y="148" text-anchor="middle" class="an-l">FormGroup</text><text x="140" y="162" text-anchor="middle" class="an-s">value, valid, errors</text></g><g class="an an-ng"><rect x="378" y="28" width="44" height="44" rx="9"/><text x="400" y="54.5" text-anchor="middle" class="an-i" style="font-size:11px">FORM</text><text x="400" y="88" text-anchor="middle" class="an-l">title</text><text x="400" y="102" text-anchor="middle" class="an-s">FormControl</text></g><g class="an an-ng"><rect x="378" y="148" width="44" height="44" rx="9"/><text x="400" y="174.5" text-anchor="middle" class="an-i" style="font-size:11px">FORM</text><text x="400" y="208" text-anchor="middle" class="an-l">exerciseCount</text><text x="400" y="222" text-anchor="middle" class="an-s">FormControl</text></g><g class="an an-gen"><rect x="628" y="28" width="44" height="44" rx="9"/><text x="650" y="54.5" text-anchor="middle" class="an-i" style="font-size:13px">DOM</text><text x="650" y="88" text-anchor="middle" class="an-l">input</text><text x="650" y="102" text-anchor="middle" class="an-s">formControlName</text></g><g class="an an-gen"><rect x="628" y="148" width="44" height="44" rx="9"/><text x="650" y="174.5" text-anchor="middle" class="an-i" style="font-size:13px">DOM</text><text x="650" y="208" text-anchor="middle" class="an-l">input type=number</text></g></svg><figcaption>FormGroup giữ giá trị, trạng thái (valid, touched, dirty) và lỗi của từng FormControl. Directive formControlName nối hai chiều giữa ô nhập và control</figcaption></figure>
+
+<h3>Trạng thái của một control</h3>
+<table>
+<tr><th>Thuộc tính</th><th>Nghĩa</th></tr>
+<tr><td><code>value</code> / <code>getRawValue()</code></td><td>giá trị (rawValue gồm cả control bị disable)</td></tr>
+<tr><td><code>valid</code> / <code>invalid</code> / <code>pending</code></td><td>hợp lệ / không / đang chờ validator bất đồng bộ</td></tr>
+<tr><td><code>touched</code> / <code>untouched</code></td><td>đã rời khỏi ô (blur) chưa</td></tr>
+<tr><td><code>dirty</code> / <code>pristine</code></td><td>người dùng đã sửa giá trị chưa</td></tr>
+<tr><td><code>errors</code></td><td>object lỗi: <code>{ required: true }</code>, <code>{ max: { max: 20, actual: 25 } }</code></td></tr>
+<tr><td><code>valueChanges</code>, <code>statusChanges</code>, <code>events</code></td><td>Observable phát khi thay đổi</td></tr>
+</table>
+<p>Angular tự gắn class CSS lên ô nhập: <code>ng-valid</code>, <code>ng-invalid</code>, <code>ng-touched</code>, <code>ng-dirty</code>, <code>ng-pending</code>. Viết style một lần cho cả ứng dụng:</p>
+<div class="code"><div class="code-h"><span>styles.css</span><button class="copy" type="button">Sao chép</button></div><pre><code>input.ng-invalid.ng-touched, textarea.ng-invalid.ng-touched, select.ng-invalid.ng-touched {
+  border-color: #dc2626;
+}</code></pre></div>
+
+<h3>Đọc form như signal</h3>
+<p>Reactive forms vẫn dựa trên Observable. Chuyển sang signal để dùng với <code>computed</code>:</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>private value = <span class="b">toSignal</span>(<span class="k">this</span>.form.valueChanges, { initialValue: <span class="k">this</span>.form.<span class="f">getRawValue</span>() });
+preview = <span class="b">computed</span>(() =&gt; <span class="s">`${this.value().title} — hạn ${this.value().dueDate}`</span>);</code></pre></div>
+
+<h2 id="validator-tu-viet"><a href="#validator-tu-viet" class="anchor" aria-hidden="true">#</a>Validator tự viết</h2>
+<div class="code"><div class="code-h"><span>shared/validators.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { AbstractControl, ValidationErrors, ValidatorFn } <span class="k">from</span> <span class="s">'@angular/forms'</span>;
+
+<span class="c">// Không cho chọn ngày trong quá khứ</span>
+<span class="k">export</span> <span class="k">function</span> <span class="f">notInPast</span>(today = () =&gt; <span class="k">new</span> <span class="f">Date</span>().<span class="f">toISOString</span>().<span class="f">slice</span>(<span class="n">0</span>, <span class="n">10</span>)): ValidatorFn {
+  <span class="k">return</span> (c: AbstractControl): ValidationErrors | <span class="t">null</span> =&gt;
+    c.value &amp;&amp; c.value &lt; <span class="f">today</span>() ? { inPast: <span class="b">true</span> } : <span class="t">null</span>;
+}
+
+<span class="c">// Validator cho cả nhóm: ngày kết thúc phải sau ngày bắt đầu</span>
+<span class="k">export</span> <span class="k">const</span> rangeOrder: ValidatorFn = (g: AbstractControl) =&gt; {
+  <span class="k">const</span> { start, end } = g.value as { start: <span class="t">string</span>; end: <span class="t">string</span> };
+  <span class="k">return</span> start &amp;&amp; end &amp;&amp; end &lt; start ? { rangeOrder: <span class="b">true</span> } : <span class="t">null</span>;
+};</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>form = <span class="k">this</span>.fb.<span class="f">group</span>(
+  {
+    start: [<span class="s">''</span>, Validators.required],
+    end: [<span class="s">''</span>, [Validators.required, <span class="f">notInPast</span>()]],
+  },
+  { validators: rangeOrder },   <span class="c">// validator cấp nhóm</span>
+);</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="t">if</span> (<span class="k">form</span>.<span class="f">hasError</span>(<span class="s">'rangeOrder'</span>)) { &lt;small class=<span class="s">&quot;err&quot;</span>&gt;Ngày kết <span class="k">th</span>úc phải sau ngày bắt đầu&lt;/small&gt; }</code></pre></div>
+
+<h3>Validator bất đồng bộ</h3>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">function</span> <span class="f">classNameAvailable</span>(api: ClassApi): AsyncValidatorFn {
+  <span class="k">return</span> (c) =&gt;
+    <span class="f">timer</span>(<span class="n">400</span>).<span class="f">pipe</span>(                                   <span class="c">// chờ người dùng gõ xong (debounce)</span>
+      <span class="f">switchMap</span>(() =&gt; api.<span class="f">nameExists</span>(c.value)),
+      <span class="f">map</span>((exists) =&gt; (exists ? { taken: <span class="b">true</span> } : <span class="t">null</span>)),
+      <span class="f">catchError</span>(() =&gt; <span class="k">of</span>(<span class="t">null</span>)),                      <span class="c">// lỗi mạng: không chặn người dùng</span>
+    );
+}
+
+name = <span class="k">this</span>.fb.<span class="f">control</span>(<span class="s">''</span>, {
+  validators: [Validators.required],
+  asyncValidators: [<span class="f">classNameAvailable</span>(<span class="b">inject</span>(ClassApi))],
+  updateOn: <span class="s">'blur'</span>,                                    <span class="c">// chỉ kiểm tra khi rời ô</span>
+});</code></pre></div>
+
+<h2 id="form-dong-formarray"><a href="#form-dong-formarray" class="anchor" aria-hidden="true">#</a>Form động: FormArray</h2>
+<p>Giáo viên giao bài có nhiều câu hỏi, bấm "Thêm câu" để thêm dòng:</p>
+<div class="code"><div class="code-h"><span>quiz-form.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> QuizForm {
+  private fb = <span class="b">inject</span>(FormBuilder).nonNullable;
+
+  form = <span class="k">this</span>.fb.<span class="f">group</span>({
+    title: [<span class="s">''</span>, Validators.required],
+    questions: <span class="k">this</span>.fb.<span class="f">array</span>([<span class="k">this</span>.<span class="f">newQuestion</span>()]),
+  });
+
+  get <span class="f">questions</span>() {
+    <span class="k">return</span> <span class="k">this</span>.form.controls.questions;
+  }
+
+  <span class="f">newQuestion</span>() {
+    <span class="k">return</span> <span class="k">this</span>.fb.<span class="f">group</span>({
+      text: [<span class="s">''</span>, Validators.required],
+      points: [<span class="n">1</span>, [Validators.required, Validators.<span class="f">min</span>(<span class="n">0.5</span>)]],
+    });
+  }
+
+  <span class="f">add</span>() { <span class="k">this</span>.questions.<span class="f">push</span>(<span class="k">this</span>.<span class="f">newQuestion</span>()); }
+  <span class="f">remove</span>(i: <span class="t">number</span>) { <span class="k">this</span>.questions.<span class="f">removeAt</span>(i); }
+
+  total = <span class="b">toSignal</span>(<span class="k">this</span>.questions.valueChanges.<span class="f">pipe</span>(<span class="f">map</span>((qs) =&gt; qs.<span class="f">reduce</span>((t, q) =&gt; t + (q.points ?? <span class="n">0</span>), <span class="n">0</span>))), { initialValue: <span class="n">1</span> });
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">form</span> [formGroup]=<span class="s">&quot;form&quot;</span>&gt;
+  &lt;<span class="k">input</span> formControlName=<span class="s">&quot;title&quot;</span> <span class="t">placeholder</span>=<span class="s">&quot;Tên bài kiểm tra&quot;</span> /&gt;
+  &lt;<span class="k">div</span> formArrayName=<span class="s">&quot;questions&quot;</span>&gt;
+    @<span class="t">for</span> (q <span class="b">of</span> questions.controls; <span class="b">track</span> q; <span class="t">let</span> i = $index) {
+      &lt;<span class="k">div</span> [formGroupName]=<span class="s">&quot;i&quot;</span> class=<span class="s">&quot;row&quot;</span>&gt;
+        &lt;<span class="k">span</span>&gt;Câu {{ i + <span class="n">1</span> }}&lt;/<span class="k">span</span>&gt;
+        &lt;<span class="k">input</span> formControlName=<span class="s">&quot;text&quot;</span> <span class="t">placeholder</span>=<span class="s">&quot;Nội dung câu hỏi&quot;</span> /&gt;
+        &lt;<span class="k">input</span> type=<span class="s">&quot;number&quot;</span> formControlName=<span class="s">&quot;points&quot;</span> step=<span class="s">&quot;0.5&quot;</span> /&gt;
+        &lt;<span class="k">button</span> type=<span class="s">&quot;button&quot;</span> (click)=<span class="s">&quot;remove(i)&quot;</span> [disabled]=<span class="s">&quot;questions.length === 1&quot;</span>&gt;Xoá&lt;/<span class="k">button</span>&gt;
+      &lt;/<span class="k">div</span>&gt;
+    }
+  &lt;/<span class="k">div</span>&gt;
+  &lt;<span class="k">button</span> type=<span class="s">&quot;button&quot;</span> (click)=<span class="s">&quot;add()&quot;</span>&gt;+ Thêm câu&lt;/<span class="k">button</span>&gt;
+  &lt;<span class="k">p</span>&gt;Tổng điểm: {{ <span class="f">total</span>() }}&lt;/<span class="k">p</span>&gt;
+&lt;/<span class="k">form</span>&gt;</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><input placeholder="Tên bài kiểm tra" value="Kiểm tra 15 phút" />
+<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><span>Câu 1</span><input value="3/4 + 1/4 = ?" /><input type="number" value="2" style="width:70px" /><button>Xoá</button></div>
+<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><span>Câu 2</span><input value="Đổi 2,5 m ra cm" /><input type="number" value="3" style="width:70px" /><button>Xoá</button></div>
+<button style="margin-top:8px">+ Thêm câu</button>
+<p>Tổng điểm: 5</p></div></div>
+<aside class="tip"><p><code>track q</code> theo tham chiếu control (mỗi control là một object cố định) để DOM đúng ô khi xoá câu ở giữa. Không dùng <code>track $index</code> ở đây.</p></aside>
+
+<h2 id="dien-du-lieu-disable-lang-nghe"><a href="#dien-du-lieu-disable-lang-nghe" class="anchor" aria-hidden="true">#</a>Điền dữ liệu, disable, lắng nghe</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">// Mở form sửa: điền dữ liệu đang có</span>
+<span class="k">this</span>.form.<span class="f">patchValue</span>({ title: a.title, dueDate: a.dueDate }); <span class="c">// patch: một phần; setValue: phải đủ mọi trường</span>
+
+<span class="c">// Bật / tắt theo điều kiện</span>
+<span class="k">this</span>.form.controls.dueDate.<span class="f">disable</span>();     <span class="c">// giá trị không nằm trong .value nữa, vẫn có trong getRawValue()</span>
+
+<span class="c">// Phản ứng khi một ô đổi</span>
+<span class="k">this</span>.form.controls.subject.valueChanges.<span class="f">pipe</span>(<span class="f">takeUntilDestroyed</span>()).<span class="f">subscribe</span>((s) =&gt; {
+  <span class="k">if</span> (s === <span class="s">'tieng-viet'</span>) <span class="k">this</span>.form.controls.exerciseCount.<span class="f">setValue</span>(<span class="n">1</span>);
+});</code></pre></div>
+
+<h2 id="hien-thi-loi-gon-mot-component-dung-lai"><a href="#hien-thi-loi-gon-mot-component-dung-lai" class="anchor" aria-hidden="true">#</a>Hiển thị lỗi gọn: một component dùng lại</h2>
+<div class="code"><div class="code-h"><span>shared/field-error.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">const</span> MESSAGES: <span class="t">Record</span>&lt;<span class="t">string</span>, (e: <span class="t">any</span>) =&gt; <span class="t">string</span>&gt; = {
+  required: () =&gt; <span class="s">'Không được để trống'</span>,
+  maxlength: (e) =&gt; <span class="s">`Tối đa ${e.requiredLength} ký tự`</span>,
+  min: (e) =&gt; <span class="s">`Tối thiểu ${e.min}`</span>,
+  max: (e) =&gt; <span class="s">`Tối đa ${e.max}`</span>,
+  email: () =&gt; <span class="s">'Email không đúng định dạng'</span>,
+  inPast: () =&gt; <span class="s">'Không chọn ngày đã qua'</span>,
+  taken: () =&gt; <span class="s">'Tên đã được dùng'</span>,
+};
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-field-error'</span>,
+  template: <span class="s">`
+    @if (control().invalid &amp;&amp; (control().touched || control().dirty)) {
+      &lt;small class=&quot;err&quot;&gt;{{ message() }}&lt;/small&gt;
+    }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> FieldError {
+  control = <span class="b">input</span>.required&lt;AbstractControl&gt;();
+  protected <span class="f">message</span>() {
+    <span class="k">const</span> errs = <span class="k">this</span>.<span class="f">control</span>().errors ?? {};
+    <span class="k">const</span> key = Object.<span class="f">keys</span>(errs)[<span class="n">0</span>];
+    <span class="k">return</span> key ? (MESSAGES[key]?.(errs[key]) ?? <span class="s">'Không hợp lệ'</span>) : <span class="s">''</span>;
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">input</span> formControlName=<span class="s">&quot;title&quot;</span> /&gt;
+&lt;app-field-<span class="t">error</span> [control]=<span class="s">&quot;form.controls.title&quot;</span> /&gt;</code></pre></div>
+<p><code>message()</code> là method nên được gọi lại mỗi lần Angular cập nhật component: gõ, blur, bấm lưu đều kích hoạt cập nhật nên lỗi luôn đúng. Trạng thái của form (touched, errors) chưa phải signal; ứng dụng zoneless vẫn cập nhật vì sự kiện DOM trong template luôn đánh dấu component cần kiểm tra lại. Nếu lỗi được đặt từ code bên ngoài (ví dụ lỗi từ server), gọi <code>control.setErrors(...)</code> trong lúc xử lý sự kiện hoặc kèm một signal để giao diện biết.</p>
+
+<h2 id="signal-forms-huong-di-moi"><a href="#signal-forms-huong-di-moi" class="anchor" aria-hidden="true">#</a>Signal forms: hướng đi mới</h2>
+<p>Từ Angular 21, có thêm API <b>signal forms</b> (gói <code>@angular/forms/signals</code>, đang ở trạng thái thử nghiệm). Model của form chính là một signal, quy tắc validate khai báo bằng schema:</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { form, Field, required, maxLength, min } <span class="k">from</span> <span class="s">'@angular/forms/signals'</span>;
+
+@<span class="f">Component</span>({
+  imports: [Field],
+  template: <span class="s">`
+    &lt;input [field]=&quot;f.title&quot; /&gt;
+    @if (f.title().invalid() &amp;&amp; f.title().touched()) { &lt;small&gt;{{ f.title().errors()[0].message }}&lt;/small&gt; }
+    &lt;input type=&quot;number&quot; [field]=&quot;f.exerciseCount&quot; /&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> AssignmentFormSignal {
+  <span class="b">model</span> = <span class="b">signal</span>({ title: <span class="s">''</span>, exerciseCount: <span class="n">1</span> });
+  f = <span class="f">form</span>(<span class="k">this</span>.<span class="b">model</span>, (p) =&gt; {
+    <span class="f">required</span>(p.title, { message: <span class="s">'Nhập tên bài'</span> });
+    <span class="f">maxLength</span>(p.title, <span class="n">200</span>);
+    <span class="f">min</span>(p.exerciseCount, <span class="n">1</span>);
+  });
+}</code></pre></div>
+<aside class="warn"><p>Signal forms còn ở giai đoạn thử nghiệm: tên hàm và cách dùng có thể đổi giữa các phiên bản (ví dụ directive ô nhập đã đổi tên trong quá trình phát triển). Xem tài liệu ứng với phiên bản trong dự án. Dự án production hiện vẫn nên dùng reactive forms.</p></aside>
+<aside class="fe"><p>Signal forms rất giống tinh thần Vue: model là state thường (<code>ref</code>), form chỉ là lớp kiểm tra bao quanh. Nếu bạn quen VeeValidate với schema Zod, cách khai báo này sẽ thấy tự nhiên.</p></aside>
+
+<h2 id="o-nhap-tu-viet-dung-duoc-voi-forms"><a href="#o-nhap-tu-viet-dung-duoc-voi-forms" class="anchor" aria-hidden="true">#</a>Ô nhập tự viết dùng được với forms</h2>
+<p>Component tự viết (chọn ngày, chọn màu, rating) muốn dùng <code>formControlName</code> phải cài đặt <code>ControlValueAccessor</code>:</p>
+<div class="code"><div class="code-h"><span>shared/star-input.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-star-input'</span>,
+  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: <span class="f">forwardRef</span>(() =&gt; StarInput), multi: <span class="b">true</span> }],
+  template: <span class="s">`
+    @for (n of [1, 2, 3, 4, 5]; track n) {
+      &lt;button type=&quot;button&quot; [class.on]=&quot;n &lt;= value()&quot; [disabled]=&quot;disabled()&quot; (click)=&quot;pick(n)&quot;&gt;★&lt;/button&gt;
+    }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> StarInput <span class="k">implements</span> ControlValueAccessor {
+  protected value = <span class="b">signal</span>(<span class="n">0</span>);
+  protected disabled = <span class="b">signal</span>(<span class="b">false</span>);
+  private onChange: (v: <span class="t">number</span>) =&gt; <span class="t">void</span> = () =&gt; {};
+  private onTouched: () =&gt; <span class="t">void</span> = () =&gt; {};
+
+  <span class="f">writeValue</span>(v: <span class="t">number</span> | <span class="t">null</span>) { <span class="k">this</span>.value.<span class="f">set</span>(v ?? <span class="n">0</span>); }        <span class="c">// form → component</span>
+  <span class="f">registerOnChange</span>(fn: (v: <span class="t">number</span>) =&gt; <span class="t">void</span>) { <span class="k">this</span>.onChange = fn; }
+  <span class="f">registerOnTouched</span>(fn: () =&gt; <span class="t">void</span>) { <span class="k">this</span>.onTouched = fn; }
+  <span class="f">setDisabledState</span>(d: <span class="t">boolean</span>) { <span class="k">this</span>.disabled.<span class="f">set</span>(d); }
+
+  protected <span class="f">pick</span>(n: <span class="t">number</span>) {
+    <span class="k">this</span>.value.<span class="f">set</span>(n);
+    <span class="k">this</span>.<span class="f">onChange</span>(n);                                             <span class="c">// component → form</span>
+    <span class="k">this</span>.<span class="f">onTouched</span>();
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-star-<span class="k">input</span> formControlName=<span class="s">&quot;quality&quot;</span> /&gt;</code></pre></div>
+<p>Đây là thứ Vue làm rất gọn bằng <code>defineModel</code>. Ở Angular dài hơn nhưng đổi lại component dùng được với mọi loại form (template-driven, reactive). Với signal forms, chỉ cần <code>model()</code> là đủ.</p>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Muốn hiện lỗi chỉ sau khi người dùng đã rời ô hoặc đã bấm lưu. Kiểm tra gì?</p><div class="qo"><button type="button" class="opt">control.invalid</button><button type="button" class="opt" data-ok>control.invalid && control.touched, và gọi form.markAllAsTouched() khi bấm lưu mà form không hợp lệ</button><button type="button" class="opt">control.dirty</button></div><p class="why" hidden>touched đúng sau khi blur. markAllAsTouched khiến mọi ô hiện lỗi khi người dùng bấm lưu sớm.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Control bị <code>disable()</code>. Giá trị của nó có trong <code>form.value</code> không?</p><div class="qo"><button type="button" class="opt">Có</button><button type="button" class="opt" data-ok>Không, chỉ có trong form.getRawValue()</button><button type="button" class="opt">Có nhưng là null</button></div><p class="why" hidden>Control disabled bị loại khỏi value. Gửi API thường dùng getRawValue() nếu cần cả trường disabled.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Form đăng ký lớp có kiểm tra năm học và mật khẩu xác nhận</summary>
+<p>Form tạo lớp gồm: tên lớp (bắt buộc, tối đa 60 ký tự), sĩ số (1 đến 80), năm học dạng <code>2026-2027</code> (năm sau = năm trước + 1), mã tham gia và nhập lại mã (phải khớp). Nút lưu chỉ bật khi hợp lệ. Bấm lưu thì in giá trị ra console và reset form.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Năm học: validator hàm tách chuỗi bằng <code>split('-')</code>, kiểm tra 4 chữ số và <code>y2 === y1 + 1</code>.</li>
+<li>Mã khớp: validator cấp nhóm so <code>code</code> và <code>code2</code>, trả <code>{ codeMismatch: true }</code>.</li>
+<li>Lỗi cấp nhóm hiển thị bằng <code>form.hasError('codeMismatch')</code>, chỉ khi ô <code>code2</code> đã touched.</li>
+<li>Nút: <code>[disabled]="form.invalid"</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>class-create-form.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">inject</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+<span class="k">import</span> { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } <span class="k">from</span> <span class="s">'@angular/forms'</span>;
+
+<span class="k">function</span> <span class="f">schoolYear</span>(c: AbstractControl): ValidationErrors | <span class="t">null</span> {
+  <span class="k">const</span> m = /^(\d{<span class="n">4</span>})-(\d{<span class="n">4</span>})$/.<span class="f">exec</span>(c.value ?? <span class="s">''</span>);
+  <span class="k">return</span> m &amp;&amp; <span class="f">Number</span>(m[<span class="n">2</span>]) === <span class="f">Number</span>(m[<span class="n">1</span>]) + <span class="n">1</span> ? <span class="t">null</span> : { schoolYear: <span class="b">true</span> };
+}
+
+<span class="k">function</span> <span class="f">codesMatch</span>(g: AbstractControl): ValidationErrors | <span class="t">null</span> {
+  <span class="k">const</span> { code, code2 } = g.value as { code: <span class="t">string</span>; code2: <span class="t">string</span> };
+  <span class="k">return</span> code &amp;&amp; code2 &amp;&amp; code !== code2 ? { codeMismatch: <span class="b">true</span> } : <span class="t">null</span>;
+}
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-class-create-form'</span>,
+  imports: [ReactiveFormsModule],
+  template: <span class="s">`
+    &lt;form [formGroup]=&quot;form&quot; (ngSubmit)=&quot;save()&quot;&gt;
+      &lt;label&gt;Tên lớp &lt;input formControlName=&quot;name&quot; maxlength=&quot;60&quot; /&gt;&lt;/label&gt;
+      @if (c.name.touched &amp;&amp; c.name.invalid) { &lt;small class=&quot;err&quot;&gt;Nhập tên lớp (tối đa 60 ký tự)&lt;/small&gt; }
+
+      &lt;label&gt;Sĩ số &lt;input type=&quot;number&quot; formControlName=&quot;capacity&quot; /&gt;&lt;/label&gt;
+      @if (c.capacity.touched &amp;&amp; c.capacity.invalid) { &lt;small class=&quot;err&quot;&gt;Sĩ số từ 1 đến 80&lt;/small&gt; }
+
+      &lt;label&gt;Năm học &lt;input formControlName=&quot;schoolYear&quot; placeholder=&quot;2026-2027&quot; /&gt;&lt;/label&gt;
+      @if (c.schoolYear.touched &amp;&amp; c.schoolYear.hasError('schoolYear')) { &lt;small class=&quot;err&quot;&gt;Năm học dạng 2026-2027&lt;/small&gt; }
+
+      &lt;label&gt;Mã tham gia &lt;input formControlName=&quot;code&quot; /&gt;&lt;/label&gt;
+      &lt;label&gt;Nhập lại mã &lt;input formControlName=&quot;code2&quot; /&gt;&lt;/label&gt;
+      @if (c.code2.touched &amp;&amp; form.hasError('codeMismatch')) { &lt;small class=&quot;err&quot;&gt;Hai mã không khớp&lt;/small&gt; }
+
+      &lt;button [disabled]=&quot;form.invalid&quot;&gt;Tạo lớp&lt;/button&gt;
+    &lt;/form&gt;
+  `</span>,
+  styles: <span class="s">`form { display: grid; gap: 6px; max-width: 360px; } .err { color: #dc2626; }`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> ClassCreateForm {
+  private fb = <span class="b">inject</span>(FormBuilder).nonNullable;
+  form = <span class="k">this</span>.fb.<span class="f">group</span>(
+    {
+      name: [<span class="s">''</span>, [Validators.required, Validators.<span class="f">maxLength</span>(<span class="n">60</span>)]],
+      capacity: [<span class="n">30</span>, [Validators.required, Validators.<span class="f">min</span>(<span class="n">1</span>), Validators.<span class="f">max</span>(<span class="n">80</span>)]],
+      schoolYear: [<span class="s">'2026-2027'</span>, [Validators.required, schoolYear]],
+      code: [<span class="s">''</span>, Validators.required],
+      code2: [<span class="s">''</span>, Validators.required],
+    },
+    { validators: codesMatch },
+  );
+  protected c = <span class="k">this</span>.form.controls;
+
+  <span class="f">save</span>() {
+    <span class="k">const</span> { code2, ...data } = <span class="k">this</span>.form.<span class="f">getRawValue</span>();
+    <span class="b">console</span>.<span class="f">log</span>(<span class="s">'Tạo lớp'</span>, data);
+    <span class="k">this</span>.form.<span class="f">reset</span>();
+  }
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><form style="display:grid;gap:6px;max-width:360px">
+<label>Tên lớp <input value="Lớp 5A" /></label>
+<label>Sĩ số <input type="number" value="30" /></label>
+<label>Năm học <input value="2026-2028" style="border-color:#dc2626" /></label>
+<small style="color:#dc2626">Năm học dạng 2026-2027</small>
+<label>Mã tham gia <input value="DEMO5A" /></label>
+<label>Nhập lại mã <input value="DEMO5B" style="border-color:#dc2626" /></label>
+<small style="color:#dc2626">Hai mã không khớp</small>
+<button disabled>Tạo lớp</button>
+</form></div></div>
+<div class="term sim" role="img" aria-label="Console (sau khi sửa đúng và bấm Tạo lớp)"><div class="term-h"><i></i><i></i><i></i><span>Console (sau khi sửa đúng và bấm Tạo lớp)</span><b class="term-sim">Mô phỏng</b></div><pre>Tạo lớp {name: 'Lớp 5A', capacity: 30, schoolYear: '2026-2027', code: 'DEMO5A'}</pre></div>
+<p><b>Giải thích:</b> lỗi khớp mã nằm ở <b>nhóm</b> (không phải ở ô <code>code2</code>) nên kiểm tra bằng <code>form.hasError</code>. Vì vậy ô <code>code2</code> không tự đỏ viền: nếu muốn, thêm <code>[class.ng-invalid]="form.hasError('codeMismatch')"</code>. Destructuring <code>{ code2, ...data }</code> bỏ trường nhập lại trước khi gửi đi. <code>nonNullable</code> khiến <code>reset()</code> trả sĩ số về 30 và năm học về giá trị đầu, không về <code>null</code>.</p>
+</details>
+</details>
+</div>
   <div class="done-box"><button class="done-btn" type="button" data-slug="forms">Đánh dấu đã học xong bài này</button></div>
   <nav class="pn"><a class="prev" href="router.html"><small>Bài trước</small>Router</a><a class="next" href="http.html"><small>Bài tiếp theo</small>Gọi API: HttpClient, interceptor, resource</a></nav>
 </article></main>
-  
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#ba-cach-lam-form-trong-angular">Ba cách làm form trong Angular</a><a href="#template-driven-nhanh-cho-form-nho">Template-driven: nhanh cho form nhỏ</a><a href="#reactive-forms">Reactive forms</a><a href="#validator-tu-viet">Validator tự viết</a><a href="#form-dong-formarray">Form động: FormArray</a><a href="#dien-du-lieu-disable-lang-nghe">Điền dữ liệu, disable, lắng nghe</a><a href="#hien-thi-loi-gon-mot-component-dung-lai">Hiển thị lỗi gọn: một component dùng lại</a><a href="#signal-forms-huong-di-moi">Signal forms: hướng đi mới</a><a href="#o-nhap-tu-viet-dung-duoc-voi-forms">Ô nhập tự viết dùng được với forms</a><a href="#bai-tap">Bài tập</a></nav>
 </div>
 </body>
 </html>

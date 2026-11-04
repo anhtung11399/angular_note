@@ -1,0 +1,262 @@
+<h2>Khai báo route</h2>
+<pre lang="ts" file="app.routes.ts">
+import { Routes } from '@angular/router';
+import { Home } from './home';
+import { authGuard } from './core/auth.guard';
+
+export const routes: Routes = [
+  { path: '', component: Home, title: 'Trang chủ' },
+  { path: 'dang-nhap', loadComponent: () => import('./core/login-page').then((m) => m.LoginPage), title: 'Đăng nhập' },
+  {
+    path: 'lop',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/classes/classes.routes').then((m) => m.CLASS_ROUTES),
+  },
+  { path: 'cu', redirectTo: 'lop', pathMatch: 'full' },
+  { path: '**', loadComponent: () => import('./not-found').then((m) => m.NotFound), title: 'Không tìm thấy' },
+];
+</pre>
+<pre lang="ts" file="features/classes/classes.routes.ts">
+export const CLASS_ROUTES: Routes = [
+  { path: '', loadComponent: () => import('./class-list-page').then((m) => m.ClassListPage), title: 'Lớp học' },
+  {
+    path: ':classId',
+    loadComponent: () => import('./class-layout').then((m) => m.ClassLayout),
+    children: [
+      { path: '', redirectTo: 'bai-tap', pathMatch: 'full' },
+      { path: 'bai-tap', loadComponent: () => import('./assignments-page').then((m) => m.AssignmentsPage) },
+      { path: 'cham-bai', loadComponent: () => import('./grading-page').then((m) => m.GradingPage) },
+    ],
+  },
+];
+</pre>
+<table>
+<tr><th>vue-router</th><th>Angular router</th></tr>
+<tr><td><code>{ path: '/lop', component: () =&gt; import(...) }</code></td><td><code>{ path: 'lop', loadComponent: () =&gt; import(...).then(m =&gt; m.X) }</code></td></tr>
+<tr><td><code>path: '/lop/:id'</code></td><td><code>path: 'lop/:id'</code> (không có <code>/</code> đầu)</td></tr>
+<tr><td><code>children</code></td><td><code>children</code> (cần <code>&lt;router-outlet /&gt;</code> trong component cha)</td></tr>
+<tr><td><code>path: '/:pathMatch(.*)*'</code></td><td><code>path: '**'</code></td></tr>
+<tr><td><code>redirect</code></td><td><code>redirectTo</code> (+ <code>pathMatch: 'full'</code> với path rỗng)</td></tr>
+<tr><td><code>meta: { title }</code> + tự đặt document.title</td><td><code>title</code> có sẵn</td></tr>
+<tr><td><code>&lt;RouterView /&gt;</code>, <code>&lt;RouterLink to&gt;</code></td><td><code>&lt;router-outlet /&gt;</code>, <code>routerLink</code></td></tr>
+<tr><td><code>beforeEnter</code>, <code>router.beforeEach</code></td><td><code>canActivate</code>, <code>canMatch</code>, <code>canDeactivate</code> (hàm guard)</td></tr>
+<tr><td><code>useRoute().params</code></td><td>input của component (<code>withComponentInputBinding</code>) hoặc <code>ActivatedRoute</code></td></tr>
+<tr><td><code>useRouter().push()</code></td><td><code>inject(Router).navigate([...])</code></td></tr>
+</table>
+<aside class="warn"><p><code>pathMatch: 'full'</code> bắt buộc với route path rỗng có <code>redirectTo</code>. Thiếu nó, mọi URL đều khớp tiền tố rỗng và bị chuyển hướng, gây vòng lặp.</p></aside>
+
+<h2>Bật router và các tuỳ chọn</h2>
+<pre lang="ts" file="app.config.ts">
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling, withViewTransitions, withPreloading, PreloadAllModules } from '@angular/router';
+
+providers: [
+  provideRouter(
+    routes,
+    withComponentInputBinding(),                     // tham số route → input của component
+    withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
+    withViewTransitions(),                           // hiệu ứng chuyển trang bằng View Transitions API
+    withPreloading(PreloadAllModules),               // tải trước các route lazy khi rảnh
+  ),
+]
+</pre>
+
+<h2>Liên kết và điều hướng</h2>
+<pre lang="html" file="layout.html">
+<nav>
+  <a routerLink="/lop" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Lớp học</a>
+  <a [routerLink]="['/lop', classId(), 'cham-bai']" [queryParams]="{ mon: 'toan' }" routerLinkActive="active">Chấm bài</a>
+  <a routerLink="bai-tap" routerLinkActive="active">Bài tập</a>   <!-- tương đối với route hiện tại -->
+</nav>
+<router-outlet />
+</pre>
+<pre lang="ts">
+private router = inject(Router);
+
+openClass(id: number) {
+  this.router.navigate(['/lop', id]);                                 // /lop/12
+  this.router.navigate(['/lop', id, 'cham-bai'], { queryParams: { em: 7 } }); // /lop/12/cham-bai?em=7
+  this.router.navigateByUrl('/dang-nhap?next=/lop');
+}
+</pre>
+<p>Nhớ import <code>RouterLink</code>, <code>RouterLinkActive</code>, <code>RouterOutlet</code> vào component dùng chúng.</p>
+
+<h2>Nhận tham số route bằng input</h2>
+<p>Với <code>withComponentInputBinding()</code>, tham số đường dẫn, query param và <code>data</code> của route được gán thẳng vào input cùng tên:</p>
+<pre lang="ts" file="grading-page.ts">
+export class GradingPage {
+  classId = input.required<string>();          // từ :classId của route cha (cần paramsInheritanceStrategy: 'always')
+  mon = input<string>();                        // từ ?mon=toan
+  em = input<string>();                         // từ ?em=7
+
+  subject = computed(() => this.mon() ?? 'toan');
+}
+</pre>
+<p>Tham số luôn là chuỗi. Dùng <code>transform: numberAttribute</code> nếu cần số: <code>classId = input.required({ transform: numberAttribute })</code>. Vì input là signal, khi URL đổi từ <code>/lop/1</code> sang <code>/lop/2</code>, mọi <code>computed</code> và <code>httpResource</code> dựa trên nó tự chạy lại.</p>
+<pre lang="ts" file="cách cũ, vẫn gặp nhiều">
+private route = inject(ActivatedRoute);
+classId$ = this.route.paramMap.pipe(map((p) => Number(p.get('classId'))));
+// hoặc ảnh chụp một lần (SAI khi tham số đổi mà component được giữ lại):
+id = Number(this.route.snapshot.paramMap.get('classId'));
+</pre>
+
+<h2>Guard dạng hàm</h2>
+<pre lang="ts" file="core/auth.guard.ts">
+import { CanActivateFn, Router } from '@angular/router';
+
+export const authGuard: CanActivateFn = (route, state) => {
+  const auth = inject(Auth);
+  if (auth.isLoggedIn()) return true;
+  // trả về UrlTree = chuyển hướng (không gọi navigate trong guard)
+  return inject(Router).createUrlTree(['/dang-nhap'], { queryParams: { next: state.url } });
+};
+
+export const teacherOnly: CanMatchFn = () => inject(Auth).isTeacher();
+</pre>
+<table>
+<tr><th>Guard</th><th>Chạy khi</th><th>Dùng cho</th></tr>
+<tr><td><code>canActivate</code></td><td>trước khi vào route</td><td>đăng nhập, quyền</td></tr>
+<tr><td><code>canActivateChild</code></td><td>trước khi vào route con</td><td>quyền cho cả nhánh</td></tr>
+<tr><td><code>canMatch</code></td><td>khi router chọn route nào khớp URL</td><td>cùng URL, route khác theo vai trò; chặn cả việc tải code lazy</td></tr>
+<tr><td><code>canDeactivate</code></td><td>trước khi rời route</td><td>"Bạn có thay đổi chưa lưu, rời trang?"</td></tr>
+</table>
+<pre lang="ts" file="cùng URL /, mỗi vai trò một trang">
+{ path: '', canMatch: [teacherOnly], loadComponent: () => import('./teacher-home').then((m) => m.TeacherHome) },
+{ path: '', loadComponent: () => import('./parent-home').then((m) => m.ParentHome) },
+</pre>
+<pre lang="ts" file="core/unsaved.guard.ts">
+export interface HasUnsaved { hasUnsaved(): boolean }
+
+export const unsavedGuard: CanDeactivateFn<HasUnsaved> = (component) =>
+  !component.hasUnsaved() || confirm('Bạn có thay đổi chưa lưu. Rời trang?');
+</pre>
+<aside class="warn"><p>Guard chỉ là trải nghiệm người dùng. Ai cũng có thể tắt JavaScript hoặc gọi thẳng API. Mọi kiểm tra quyền thật phải nằm ở server.</p></aside>
+
+<h2>Resolver: tải dữ liệu trước khi vào trang</h2>
+<pre lang="ts">
+export const classResolver: ResolveFn<Classroom> = (route) =>
+  inject(ClassApi).get(Number(route.paramMap.get('classId')));
+
+{ path: ':classId', resolve: { classroom: classResolver }, loadComponent: ... }
+
+// component nhận qua input cùng tên (với withComponentInputBinding)
+classroom = input.required<Classroom>();
+</pre>
+<p>Resolver khiến router <b>đợi</b> dữ liệu rồi mới hiện trang: người dùng thấy như bấm không ăn vài trăm mili giây. Xu hướng hiện nay: vào trang ngay, hiện khung xương (skeleton) và tải bằng <code>httpResource</code> (bài {{n:http}}). Dùng resolver khi trang không có ý nghĩa nếu thiếu dữ liệu (và khi SSR cần dữ liệu đầy đủ).</p>
+
+<h2>Lazy loading và bundle</h2>
+<arch w="820" h="250" caption="Mỗi loadComponent / loadChildren là một chunk JS riêng. Lần đầu chỉ tải main.js; vào /lop mới tải chunk của tính năng lớp học">
+node m 100 125 bundle "main.js" "App, router, Home"
+node c1 400 55 bundle "classes.js" "/lop/**"
+node c2 400 195 bundle "login.js" "/dang-nhap"
+node c3 680 55 bundle "grading.js" "/lop/:id/cham-bai"
+edge m c1 "" route=hvh mid=250
+edge m c2 "" route=hvh mid=250
+edge c1 c3 "khi vào chấm bài"
+text 260 40 "vào /lop" small anchor=start
+text 260 230 "vào /dang-nhap" small anchor=start
+</arch>
+<pre lang="out" sim="1">
+$ ng build
+Initial chunk files   | Names               |  Raw size | Estimated transfer size
+main-HJ3K2ZXP.js      | main                | 214.08 kB |                58.31 kB
+styles-6TZN7QWE.css   | styles              |   3.12 kB |               912 bytes
+
+Lazy chunk files      | Names               |  Raw size | Estimated transfer size
+chunk-QJ4X6L2B.js     | class-list-page     |  18.44 kB |                 5.02 kB
+chunk-7GZ2NNKT.js     | grading-page        |  41.90 kB |                10.77 kB
+chunk-R6WQ2OHU.js     | login-page          |   9.33 kB |                 3.01 kB
+</pre>
+
+<h2>Đọc router kiểu cũ</h2>
+<pre lang="ts">
+@NgModule({
+  imports: [RouterModule.forRoot(routes, { useHash: false })],   // app module
+})
+@NgModule({
+  imports: [RouterModule.forChild(CLASS_ROUTES)],               // feature module
+})
+{ path: 'lop', loadChildren: () => import('./classes/classes.module').then((m) => m.ClassesModule) }
+
+@Injectable({ providedIn: 'root' })
+export class AuthGuard implements CanActivate {                  // guard dạng class
+  canActivate(): boolean | UrlTree { ... }
+}
+</pre>
+
+<quiz q="Trang <code>/lop/:classId</code> đọc id bằng <code>route.snapshot.paramMap.get('classId')</code> trong constructor. Bấm link sang lớp khác (<code>/lop/2</code> từ <code>/lop/1</code>). Chuyện gì xảy ra?">
+- Trang tải lại đúng lớp 2
++ Router dùng lại component, snapshot chỉ đọc một lần nên trang vẫn hiện lớp 1
+- Lỗi điều hướng
+? Dùng input signal (withComponentInputBinding) hoặc paramMap Observable để phản ứng khi tham số đổi.
+</quiz>
+<quiz q="Guard cần chuyển người chưa đăng nhập tới /dang-nhap. Cách đúng?">
+- Gọi router.navigate(['/dang-nhap']) rồi return false
++ return router.createUrlTree(['/dang-nhap'], { queryParams: { next: state.url } })
+- throw new Error()
+? Trả về UrlTree để router tự huỷ điều hướng hiện tại và chuyển hướng, tránh hai lần điều hướng chồng nhau.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Khu vực lớp học có menu con, guard và trang 404</summary>
+<p>Dựng router cho: <code>/</code> trang chủ, <code>/lop</code> danh sách lớp (cần đăng nhập), <code>/lop/:classId/bai-tap</code> và <code>/lop/:classId/hoc-sinh</code> dùng chung layout có menu hai mục và tiêu đề "Lớp {{ classId }}", mọi URL khác vào trang 404. Đăng nhập giả bằng một signal trong service <code>Auth</code>.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>provideRouter(routes, withComponentInputBinding())</code> và trong <code>provideRouter</code> thêm <code>withRouterConfig({ paramsInheritanceStrategy: 'always' })</code> để route con nhận <code>classId</code> của cha.</li>
+<li>Route <code>lop/:classId</code> có <code>component: ClassLayout</code> và <code>children</code>.</li>
+<li><code>ClassLayout</code>: input <code>classId</code>, template có hai <code>routerLink</code> tương đối và <code>&lt;router-outlet /&gt;</code>.</li>
+<li>Guard: <code>inject(Auth).loggedIn() || inject(Router).createUrlTree(['/'])</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="app.routes.ts">
+export const routes: Routes = [
+  { path: '', component: Home, title: 'Trang chủ' },
+  {
+    path: 'lop',
+    canActivate: [() => inject(Auth).loggedIn() || inject(Router).createUrlTree(['/'])],
+    children: [
+      { path: '', loadComponent: () => import('./class-list').then((m) => m.ClassList), title: 'Lớp học' },
+      {
+        path: ':classId',
+        component: ClassLayout,
+        children: [
+          { path: '', redirectTo: 'bai-tap', pathMatch: 'full' },
+          { path: 'bai-tap', loadComponent: () => import('./assignments').then((m) => m.Assignments), title: 'Bài tập' },
+          { path: 'hoc-sinh', loadComponent: () => import('./students').then((m) => m.Students), title: 'Học sinh' },
+        ],
+      },
+    ],
+  },
+  { path: '**', loadComponent: () => import('./not-found').then((m) => m.NotFound), title: 'Không tìm thấy' },
+];
+</pre>
+<pre lang="ts" file="app.config.ts">
+providers: [
+  provideRouter(routes, withComponentInputBinding(), withRouterConfig({ paramsInheritanceStrategy: 'always' })),
+]
+</pre>
+<pre lang="ts" file="class-layout.ts">
+@Component({
+  selector: 'app-class-layout',
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  template: `
+    <h2>Lớp {{ classId() }}</h2>
+    <nav>
+      <a routerLink="bai-tap" routerLinkActive="on">Bài tập</a>
+      <a routerLink="hoc-sinh" routerLinkActive="on">Học sinh</a>
+    </nav>
+    <router-outlet />
+  `,
+  styles: `nav { display: flex; gap: 12px; margin-bottom: 12px; } .on { font-weight: 700; border-bottom: 2px solid #dd0031; }`,
+})
+export class ClassLayout {
+  classId = input.required<string>();
+}
+</pre>
+<pre lang="ui" url="localhost:4200/lop/5A/hoc-sinh">
+<h2 style="margin:0 0 8px">Lớp 5A</h2>
+<nav style="display:flex;gap:12px;margin-bottom:12px"><a>Bài tập</a><a style="font-weight:700;border-bottom:2px solid #dd0031">Học sinh</a></nav>
+<p>Danh sách 30 học sinh…</p>
+</pre>
+<p><b>Giải thích:</b> link <code>routerLink="bai-tap"</code> không có <code>/</code> đầu nên tương đối với route của <code>ClassLayout</code> (<code>/lop/5A</code>). Guard viết thẳng dạng hàm ngắn trong mảng. Chưa đăng nhập mà gõ <code>/lop</code> thì về trang chủ. Gõ <code>/abc</code> thì vào 404. Đổi từ lớp 5A sang 5B, <code>ClassLayout</code> được dùng lại và tiêu đề tự đổi vì <code>classId</code> là input signal.</p>
+</details>
+</details>

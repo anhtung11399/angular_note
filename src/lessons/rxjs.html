@@ -1,0 +1,214 @@
+<h2>Vì sao Angular dùng RxJS</h2>
+<p>Promise cho bạn <b>một</b> giá trị trong tương lai. Observable cho bạn <b>một dòng</b> giá trị theo thời gian: các lần gõ phím, các lần URL đổi, các message WebSocket, tiến trình upload. HttpClient, router, forms của Angular đều phát Observable. Với signals, bạn cần RxJS ít hơn nhiều so với Angular vài năm trước, nhưng vẫn phải đọc được và dùng đúng vài operator.</p>
+<table>
+<tr><th></th><th>Promise</th><th>Observable</th></tr>
+<tr><td>Số giá trị</td><td>1</td><td>0, 1 hoặc nhiều</td></tr>
+<tr><td>Bắt đầu chạy</td><td>ngay khi tạo</td><td>khi có người <code>subscribe</code> (lạnh)</td></tr>
+<tr><td>Huỷ</td><td>không (phải tự dùng AbortController)</td><td><code>unsubscribe()</code></td></tr>
+<tr><td>Biến đổi</td><td><code>.then()</code></td><td><code>.pipe(map, filter, switchMap...)</code></td></tr>
+</table>
+<aside class="fe"><p>Vue không bắt bạn dùng RxJS. Gần nhất là <code>watch</code> + debounce của VueUse. Hãy nghĩ Observable như "mảng theo thời gian": <code>map</code>, <code>filter</code> giống mảng, cộng thêm các operator về thời gian (<code>debounceTime</code>) và về "khi có giá trị mới thì làm gì với việc cũ" (<code>switchMap</code>).</p></aside>
+
+<h2>Đọc một sơ đồ marble</h2>
+<arch w="820" h="230" caption="Dòng trên: người dùng gõ &quot;l&quot;, &quot;la&quot;, &quot;lan&quot; liên tiếp. debounceTime(300) chỉ cho đi giá trị sau khi im lặng 300ms. switchMap gọi API, có giá trị mới thì huỷ request cũ">
+group 20 20 780 60 plain "input  ──l──la──lan────────lanh──▶"
+group 20 100 780 60 plain "debounceTime(300) ──────────lan────────lanh──▶"
+group 20 170 780 50 ok "switchMap(api.search) ──────────[kết quả lan]──[kết quả lanh]──▶"
+</arch>
+<p>Trang <a href="https://rxmarbles.com/" target="_blank" rel="noopener">rxmarbles.com</a> vẽ sơ đồ động cho từng operator, rất đáng mở khi gặp operator lạ.</p>
+
+<h2>Operator hay dùng nhất</h2>
+<table>
+<tr><th>Operator</th><th>Làm gì</th><th>Ví dụ</th></tr>
+<tr><td><code>map</code></td><td>biến đổi từng giá trị</td><td><code>map(page =&gt; page.items)</code></td></tr>
+<tr><td><code>filter</code></td><td>bỏ giá trị không thoả</td><td><code>filter(q =&gt; q.length &gt;= 2)</code></td></tr>
+<tr><td><code>debounceTime</code></td><td>chờ ngừng phát một lúc</td><td>ô tìm kiếm</td></tr>
+<tr><td><code>distinctUntilChanged</code></td><td>bỏ giá trị trùng giá trị trước</td><td>không gọi API khi gõ rồi xoá về như cũ</td></tr>
+<tr><td><code>switchMap</code></td><td>chuyển sang Observable mới, <b>huỷ</b> cái cũ</td><td>tìm kiếm, đổi trang, đổi id route</td></tr>
+<tr><td><code>concatMap</code></td><td>xếp hàng, làm lần lượt</td><td>lưu từng thay đổi theo đúng thứ tự</td></tr>
+<tr><td><code>mergeMap</code></td><td>chạy song song</td><td>upload nhiều file cùng lúc</td></tr>
+<tr><td><code>exhaustMap</code></td><td>bỏ qua giá trị mới khi đang bận</td><td>nút "Lưu" bị bấm liên tục</td></tr>
+<tr><td><code>catchError</code></td><td>bắt lỗi, trả giá trị thay thế</td><td><code>catchError(() =&gt; of([]))</code></td></tr>
+<tr><td><code>tap</code></td><td>làm việc phụ, không đổi giá trị</td><td>ghi log, bật loading</td></tr>
+<tr><td><code>combineLatest</code></td><td>gộp nhiều dòng, phát khi bất kỳ dòng nào đổi</td><td>lọc theo môn + trang + từ khoá</td></tr>
+<tr><td><code>forkJoin</code></td><td>chờ tất cả xong (như Promise.all)</td><td>tải lớp, môn, học sinh cùng lúc</td></tr>
+<tr><td><code>startWith</code>, <code>retry</code>, <code>timeout</code>, <code>takeUntil</code></td><td>giá trị đầu, thử lại, giới hạn thời gian, dừng khi...</td><td></td></tr>
+</table>
+
+<h3>Bốn kiểu "Map" và khi nào dùng</h3>
+<arch w="820" h="250" caption="Khi giá trị nguồn mới đến trong lúc việc cũ chưa xong: switchMap huỷ việc cũ, concatMap xếp hàng, mergeMap chạy song song, exhaustMap bỏ qua giá trị mới">
+node s 100 60 rx "switchMap" "huỷ cũ, lấy mới"
+node c 100 190 rx "concatMap" "xếp hàng"
+node m 520 60 rx "mergeMap" "song song"
+node e 520 190 rx "exhaustMap" "bận thì bỏ qua"
+text 170 64 "→ tìm kiếm, đổi bộ lọc, đổi id" small anchor=start
+text 170 194 "→ ghi theo đúng thứ tự" small anchor=start
+text 590 64 "→ tải nhiều file cùng lúc" small anchor=start
+text 590 194 "→ nút lưu, đăng nhập" small anchor=start
+</arch>
+
+<h2>Tìm kiếm có debounce: ví dụ kinh điển</h2>
+<pre lang="ts" file="student-search.ts">
+import { Component, inject, signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
+
+@Component({
+  selector: 'app-student-search',
+  template: `
+    <input placeholder="Tìm học sinh (ít nhất 2 ký tự)" [value]="query()" (input)="query.set($any($event.target).value)" />
+    <ul>
+      @for (s of results(); track s.id) { <li>{{ s.name }} — {{ s.className }}</li> }
+    </ul>
+  `,
+})
+export class StudentSearch {
+  private api = inject(StudentApi);
+  protected query = signal('');
+
+  protected results = toSignal(
+    toObservable(this.query).pipe(
+      map((q) => q.trim()),
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap((q) => (q.length < 2 ? of([]) : this.api.search(q).pipe(catchError(() => of([]))))),
+    ),
+    { initialValue: [] },
+  );
+}
+</pre>
+<p>Vì sao <code>switchMap</code>: người dùng gõ "lan" rồi "lanh". Nếu request "lan" về <b>sau</b> request "lanh" (mạng chập chờn), không có switchMap thì kết quả cũ đè kết quả mới. switchMap huỷ request "lan" ngay khi "lanh" tới.</p>
+<aside class="tip"><p><code>catchError</code> đặt <b>bên trong</b> switchMap. Đặt ở ngoài thì lỗi đầu tiên làm cả dòng kết thúc vĩnh viễn: ô tìm kiếm "chết" sau một lần mạng lỗi.</p></aside>
+
+<h2>Subscribe và huỷ: không để rò rỉ</h2>
+<p>Observable từ HttpClient tự kết thúc sau một response. Nhưng Observable "dài hạn" (<code>valueChanges</code> của form, <code>interval</code>, WebSocket, router events) chạy mãi: subscribe mà không huỷ thì component bị gỡ rồi vẫn chạy.</p>
+<pre lang="ts">
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+export class GradingForm {
+  form = inject(FormBuilder).group({ score: [0] });
+
+  constructor() {
+    this.form.controls.score.valueChanges
+      .pipe(debounceTime(500), takeUntilDestroyed())   // tự huỷ khi component bị huỷ
+      .subscribe((s) => this.autosave(s));
+  }
+}
+</pre>
+<p>Thứ tự ưu tiên để không bao giờ phải tự <code>unsubscribe</code>:</p>
+<ol>
+<li><b>Không subscribe</b>: dùng <code>toSignal(obs$)</code> hoặc <code>| async</code> trong template, Angular tự huỷ.</li>
+<li><code>takeUntilDestroyed()</code> trong constructor (ngoài constructor thì truyền <code>DestroyRef</code>: <code>takeUntilDestroyed(this.destroyRef)</code>).</li>
+<li>Cách cũ bạn sẽ thấy: <code>Subscription</code> lưu lại rồi <code>unsubscribe()</code> trong <code>ngOnDestroy</code>, hoặc <code>Subject destroy$</code> + <code>takeUntil(this.destroy$)</code>.</li>
+</ol>
+
+<h2>Signal và Observable qua lại</h2>
+<table>
+<tr><th>Hàm</th><th>Từ → sang</th><th>Ghi chú</th></tr>
+<tr><td><code>toSignal(obs$, { initialValue })</code></td><td>Observable → signal</td><td>subscribe ngay, tự huỷ theo component. Không có initialValue thì giá trị đầu là undefined</td></tr>
+<tr><td><code>toObservable(sig)</code></td><td>signal → Observable</td><td>phát khi signal đổi (bất đồng bộ, gộp nhiều lần đổi liên tiếp)</td></tr>
+<tr><td><code>outputFromObservable</code>, <code>outputToObservable</code></td><td>output ↔ Observable</td><td></td></tr>
+<tr><td><code>rxResource</code></td><td>loader trả Observable → resource</td><td>như <code>resource</code> nhưng loader dùng RxJS</td></tr>
+</table>
+<p>Quy tắc thực dụng cho code mới: <b>state đồng bộ dùng signal</b>, <b>sự kiện và luồng bất đồng bộ phức tạp dùng RxJS</b> (debounce, huỷ, ghép nhiều nguồn), rồi đổi về signal để template đọc.</p>
+
+<h2>Subject: tự phát giá trị</h2>
+<pre lang="ts">
+const saveClicks = new Subject<void>();         // phát khi gọi next(), không giữ giá trị
+const currentUser = new BehaviorSubject<User | null>(null); // giữ giá trị hiện tại, người mới subscribe nhận ngay
+
+saveClicks.pipe(exhaustMap(() => this.api.save(this.form.value))).subscribe();
+// trong template: (click)="saveClicks.next()"
+</pre>
+<aside class="real"><p>Code Angular 2018–2022 dùng <code>BehaviorSubject</code> trong service để làm store (<code>user$ = new BehaviorSubject(null)</code>, template dùng <code>user$ | async</code>). Bạn sẽ gặp rất nhiều. Ở code mới, chỗ đó thay bằng <code>signal</code>.</p></aside>
+
+<h2>async pipe</h2>
+<pre lang="html">
+@if (classes$ | async; as classes) {
+  @for (c of classes; track c.id) { <app-class-card [name]="c.name" /> }
+} @else {
+  <app-skeleton />
+}
+</pre>
+<p><code>| async</code> subscribe khi component hiện và huỷ khi gỡ. Đây là cách phổ biến ở code cũ; code mới thường dùng <code>toSignal</code> hoặc <code>httpResource</code>.</p>
+
+<quiz q="Ô tìm kiếm gọi API mỗi khi gõ. Gõ nhanh 'an' rồi 'anh', kết quả cũ đôi khi đè kết quả mới. Operator nào sửa được?">
+- mergeMap
++ switchMap (kèm debounceTime)
+- concatMap
+? switchMap huỷ request cũ khi có giá trị mới, nên response chậm của truy vấn cũ không bao giờ tới template.
+</quiz>
+<quiz q="Nút 'Lưu' bị bấm 3 lần liên tiếp, chỉ muốn gửi request đầu tiên và bỏ qua các lần bấm khi đang lưu. Operator nào?">
+- switchMap
++ exhaustMap
+- forkJoin
+? exhaustMap bỏ qua giá trị nguồn mới trong lúc Observable bên trong chưa xong.
+</quiz>
+<quiz q="Subscribe <code>form.valueChanges</code> trong constructor mà không huỷ. Hậu quả?">
++ Component bị gỡ nhưng subscription vẫn sống, giữ component trong bộ nhớ và có thể chạy code ngoài ý muốn
+- Không sao vì valueChanges tự kết thúc
+- Angular tự huỷ mọi subscription
+? Dùng takeUntilDestroyed() hoặc toSignal để Angular tự huỷ.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Tự lưu ghi chú chấm bài</summary>
+<p>Ô nhận xét của giáo viên tự lưu sau khi ngừng gõ 800ms. Hiển thị trạng thái "Đang lưu…", "Đã lưu lúc HH:mm:ss", "Lưu lỗi, sẽ thử lại". Các lần lưu phải đúng thứ tự (không để bản cũ ghi đè bản mới), lỗi thì thử lại tối đa 2 lần. Dùng một hàm lưu giả trả Observable có độ trễ ngẫu nhiên.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Hàm giả: <code>save = (t: string) =&gt; of(t).pipe(delay(200 + Math.random() * 800))</code>, thỉnh thoảng <code>throwError</code>.</li>
+<li>Dòng: <code>toObservable(this.note).pipe(skip(1), debounceTime(800), distinctUntilChanged(), ...)</code>.</li>
+<li>Lưu đúng thứ tự: <code>concatMap</code>. Hoặc <code>switchMap</code> nếu chỉ cần bản mới nhất (cũng tránh ghi đè).</li>
+<li>Bên trong: <code>tap</code> đặt trạng thái "Đang lưu", <code>retry(2)</code>, <code>catchError</code> trả trạng thái lỗi.</li>
+<li><code>takeUntilDestroyed()</code> và cập nhật signal <code>status</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="autosave-note.ts">
+import { Component, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { catchError, concatMap, debounceTime, delay, distinctUntilChanged, map, of, retry, skip, startWith, throwError } from 'rxjs';
+
+function fakeSave(text: string) {
+  const ms = 200 + Math.random() * 800;
+  return Math.random() < 0.2 ? throwError(() => new Error('mạng lỗi')).pipe(delay(ms)) : of(text).pipe(delay(ms));
+}
+
+@Component({
+  selector: 'app-autosave-note',
+  template: `
+    <textarea rows="4" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Nhận xét bài làm"></textarea>
+    <small [class.err]="status().startsWith('Lưu lỗi')">{{ status() }}</small>
+  `,
+  styles: `textarea { width: 100%; } .err { color: #dc2626; }`,
+})
+export class AutosaveNote {
+  protected note = signal('');
+  protected status = signal('Chưa có thay đổi');
+
+  constructor() {
+    toObservable(this.note)
+      .pipe(
+        skip(1),                         // bỏ giá trị đầu (rỗng lúc mở)
+        debounceTime(800),
+        distinctUntilChanged(),
+        concatMap((text) =>
+          fakeSave(text).pipe(
+            retry(2),
+            map(() => `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN')}`),
+            catchError(() => of('Lưu lỗi, sẽ thử lại khi bạn gõ tiếp')),
+            startWith('Đang lưu…'),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((s) => this.status.set(s));
+  }
+}
+</pre>
+<pre lang="ui">
+<textarea rows="3" style="width:100%">Em trình bày sạch, câu 3 cần viết rõ đơn vị.</textarea>
+<small>Đã lưu lúc 14:32:08</small>
+</pre>
+<p><b>Giải thích:</b> <code>startWith('Đang lưu…')</code> phát ngay trạng thái đang lưu trước khi request xong. <code>concatMap</code> bảo đảm nếu lần lưu trước chưa xong mà có nội dung mới, nội dung mới sẽ được lưu <b>sau</b>, không chen ngang. <code>retry(2)</code> thử lại tối đa 2 lần rồi mới tới <code>catchError</code>. Đặt <code>catchError</code> bên trong <code>concatMap</code> nên một lần lỗi không làm chết dòng, lần gõ sau vẫn tự lưu.</p>
+</details>
+</details>

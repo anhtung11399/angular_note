@@ -1,0 +1,302 @@
+<h2>Bật HttpClient</h2>
+<pre lang="ts" file="app.config.ts">
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from './core/auth.interceptor';
+import { errorInterceptor } from './core/error.interceptor';
+
+providers: [
+  provideHttpClient(
+    withFetch(),                                         // dùng fetch() bên dưới (khuyên dùng, bắt buộc tốt cho SSR)
+    withInterceptors([authInterceptor, errorInterceptor]),
+  ),
+]
+</pre>
+<aside class="fe"><p>HttpClient thay cho Axios / fetch trong dự án Vue. Có sẵn: JSON tự động, kiểu dữ liệu, interceptor (giống interceptor của Axios), tiến trình upload, huỷ request, và công cụ giả lập khi test. Điểm khác: nó trả <b>Observable</b>, không phải Promise.</p></aside>
+
+<h2>Gọi API cơ bản</h2>
+<pre lang="ts" file="features/assignments/assignment-api.ts">
+@Injectable({ providedIn: 'root' })
+export class AssignmentApi {
+  private http = inject(HttpClient);
+  private base = '/api/assignments';
+
+  list(classId: number, page = 1) {
+    const params = new HttpParams().set('classId', classId).set('page', page);
+    return this.http.get<Page<Assignment>>(this.base, { params });
+  }
+
+  get(id: number) {
+    return this.http.get<Assignment>(`${this.base}/${id}`);
+  }
+
+  create(data: NewAssignment) {
+    return this.http.post<Assignment>(this.base, data);
+  }
+
+  update(id: number, patch: AssignmentPatch) {
+    return this.http.patch<Assignment>(`${this.base}/${id}`, patch);
+  }
+
+  remove(id: number) {
+    return this.http.delete<void>(`${this.base}/${id}`);
+  }
+}
+</pre>
+<aside class="warn"><p>Observable từ HttpClient là <b>lạnh</b> (cold): gọi <code>api.create(data)</code> mà không <code>subscribe</code> thì <b>không có request nào được gửi</b>. Đây là bẫy số một của người từ Promise sang. Ngược lại, subscribe hai lần là gửi hai request.</p></aside>
+<pre lang="ts">
+// Ba cách "chạy" một Observable từ HttpClient
+this.api.create(data).subscribe({ next: (a) => ..., error: (e) => ... });  // 1. subscribe
+const a = await firstValueFrom(this.api.create(data));                     // 2. đổi sang Promise, dùng async/await
+assignments = toSignal(this.api.list(5), { initialValue: emptyPage });      // 3. đổi sang signal (đọc dữ liệu)
+</pre>
+<p>Với hành động (lưu, xoá, đăng nhập), <code>firstValueFrom</code> + <code>async / await</code> là cách gần với thói quen Vue nhất và hoàn toàn hợp lệ.</p>
+
+<h2>httpResource: tải dữ liệu theo signal</h2>
+<p>Cách hiện đại để <b>đọc</b> dữ liệu (từ v19.2, đang ổn định dần): khai báo URL phụ thuộc signal, Angular tự gọi, tự gọi lại khi signal đổi, tự huỷ request cũ, và cho bạn signal <code>value</code>, <code>isLoading</code>, <code>error</code>.</p>
+<pre lang="ts" file="assignments-page.ts">
+import { httpResource } from '@angular/common/http';
+
+@Component({
+  selector: 'app-assignments-page',
+  template: `
+    <app-pager [(page)]="page" />
+
+    @if (list.isLoading()) {
+      <app-skeleton />
+    } @else if (list.error()) {
+      <p class="err">Không tải được danh sách. <button (click)="list.reload()">Thử lại</button></p>
+    } @else {
+      @for (a of list.value()?.items; track a.id) {
+        <app-assignment-item [assignment]="a" />
+      } @empty {
+        <p>Chưa có bài tập.</p>
+      }
+    }
+  `,
+})
+export class AssignmentsPage {
+  classId = input.required({ transform: numberAttribute }); // từ route
+  page = signal(1);
+
+  list = httpResource<Page<Assignment>>(() => ({
+    url: '/api/assignments',
+    params: { classId: this.classId(), page: this.page() },  // đổi lớp hoặc trang → tự gọi lại
+  }));
+}
+</pre>
+<arch w="820" h="330" caption="classId hoặc page đổi → httpResource huỷ request cũ (nếu chưa xong), gửi request mới, cập nhật các signal trạng thái. Template chỉ việc đọc">
+node a 100 70 sig "classId" "input"
+node b 100 190 sig "page" "signal"
+node r 380 130 httpc "httpResource" "url phụ thuộc signal"
+node api 680 130 api "API" "GET /api/assignments"
+node t 380 260 tpl "Template" "value / isLoading / error"
+edge a r "" route=hvh
+edge b r "" route=hvh
+edge r api "request" both
+edge r t "" route=v c=go
+</arch>
+<table>
+<tr><th>Signal</th><th>Ý nghĩa</th></tr>
+<tr><td><code>value()</code></td><td>dữ liệu (undefined khi chưa có)</td></tr>
+<tr><td><code>hasValue()</code></td><td>đã có dữ liệu chưa</td></tr>
+<tr><td><code>isLoading()</code></td><td>đang tải (cả lần đầu và khi tải lại)</td></tr>
+<tr><td><code>error()</code></td><td>lỗi của lần tải gần nhất</td></tr>
+<tr><td><code>status()</code></td><td><code>'idle' | 'loading' | 'reloading' | 'resolved' | 'error' | 'local'</code></td></tr>
+<tr><td><code>reload()</code>, <code>set()</code>, <code>update()</code></td><td>tải lại; sửa giá trị cục bộ (cập nhật lạc quan)</td></tr>
+</table>
+<p>URL trả về <code>undefined</code> thì không gọi (ví dụ chưa chọn lớp): <code>httpResource(() =&gt; this.classId() ? `/api/classes/${this.classId()}` : undefined)</code>.</p>
+<aside class="fe"><p>Nếu bạn dùng TanStack Query (Vue Query) hay <code>useFetch</code> của VueUse / Nuxt, <code>httpResource</code> là thứ gần nhất. Nó chưa có cache dùng chung giữa các component như TanStack Query; cần cache thì đặt resource trong service, hoặc dùng TanStack Query bản Angular.</p></aside>
+<p>Với hàm trả Promise bất kỳ (không phải HttpClient), dùng <code>resource</code>:</p>
+<pre lang="ts">
+weather = resource({
+  params: () => ({ city: this.city() }),
+  loader: ({ params, abortSignal }) => fetch(`/api/weather?c=${params.city}`, { signal: abortSignal }).then((r) => r.json()),
+});
+</pre>
+
+<h2>Interceptor dạng hàm</h2>
+<p>Interceptor chen vào mọi request và response: gắn token, thêm header, bắt lỗi chung, đo thời gian, hiện thanh loading.</p>
+<pre lang="ts" file="core/auth.interceptor.ts">
+import { HttpInterceptorFn } from '@angular/common/http';
+
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const token = inject(Auth).token();
+  if (!token || !req.url.startsWith('/api')) return next(req);   // chỉ gắn cho API của mình
+  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
+};
+</pre>
+<pre lang="ts" file="core/error.interceptor.ts">
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
+  const toast = inject(Toast);
+  return next(req).pipe(
+    catchError((err: HttpErrorResponse) => {
+      if (err.status === 401) {
+        router.navigate(['/dang-nhap'], { queryParams: { next: router.url } });
+      } else if (err.status === 0) {
+        toast.error('Mất kết nối mạng');
+      } else if (err.status >= 500) {
+        toast.error('Máy chủ đang bận, thử lại sau');
+      }
+      return throwError(() => err);   // vẫn ném lỗi tiếp cho nơi gọi xử lý riêng
+    }),
+  );
+};
+</pre>
+<arch w="820" h="200" caption="Request đi qua interceptor theo thứ tự khai báo, response đi ngược lại. Request là bất biến: muốn sửa phải clone()">
+node c 90 90 cmp "Component" "api.list()"
+node i1 290 90 interceptor "authInterceptor" "+ Authorization"
+node i2 490 90 interceptor "errorInterceptor" "bắt 401, 5xx"
+node b 700 90 api "Backend" ""
+edge c i1 "" both
+edge i1 i2 "" both
+edge i2 b "" both
+</arch>
+<aside class="warn"><p><code>HttpRequest</code> là bất biến: <code>req.headers.set(...)</code> trả object mới và không có tác dụng nếu bạn không dùng nó. Luôn dùng <code>req.clone({...})</code>.</p></aside>
+
+<h2>Xử lý lỗi theo từng chỗ</h2>
+<pre lang="ts">
+async save() {
+  this.saving.set(true);
+  try {
+    const a = await firstValueFrom(this.api.create(this.form.getRawValue()));
+    this.toast.success('Đã giao bài');
+    this.router.navigate(['/lop', a.classId, 'bai-tap']);
+  } catch (e) {
+    const err = e as HttpErrorResponse;
+    if (err.status === 422) {
+      // lỗi validate từ server: gắn vào ô tương ứng
+      const fields = err.error?.error?.fields ?? {};
+      for (const [k, msg] of Object.entries(fields)) this.form.get(k)?.setErrors({ server: msg });
+    } else if (err.status === 402) {
+      this.toast.error(err.error?.error?.message ?? 'Lớp đã bị khoá');
+    }
+  } finally {
+    this.saving.set(false);
+  }
+}
+</pre>
+<p><code>HttpErrorResponse.error</code> là body JSON server trả về, <code>status</code> là mã HTTP (0 khi mất mạng hoặc bị CORS chặn).</p>
+
+<h2>Upload file có tiến trình</h2>
+<pre lang="ts">
+upload(file: File) {
+  const body = new FormData();
+  body.append('file', file);
+  return this.http.post<{ key: string }>('/api/uploads', body, { reportProgress: true, observe: 'events' }).pipe(
+    map((ev) => {
+      if (ev.type === HttpEventType.UploadProgress) return { progress: Math.round((100 * ev.loaded) / (ev.total ?? 1)) };
+      if (ev.type === HttpEventType.Response) return { done: ev.body!.key };
+      return null;
+    }),
+    filter((x) => x !== null),
+  );
+}
+</pre>
+<p>Không đặt header <code>Content-Type</code> khi gửi <code>FormData</code>: trình duyệt tự đặt kèm boundary.</p>
+
+<h2>Proxy khi phát triển</h2>
+<pre lang="json" file="proxy.conf.json">
+{
+  "/api": {
+    "target": "http://localhost:8788",
+    "secure": false,
+    "changeOrigin": true
+  }
+}
+</pre>
+<pre lang="json" file="angular.json (trích)">
+"serve": {
+  "options": { "proxyConfig": "proxy.conf.json" }
+}
+</pre>
+<p>Ứng dụng gọi <code>/api/...</code> cùng origin, dev server chuyển tiếp tới backend: không cần CORS khi phát triển, và khi chạy thật đặt cả frontend và API sau cùng tên miền.</p>
+
+<quiz q="<code>save() { this.api.remove(id); this.toast.success('Đã xoá'); }</code>. Bài có bị xoá không?">
+- Có
++ Không. Observable của HttpClient không gửi request khi chưa ai subscribe
+- Có, nhưng không biết khi nào xong
+? Phải subscribe hoặc firstValueFrom. Và nên hiện thông báo sau khi request thành công, không phải ngay lập tức.
+</quiz>
+<quiz q="Trang danh sách bài tập phụ thuộc <code>classId</code> (input từ route) và <code>page</code>. Cách hiện đại để tải?">
+- Gọi API trong ngOnInit và lưu vào biến
++ httpResource(() => ({ url, params: { classId: this.classId(), page: this.page() } }))
+- effect gọi http.get().subscribe() và set signal
+? httpResource tự gọi lại khi signal đổi, huỷ request cũ, cho sẵn trạng thái loading / error. Effect + subscribe dễ rò rỉ và sai thứ tự response.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Danh sách học sinh có tìm kiếm, phân trang và xoá</summary>
+<p>Dùng API giả <code>https://jsonplaceholder.typicode.com/users</code> (hoặc API của bạn). Viết trang hiển thị danh sách, có ô tìm (lọc phía server bằng query <code>?q=</code> nếu API hỗ trợ, ở đây lọc phía client), trạng thái đang tải và lỗi có nút thử lại, nút xoá từng dòng (gọi DELETE, xoá khỏi danh sách ngay khi thành công). Thêm interceptor in ra console thời gian mỗi request.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>users = httpResource&lt;User[]&gt;(() =&gt; 'https://jsonplaceholder.typicode.com/users')</code>.</li>
+<li><code>shown = computed(() =&gt; (this.users.value() ?? []).filter(...))</code> theo <code>query()</code>.</li>
+<li>Xoá: <code>await firstValueFrom(http.delete(url))</code> rồi <code>this.users.update(list =&gt; list?.filter(u =&gt; u.id !== id))</code>: sửa giá trị cục bộ, không tải lại.</li>
+<li>Interceptor: ghi <code>performance.now()</code> trước, dùng <code>finalize(() =&gt; console.log(...))</code> sau.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="core/timing.interceptor.ts">
+import { HttpInterceptorFn } from '@angular/common/http';
+import { finalize } from 'rxjs';
+
+export const timingInterceptor: HttpInterceptorFn = (req, next) => {
+  const t0 = performance.now();
+  return next(req).pipe(finalize(() => console.log(`${req.method} ${req.urlWithParams} ${Math.round(performance.now() - t0)}ms`)));
+};
+</pre>
+<pre lang="ts" file="users-page.ts">
+import { Component, computed, inject, signal } from '@angular/core';
+import { HttpClient, httpResource } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
+interface User { id: number; name: string; email: string }
+const URL = 'https://jsonplaceholder.typicode.com/users';
+
+@Component({
+  selector: 'app-users-page',
+  template: `
+    <input placeholder="Tìm theo tên" [value]="query()" (input)="query.set($any($event.target).value)" />
+    @if (users.isLoading()) {
+      <p>Đang tải…</p>
+    } @else if (users.error()) {
+      <p>Không tải được. <button (click)="users.reload()">Thử lại</button></p>
+    } @else {
+      <ul>
+        @for (u of shown(); track u.id) {
+          <li>{{ u.name }} <small>{{ u.email }}</small>
+            <button (click)="remove(u.id)" [disabled]="removing() === u.id">Xoá</button>
+          </li>
+        } @empty { <li>Không có ai khớp "{{ query() }}"</li> }
+      </ul>
+    }
+  `,
+})
+export class UsersPage {
+  private http = inject(HttpClient);
+  protected query = signal('');
+  protected removing = signal<number | null>(null);
+  protected users = httpResource<User[]>(() => URL);
+  protected shown = computed(() => {
+    const q = this.query().toLowerCase();
+    return (this.users.value() ?? []).filter((u) => u.name.toLowerCase().includes(q));
+  });
+
+  protected async remove(id: number) {
+    this.removing.set(id);
+    try {
+      await firstValueFrom(this.http.delete(`${URL}/${id}`));
+      this.users.update((list) => list?.filter((u) => u.id !== id));
+    } finally {
+      this.removing.set(null);
+    }
+  }
+}
+</pre>
+<pre lang="out" file="Console của trình duyệt" sim="1">
+GET https://jsonplaceholder.typicode.com/users 184ms
+DELETE https://jsonplaceholder.typicode.com/users/3 121ms
+</pre>
+<p><b>Giải thích:</b> sau khi xoá, <code>users.update(...)</code> sửa dữ liệu cục bộ của resource (trạng thái chuyển thành <code>'local'</code>) nên danh sách cập nhật ngay mà không gọi lại API. jsonplaceholder không xoá thật trên server, nhưng trả 200 nên luồng giống API thật. <code>removing</code> tắt nút của dòng đang xoá để người dùng không bấm hai lần.</p>
+</details>
+</details>
