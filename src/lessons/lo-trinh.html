@@ -1,0 +1,214 @@
+<h2>Vue và Angular: hai triết lý</h2>
+<p>Bạn đã làm Vue 4 năm. Bạn biết component, reactivity, router, store, build tool. Tin tốt: <b>khoảng 70% kiến thức đó dùng lại được</b>. Angular không khó hơn Vue ở khái niệm, nó khác ở <b>cách tổ chức</b> và <b>mức độ "đóng khung"</b>.</p>
+<table>
+<tr><th></th><th>Vue</th><th>Angular</th></tr>
+<tr><td>Định vị</td><td>"progressive framework": lõi nhỏ, tự chọn thêm router, store, form, HTTP</td><td>"platform": có sẵn router, forms, HTTP, i18n, test, SSR, animation, CLI, cùng một đội phát triển</td></tr>
+<tr><td>Ngôn ngữ</td><td>JavaScript hoặc TypeScript</td><td>TypeScript bắt buộc, chế độ strict mặc định</td></tr>
+<tr><td>Component</td><td>Single File Component <code>.vue</code></td><td>class TypeScript + template (cùng file hoặc file riêng)</td></tr>
+<tr><td>Reactivity</td><td>Proxy: <code>ref</code>, <code>reactive</code>, <code>computed</code></td><td>Signals: <code>signal</code>, <code>computed</code>, <code>effect</code> (giống Vue tới bất ngờ)</td></tr>
+<tr><td>Chia sẻ logic</td><td>composable (<code>useXxx()</code>)</td><td>service + dependency injection</td></tr>
+<tr><td>Bất đồng bộ</td><td>Promise, async / await</td><td>Promise và <b>RxJS Observable</b> (HttpClient, router, forms đều trả Observable)</td></tr>
+<tr><td>Quy ước</td><td>linh hoạt, mỗi dự án một kiểu</td><td>chặt: style guide chính thức, CLI sinh code theo một khuôn</td></tr>
+<tr><td>Hợp với</td><td>dự án mọi cỡ, đội nhỏ, cần nhanh</td><td>ứng dụng doanh nghiệp lớn, nhiều đội, sống nhiều năm</td></tr>
+</table>
+<aside class="fe"><p>Hãy nghĩ Angular giống như Vue 3 + Vue Router + Pinia + VeeValidate + Axios + Vue I18n + Vitest + Nuxt, nhưng tất cả do một đội làm, cùng phong cách, cùng lịch phát hành, và CLI biết cách nâng cấp tất cả cùng lúc.</p></aside>
+
+<h2>Cùng một component, hai cách viết</h2>
+<p>Một bộ đếm có nút tăng, hiển thị số và "gấp đôi". Đây là thứ bạn viết mỗi ngày ở Vue:</p>
+<pre lang="html" file="Counter.vue">
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+
+const props = defineProps<{ start: number }>()
+const emit = defineEmits<{ changed: [value: number] }>()
+
+const count = ref(props.start)
+const double = computed(() => count.value * 2)
+
+function inc() {
+  count.value++
+  emit('changed', count.value)
+}
+</script>
+
+<template>
+  <button @click="inc">Tăng</button>
+  <p v-if="count > 0">{{ count }} × 2 = {{ double }}</p>
+</template>
+
+<style scoped>
+button { font-weight: 600; }
+</style>
+</pre>
+<p>Và đây là Angular hiện đại:</p>
+<pre lang="ts" file="counter.ts">
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
+
+@Component({
+  selector: 'app-counter',
+  template: `
+    <button (click)="inc()">Tăng</button>
+    @if (count() > 0) {
+      <p>{{ count() }} × 2 = {{ double() }}</p>
+    }
+  `,
+  styles: `button { font-weight: 600; }`,
+})
+export class Counter {
+  start = input.required<number>();       // defineProps
+  changed = output<number>();             // defineEmits
+
+  count = linkedSignal(() => this.start()); // ref, khởi tạo từ input
+  double = computed(() => this.count() * 2);
+
+  inc() {
+    this.count.update((c) => c + 1);
+    this.changed.emit(this.count());
+  }
+}
+</pre>
+<pre lang="ui" url="localhost:4200">
+<button>Tăng</button>
+<p>3 × 2 = 6</p>
+</pre>
+<p>Nhìn kỹ, gần như mọi dòng đều có cặp tương ứng:</p>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Khác biệt</th></tr>
+<tr><td><code>defineProps</code></td><td><code>input()</code></td><td>input là một signal, đọc bằng <code>start()</code></td></tr>
+<tr><td><code>defineEmits</code></td><td><code>output()</code></td><td>gọi <code>.emit(giá trị)</code></td></tr>
+<tr><td><code>ref(0)</code>, đọc <code>.value</code></td><td><code>signal(0)</code>, đọc bằng cách <b>gọi hàm</b> <code>count()</code></td><td>ghi bằng <code>.set()</code> / <code>.update()</code>, không gán trực tiếp</td></tr>
+<tr><td><code>computed</code></td><td><code>computed</code></td><td>giống hệt</td></tr>
+<tr><td><code>@click="inc"</code></td><td><code>(click)="inc()"</code></td><td>ngoặc tròn cho event, phải có <code>()</code></td></tr>
+<tr><td><code>v-if</code></td><td><code>@if (...) { }</code></td><td>khối riêng, không phải thuộc tính</td></tr>
+<tr><td><code>&lt;style scoped&gt;</code></td><td><code>styles</code></td><td>mặc định đã "scoped" (view encapsulation)</td></tr>
+</table>
+<aside class="warn"><p>Lỗi số một của dân Vue khi sang Angular: quên dấu <code>()</code> khi đọc signal trong template. Viết <code>{{ count }}</code> thì Angular in ra cả hàm signal (kiểu <code>[Signal: 3]</code>) thay vì số 3. Trong Vue, template tự "unwrap" ref, Angular thì không.</p></aside>
+
+<h2>Bức tranh một ứng dụng Angular</h2>
+<arch w="840" h="380" caption="Component lo giao diện, service lo logic và dữ liệu, được tiêm (inject) vào component. Router chọn component theo URL, HttpClient gọi API, interceptor chen vào mọi request">
+group 20 20 800 340 plain "Ứng dụng Angular (trình duyệt)"
+node rt 110 110 router "Router" "URL → component"
+node pg 300 110 page "ClassListPage" "component trang"
+node c1 300 260 cmp "ClassCard" "component con"
+node sv 520 110 ngsvc "ClassStore" "service + signals"
+node hc 700 110 httpc "HttpClient" ""
+node it 700 260 interceptor "Interceptor" "gắn token, bắt lỗi"
+node api 520 260 api "Backend API" "REST / JSON"
+edge rt pg ""
+edge pg c1 "input()" route=v
+edge sv pg "inject()" c=go
+edge sv hc ""
+edge hc it route=v
+edge it api "request" c=go
+</arch>
+<p>Ba thứ bạn sẽ thấy ở mọi dự án:</p>
+<ul>
+<li><b>Component</b>: giao diện. Nhận dữ liệu qua <code>input()</code>, báo sự kiện qua <code>output()</code>, giữ state cục bộ bằng signal.</li>
+<li><b>Service</b>: logic và dữ liệu dùng chung. Một class bình thường có <code>@Injectable</code>, Angular tạo và "tiêm" nó vào nơi cần qua <code>inject()</code>. Đây là chỗ bạn đặt những gì ở Vue bạn để trong composable hay store Pinia.</li>
+<li><b>Dependency injection (DI)</b>: cơ chế Angular tự tạo đối tượng và đưa cho nơi cần. Bài {{n:di-service}} đi sâu, đây là khái niệm quan trọng nhất mà Vue không có tương đương đầy đủ (gần nhất là <code>provide / inject</code>).</li>
+</ul>
+
+<h2>Angular cũ và Angular mới</h2>
+<p>Angular thay đổi rất nhiều từ bản 14 đến bản 20. Trên mạng (và trong dự án công ty) bạn sẽ gặp cả hai kiểu. Lộ trình này dạy kiểu mới, nhưng bạn phải đọc được kiểu cũ.</p>
+<table>
+<tr><th>Chủ đề</th><th>Angular cũ (trước ~v16)</th><th>Angular hiện đại</th></tr>
+<tr><td>Tổ chức</td><td><code>NgModule</code> khai báo mọi component</td><td><b>standalone</b> component tự khai báo <code>imports</code></td></tr>
+<tr><td>Reactivity</td><td>thuộc tính class thường + Zone.js tự phát hiện thay đổi</td><td><b>signals</b>, ứng dụng <b>zoneless</b></td></tr>
+<tr><td>Input / output</td><td><code>@Input()</code>, <code>@Output() x = new EventEmitter()</code></td><td><code>input()</code>, <code>output()</code>, <code>model()</code></td></tr>
+<tr><td>Rẽ nhánh, lặp</td><td><code>*ngIf</code>, <code>*ngFor</code>, <code>[ngSwitch]</code></td><td><code>@if</code>, <code>@for</code>, <code>@switch</code></td></tr>
+<tr><td>Inject</td><td>tham số constructor <code>constructor(private http: HttpClient)</code></td><td><code>private http = inject(HttpClient)</code></td></tr>
+<tr><td>Guard, interceptor</td><td>class implements <code>CanActivate</code>, <code>HttpInterceptor</code></td><td>hàm thường</td></tr>
+<tr><td>Tải dữ liệu</td><td>subscribe Observable, lưu vào biến</td><td><code>httpResource</code>, <code>toSignal</code></td></tr>
+<tr><td>Build</td><td>webpack</td><td>esbuild + Vite (dev server)</td></tr>
+<tr><td>Test</td><td>Karma + Jasmine</td><td>Vitest (mặc định cho dự án mới từ v21), Jasmine vẫn dùng được</td></tr>
+</table>
+<aside class="real"><p>Ở các công ty Việt Nam, nhiều dự án Angular viết từ 2018 đến 2022 vẫn dùng NgModule và Zone.js, đang nâng cấp dần. Angular giữ tương thích rất tốt: code cũ và code mới chạy chung trong một ứng dụng. Nên bạn thường sẽ viết component mới theo kiểu mới, đặt cạnh component cũ.</p></aside>
+
+<h2>Những thứ sẽ làm bạn "khó chịu" lúc đầu</h2>
+<ol>
+<li><b>Nhiều chữ hơn.</b> Decorator, class, kiểu dữ liệu, import. Một component Angular thường dài hơn Vue 20 đến 30%. Đổi lại, đọc code của người khác rất dễ vì ai cũng viết giống nhau.</li>
+<li><b>RxJS.</b> HttpClient trả Observable chứ không phải Promise. Bài {{n:rxjs}} dạy đúng phần cần dùng. Với signals và <code>httpResource</code>, bạn ngày càng ít phải viết RxJS.</li>
+<li><b>Dependency injection.</b> Lúc đầu thấy vòng vo ("sao không import rồi gọi luôn?"). Sau vài tuần, bạn sẽ thấy nó giúp test và thay thế cài đặt dễ như thế nào.</li>
+<li><b>Template nghiêm hơn.</b> Template được biên dịch và kiểm tra kiểu: gõ sai tên thuộc tính là lỗi biên dịch, không phải lỗi lúc chạy.</li>
+</ol>
+
+<h2>Lộ trình này dạy gì</h2>
+<fig type="stack" caption="Sáu chặng, mỗi chặng xây trên chặng trước">
+Chặng 0 · Khởi động :: bạn đang ở đây
+[go] Chặng 1 · Nền tảng :: component, template, control flow, signals, input / output, directive, pipe, vòng đời
+[q] Chặng 2 · Kiến trúc :: DI, router, forms, HTTP, RxJS, state
+[ok] Chặng 3 · Chất lượng :: change detection, hiệu năng, test, style và UI
+[warn] Chặng 4 · Production :: SSR, i18n, PWA, bảo mật, deploy
+[db] Chặng 5 · Dự án cuối :: ứng dụng "Sổ bài tập" hoàn chỉnh
+</fig>
+<p>Mỗi bài có: giải thích kèm hộp <b>So với Vue</b>, sơ đồ, code chạy được, khung <b>kết quả hiển thị</b> (minh hoạ giao diện), hộp <b>Ngoài thực tế</b> và <b>Chuẩn production</b>, câu hỏi nhanh và bài tập có lời giải.</p>
+
+<quiz q="Trong template Angular, signal <code>name = signal('Lan')</code> được hiển thị đúng bằng cách nào?">
+- <code>{{ name }}</code>
++ <code>{{ name() }}</code>
+- <code>{{ name.value }}</code>
+? Signal là một hàm, đọc giá trị bằng cách gọi nó. Template Angular không tự unwrap như ref của Vue.
+</quiz>
+<quiz q="Ở Vue bạn đặt logic gọi API dùng chung trong composable <code>useClasses()</code>. Ở Angular, chỗ tương ứng thường là?">
+- Một component cha
++ Một service <code>@Injectable</code>, inject vào component bằng <code>inject()</code>
+- Một directive
+? Service là nơi chứa logic và state dùng chung. Dependency injection tạo và chia sẻ nó.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Dịch một component Vue sang Angular (trên giấy)</summary>
+<p>Chưa cần cài gì. Dịch component Vue sau sang Angular dựa vào bảng đối chiếu ở trên:</p>
+<pre lang="html" file="Greeting.vue">
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+const props = defineProps<{ firstName: string }>()
+const shout = ref(false)
+const text = computed(() => `Xin chào, ${props.firstName}` + (shout.value ? '!!!' : '.'))
+</script>
+
+<template>
+  <label><input type="checkbox" v-model="shout" /> Hét lên</label>
+  <h2>{{ text }}</h2>
+</template>
+</pre>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>defineProps</code> → <code>firstName = input.required&lt;string&gt;()</code>.</li>
+<li><code>ref(false)</code> → <code>shout = signal(false)</code>.</li>
+<li>Trong <code>computed</code>, đọc input và signal bằng cách gọi hàm: <code>this.firstName()</code>, <code>this.shout()</code>.</li>
+<li><code>v-model</code> trên checkbox: chưa học forms, dùng <code>[checked]="shout()"</code> và <code>(change)="shout.set($any($event.target).checked)"</code>. Bài {{n:template}} sẽ chỉ cách gọn hơn.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="greeting.ts">
+import { Component, computed, input, signal } from '@angular/core';
+
+@Component({
+  selector: 'app-greeting',
+  template: `
+    <label>
+      <input type="checkbox" [checked]="shout()" (change)="toggle($event)" /> Hét lên
+    </label>
+    <h2>{{ text() }}</h2>
+  `,
+})
+export class Greeting {
+  firstName = input.required<string>();
+  shout = signal(false);
+  text = computed(() => `Xin chào, ${this.firstName()}` + (this.shout() ? '!!!' : '.'));
+
+  toggle(e: Event) {
+    this.shout.set((e.target as HTMLInputElement).checked);
+  }
+}
+</pre>
+<pre lang="html" file="app.html (nơi dùng)">
+<app-greeting firstName="Lan" />
+</pre>
+<pre lang="ui">
+<label><input type="checkbox" checked /> Hét lên</label>
+<h2>Xin chào, Lan!!!</h2>
+</pre>
+<p><b>Giải thích:</b> <code>firstName="Lan"</code> truyền chuỗi tĩnh. Nếu muốn truyền biến thì viết <code>[firstName]="ten()"</code> (ngoặc vuông = binding, giống <code>:firstName</code> của Vue). Ép kiểu <code>e.target as HTMLInputElement</code> là cách TypeScript bắt buộc: Angular kiểm tra kiểu cả trong template.</p>
+</details>
+</details>

@@ -1,0 +1,307 @@
+<h2>Signals: reactivity bạn đã biết, dưới tên khác</h2>
+<p>Tin vui cho dân Vue: signals của Angular gần như là <code>ref</code> + <code>computed</code> + <code>watchEffect</code>. Cùng ý tưởng (theo dõi phụ thuộc tự động), cùng cách nghĩ. Khác chủ yếu ở cú pháp đọc / ghi.</p>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Ghi chú</th></tr>
+<tr><td><code>const n = ref(0)</code></td><td><code>n = signal(0)</code></td><td></td></tr>
+<tr><td><code>n.value</code></td><td><code>n()</code></td><td>đọc bằng cách gọi hàm, cả trong code và template</td></tr>
+<tr><td><code>n.value = 5</code></td><td><code>n.set(5)</code></td><td></td></tr>
+<tr><td><code>n.value++</code></td><td><code>n.update(v =&gt; v + 1)</code></td><td></td></tr>
+<tr><td><code>computed(() =&gt; ...)</code></td><td><code>computed(() =&gt; ...)</code></td><td>giống hệt, chỉ đọc</td></tr>
+<tr><td><code>watchEffect(() =&gt; ...)</code></td><td><code>effect(() =&gt; ...)</code></td><td>chạy lại khi phụ thuộc đổi</td></tr>
+<tr><td><code>watch(src, (v, old) =&gt; ...)</code></td><td><code>effect</code> + <code>untracked</code>, hoặc <code>toObservable</code> + RxJS</td><td>không có <code>watch</code> có giá trị cũ dựng sẵn</td></tr>
+<tr><td><code>reactive({...})</code></td><td>không có: signal chứa object, cập nhật bằng object mới</td><td>quan trọng, xem phần dưới</td></tr>
+<tr><td><code>shallowRef</code></td><td>signal (signal luôn "shallow")</td><td></td></tr>
+<tr><td><code>readonly(ref)</code></td><td><code>n.asReadonly()</code></td><td></td></tr>
+</table>
+
+<h2>signal</h2>
+<pre lang="ts" file="counter.ts">
+import { Component, signal } from '@angular/core';
+
+@Component({
+  selector: 'app-counter',
+  template: `
+    <p>Đã chấm: {{ graded() }}</p>
+    <button (click)="graded.update(n => n + 1)">+1</button>
+    <button (click)="graded.set(0)">Đặt lại</button>
+  `,
+})
+export class Counter {
+  graded = signal(0);              // WritableSignal<number>
+  name = signal<string | null>(null); // khai báo kiểu khi giá trị đầu chưa đủ để suy ra
+}
+</pre>
+<p>Mỗi lần <code>set</code> / <code>update</code> với giá trị khác, mọi nơi đang đọc signal đó (template, computed, effect) được báo để cập nhật.</p>
+
+<h3>Signal chứa object và mảng: luôn thay mới</h3>
+<p>Đây là khác biệt lớn nhất với <code>reactive</code> / <code>ref</code> của Vue. Vue dùng Proxy nên <code>list.value.push(x)</code> vẫn kích hoạt cập nhật. Signal so sánh bằng <code>Object.is</code>: nếu bạn sửa trực tiếp object bên trong, tham chiếu không đổi, <b>không ai được báo</b>.</p>
+<pre lang="ts" mark="bad">
+students = signal<Student[]>([]);
+
+add(s: Student) {
+  this.students().push(s);          // ✘ sửa mảng tại chỗ: giao diện KHÔNG cập nhật
+}
+rename(id: number, name: string) {
+  this.students().find((x) => x.id === id)!.name = name; // ✘ tương tự
+}
+</pre>
+<pre lang="ts" mark="good">
+add(s: Student) {
+  this.students.update((list) => [...list, s]);                       // ✓ mảng mới
+}
+rename(id: number, name: string) {
+  this.students.update((list) => list.map((x) => (x.id === id ? { ...x, name } : x))); // ✓ object mới
+}
+remove(id: number) {
+  this.students.update((list) => list.filter((x) => x.id !== id));
+}
+</pre>
+<aside class="fe"><p>Nếu bạn từng dùng Pinia với <code>$patch</code> hay Redux / React, cách "luôn tạo object mới" (immutable) này quen thuộc. Mẹo: khai báo <code>signal&lt;readonly Student[]&gt;</code> để TypeScript báo lỗi ngay khi bạn lỡ gọi <code>.push</code>.</p></aside>
+
+<h2>computed</h2>
+<pre lang="ts">
+students = signal<Student[]>([...]);
+query = signal('');
+
+filtered = computed(() => {
+  const q = this.query().toLowerCase();
+  return this.students().filter((s) => s.name.toLowerCase().includes(q));
+});
+count = computed(() => this.filtered().length);
+average = computed(() => {
+  const g = this.filtered().filter((s) => s.score != null);
+  return g.length ? g.reduce((t, s) => t + s.score!, 0) / g.length : null;
+});
+</pre>
+<ul>
+<li><b>Lười</b>: chỉ tính khi có ai đọc.</li>
+<li><b>Ghi nhớ</b>: tính lại chỉ khi một signal nó đọc thay đổi.</li>
+<li><b>Phụ thuộc động</b>: chỉ theo dõi những signal thực sự được đọc trong lần chạy gần nhất. Ví dụ <code>computed(() =&gt; this.showAll() ? this.all() : this.mine())</code>: khi <code>showAll()</code> là false, thay đổi của <code>all</code> không làm nó tính lại.</li>
+</ul>
+<arch w="820" h="230" caption="Đồ thị phụ thuộc: query hoặc students đổi thì filtered tính lại, kéo theo count và average. Template chỉ đọc count và average">
+node q 110 70 sig "query" "signal"
+node st 110 180 sig "students" "signal"
+node f 360 125 comp "filtered" "computed"
+node c 600 70 comp "count" "computed"
+node a 600 180 comp "average" "computed"
+node t 760 125 tpl "Template" ""
+edge q f "" route=hvh
+edge st f "" route=hvh
+edge f c "" route=hvh
+edge f a "" route=hvh
+edge c t "" route=hvh
+edge a t "" route=hvh
+</arch>
+<aside class="warn"><p>Không gọi <code>set</code> / <code>update</code> bên trong <code>computed</code>. computed phải là hàm thuần (chỉ đọc và tính). Angular báo lỗi nếu bạn ghi signal trong computed.</p></aside>
+
+<h2>effect</h2>
+<p><code>effect</code> chạy một hàm, ghi nhớ các signal nó đọc, và chạy lại khi chúng đổi. Dùng cho <b>tác dụng phụ ra ngoài thế giới signal</b>: ghi localStorage, ghi log, đồng bộ với thư viện không phải Angular (bản đồ, biểu đồ), cập nhật tiêu đề trang.</p>
+<pre lang="ts">
+import { Component, effect, signal } from '@angular/core';
+
+export class Settings {
+  theme = signal<'light' | 'dark'>((localStorage.getItem('theme') as 'light' | 'dark') ?? 'light');
+
+  constructor() {
+    // effect phải được tạo trong "injection context": constructor, khởi tạo thuộc tính
+    effect(() => {
+      const t = this.theme();                     // đọc → được theo dõi
+      localStorage.setItem('theme', t);
+      document.documentElement.dataset['theme'] = t;
+    });
+  }
+}
+</pre>
+<p>Effect chạy ít nhất một lần, chạy <b>bất đồng bộ</b> (trong lúc Angular cập nhật giao diện, không ngay khi bạn gọi <code>set</code>), và tự huỷ khi component bị huỷ.</p>
+
+<h3>Khi nào KHÔNG dùng effect</h3>
+<p>Đây là sai lầm phổ biến nhất (và cũng là lỗi kinh điển với <code>watch</code> trong Vue): dùng effect để <b>tính state từ state</b>.</p>
+<pre lang="ts" mark="bad">
+total = signal(0);
+constructor() {
+  effect(() => {
+    this.total.set(this.items().reduce((t, x) => t + x.price, 0)); // ✘ dùng effect để đồng bộ hai signal
+  });
+}
+</pre>
+<pre lang="ts" mark="good">
+total = computed(() => this.items().reduce((t, x) => t + x.price, 0)); // ✓
+</pre>
+<p>Effect ghi signal gây ra một vòng cập nhật thừa, dễ tạo vòng lặp, và giá trị bị lệch một nhịp. Quy tắc: <b>giá trị suy ra từ giá trị khác → computed. Hành động ra bên ngoài → effect</b>. Cần một state vừa suy ra vừa sửa được → <code>linkedSignal</code> (phần dưới).</p>
+<aside class="real"><p>Ở dự án hotoedu (ứng dụng Angular thật), một effect đọc và ghi cùng signal đã gây vòng lặp gọi API liên tục, đẩy số lượt đọc database lên hơn 100 triệu dòng mỗi ngày trước khi bị phát hiện. Mỗi effect có gọi API hoặc ghi signal phải được xem xét kỹ khi review code.</p></aside>
+
+<h3>untracked: đọc mà không theo dõi</h3>
+<pre lang="ts">
+effect(() => {
+  const id = this.classId();                    // theo dõi: đổi lớp → chạy lại
+  const user = untracked(() => this.user());    // chỉ đọc, KHÔNG chạy lại khi user đổi
+  this.analytics.track('open_class', { id, userId: user.id });
+});
+</pre>
+<p>Bất kỳ hàm nào được gọi trong effect mà bên trong có đọc signal cũng sẽ bị theo dõi. Bọc lời gọi đó bằng <code>untracked(() =&gt; ...)</code> nếu bạn chỉ muốn effect phụ thuộc vào vài signal đầu.</p>
+
+<h3>Dọn dẹp trong effect</h3>
+<pre lang="ts">
+effect((onCleanup) => {
+  const id = setInterval(() => this.tick.update((t) => t + 1), this.periodMs());
+  onCleanup(() => clearInterval(id)); // chạy trước lần chạy kế tiếp và khi component bị huỷ
+});
+</pre>
+
+<h2>linkedSignal: state suy ra nhưng vẫn sửa được</h2>
+<p>Bài toán: danh sách lớp đến từ input; component cho chọn một lớp; khi danh sách đổi thì lựa chọn phải về lớp đầu tiên (hoặc giữ lựa chọn nếu lớp đó còn). Với Vue bạn hay viết <code>ref</code> + <code>watch</code>. Angular có <code>linkedSignal</code>:</p>
+<pre lang="ts">
+classes = input.required<Classroom[]>();
+
+// Mặc định = lớp đầu tiên mỗi khi danh sách đổi, nhưng người dùng vẫn set() được
+selected = linkedSignal(() => this.classes()[0] ?? null);
+
+// Dạng đầy đủ: giữ lựa chọn cũ nếu còn trong danh sách mới
+selectedKeep = linkedSignal<Classroom[], Classroom | null>({
+  source: this.classes,
+  computation: (list, previous) =>
+    list.find((c) => c.id === previous?.value?.id) ?? list[0] ?? null,
+});
+
+pick(c: Classroom) {
+  this.selected.set(c);
+}
+</pre>
+<p>Một ví dụ thường gặp khác: <code>count = linkedSignal(() =&gt; this.start())</code>, component có giá trị ban đầu từ input nhưng tự thay đổi được sau đó (bài {{n:lo-trinh}}).</p>
+
+<h2>Đọc signal ở đâu là "được theo dõi"</h2>
+<table>
+<tr><th>Nơi đọc</th><th>Được theo dõi?</th></tr>
+<tr><td>Template</td><td>Có: giao diện cập nhật khi signal đổi</td></tr>
+<tr><td>Trong <code>computed</code>, <code>effect</code>, <code>linkedSignal</code></td><td>Có</td></tr>
+<tr><td>Trong method được gọi từ template</td><td>Có (vì template gọi nó)</td></tr>
+<tr><td>Trong event handler (<code>(click)="..."</code>), <code>setTimeout</code>, <code>subscribe</code></td><td>Không: chỉ đọc giá trị lúc đó</td></tr>
+<tr><td>Trong <code>untracked(() =&gt; ...)</code></td><td>Không</td></tr>
+</table>
+
+<h2>Signal và zoneless</h2>
+<p>Ở Angular cũ, giao diện cập nhật nhờ Zone.js "đoán" khi nào có thể có thay đổi (sau mỗi click, mỗi request). Với signals, Angular <b>biết chính xác</b> component nào đọc signal nào, nên ứng dụng chạy được không cần Zone.js (zoneless), nhẹ hơn và nhanh hơn. Bài {{n:change-detection}} đi sâu. Hệ quả thực tế: trong ứng dụng zoneless, <b>thuộc tính thường của class không tự cập nhật giao diện</b> nữa:</p>
+<pre lang="ts" mark="bad">
+// ứng dụng zoneless
+count = 0;
+ngOnInit() { setTimeout(() => this.count = 5, 1000); } // ✘ giao diện vẫn hiện 0
+</pre>
+<pre lang="ts" mark="good">
+count = signal(0);
+ngOnInit() { setTimeout(() => this.count.set(5), 1000); } // ✓ giao diện hiện 5
+</pre>
+<aside class="tip"><p>Quy tắc đơn giản cho code mới: <b>mọi state hiển thị trên giao diện đều là signal</b> (hoặc computed, input, model). Thuộc tính thường chỉ dùng cho hằng số và thứ không hiển thị.</p></aside>
+
+<h2>So sánh khi signal "bằng nhau"</h2>
+<pre lang="ts">
+filter = signal({ q: '', page: 1 }, { equal: (a, b) => a.q === b.q && a.page === b.page });
+filter.set({ q: '', page: 1 }); // object mới nhưng "bằng" → không ai được báo
+</pre>
+<p>Mặc định là <code>Object.is</code>. Tuỳ chọn <code>equal</code> hữu ích khi signal chứa object được tạo lại thường xuyên.</p>
+
+<quiz q="<code>items = signal&lt;Item[]&gt;([])</code>. Gọi <code>this.items().push(x)</code>. Giao diện có cập nhật không?">
+- Có, giống Vue
++ Không. Mảng bị sửa tại chỗ, tham chiếu không đổi nên signal không báo. Phải dùng items.update(l => [...l, x])
+- Có nhưng chậm một nhịp
+? Signal không dùng Proxy. Chỉ set / update với giá trị mới mới kích hoạt cập nhật.
+</quiz>
+<quiz q="Cần <code>fullName</code> luôn bằng <code>first + ' ' + last</code>. Cách đúng?">
++ <code>fullName = computed(() =&gt; this.first() + ' ' + this.last())</code>
+- signal fullName + effect gọi fullName.set(...)
+- method getFullName() gọi trong ngOnChanges
+? Giá trị suy ra từ giá trị khác luôn là computed. Effect ghi signal là anti-pattern.
+</quiz>
+<quiz q="Trong effect, gọi <code>this.logService.log(this.page())</code> và bên trong <code>log()</code> có đọc signal <code>user</code>. Effect sẽ chạy lại khi nào?">
+- Chỉ khi page đổi
++ Khi page hoặc user đổi, vì mọi signal được đọc trong lúc effect chạy đều bị theo dõi
+- Không bao giờ chạy lại
+? Bọc lời gọi bằng untracked nếu chỉ muốn phụ thuộc vào page.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Giỏ chọn học sinh có lưu localStorage</summary>
+<p>Viết component quản lý danh sách học sinh được chọn để giao bài bổ sung: có ô tìm, danh sách 6 học sinh (lọc theo ô tìm), bấm vào tên để chọn / bỏ chọn, hiển thị "Đã chọn N em", nút "Bỏ chọn tất cả". Danh sách đã chọn được lưu vào localStorage và khôi phục khi tải lại trang.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>State: <code>query = signal('')</code>, <code>selected = signal&lt;ReadonlySet&lt;number&gt;&gt;(new Set(đọc từ localStorage))</code>.</li>
+<li>Bật / tắt: tạo Set mới mỗi lần, <code>const next = new Set(cũ); next.has(id) ? next.delete(id) : next.add(id); this.selected.set(next)</code>.</li>
+<li><code>visible = computed(...)</code> lọc theo query, <code>count = computed(() =&gt; this.selected().size)</code>.</li>
+<li>Lưu: <code>effect(() =&gt; localStorage.setItem('chon', JSON.stringify([...this.selected()])))</code>.</li>
+<li>Đọc localStorage có thể lỗi (chế độ ẩn danh, JSON hỏng): bọc trong try/catch.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="student-picker.ts">
+import { Component, computed, effect, signal } from '@angular/core';
+
+const KEY = 'chon-hoc-sinh';
+
+function loadSelected(): Set<number> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    return new Set(Array.isArray(raw) ? raw.filter((x) => typeof x === 'number') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+@Component({
+  selector: 'app-student-picker',
+  template: `
+    <input placeholder="Tìm học sinh" [value]="query()" (input)="query.set($any($event.target).value)" />
+    <ul>
+      @for (s of visible(); track s.id) {
+        <li [class.on]="selected().has(s.id)" (click)="toggle(s.id)">{{ s.name }}</li>
+      } @empty {
+        <li>Không có học sinh khớp "{{ query() }}"</li>
+      }
+    </ul>
+    <p>Đã chọn {{ count() }} em
+      <button (click)="selected.set(empty)" [disabled]="count() === 0">Bỏ chọn tất cả</button>
+    </p>
+  `,
+  styles: `li { cursor: pointer; padding: 4px 8px; } .on { background: #dcfce7; font-weight: 600; }`,
+})
+export class StudentPicker {
+  protected readonly empty: ReadonlySet<number> = new Set();
+  protected students = [
+    { id: 1, name: 'Nguyễn An' }, { id: 2, name: 'Trần Bình' }, { id: 3, name: 'Lê Chi' },
+    { id: 4, name: 'Phạm Dũng' }, { id: 5, name: 'Võ Hà' }, { id: 6, name: 'Đỗ Lan' },
+  ];
+  protected query = signal('');
+  protected selected = signal<ReadonlySet<number>>(loadSelected());
+  protected visible = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    return this.students.filter((s) => s.name.toLowerCase().includes(q));
+  });
+  protected count = computed(() => this.selected().size);
+
+  constructor() {
+    effect(() => {
+      try {
+        localStorage.setItem(KEY, JSON.stringify([...this.selected()]));
+      } catch {
+        // chế độ ẩn danh / bị chặn: bỏ qua, tính năng vẫn chạy trong phiên
+      }
+    });
+  }
+
+  protected toggle(id: number) {
+    const next = new Set(this.selected());
+    next.has(id) ? next.delete(id) : next.add(id);
+    this.selected.set(next);
+  }
+}
+</pre>
+<pre lang="ui">
+<input placeholder="Tìm học sinh" value="n" />
+<ul style="list-style:none;padding:0">
+<li style="background:#dcfce7;font-weight:600;padding:4px 8px">Nguyễn An</li>
+<li style="padding:4px 8px">Trần Bình</li>
+<li style="background:#dcfce7;font-weight:600;padding:4px 8px">Phạm Dũng</li>
+<li style="padding:4px 8px">Đỗ Lan</li>
+</ul>
+<p>Đã chọn 2 em <button>Bỏ chọn tất cả</button></p>
+</pre>
+<p><b>Giải thích:</b> mỗi lần chọn tạo một <code>Set</code> mới nên signal báo thay đổi. Nếu bạn gọi <code>this.selected().add(id)</code> trực tiếp, nút và chữ đếm sẽ không đổi. Effect chỉ đọc <code>selected()</code> nên chỉ chạy khi lựa chọn đổi, không chạy khi gõ ô tìm. Tìm "n" khớp cả chữ "n" trong "Nguyễn", "Bình", "Dũng", "Lan" (chưa bỏ dấu, bài sau có thể thêm <code>normalize('NFD')</code> để tìm không dấu).</p>
+</details>
+</details>

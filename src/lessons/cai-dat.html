@@ -1,0 +1,277 @@
+<h2>Cài Angular CLI</h2>
+<p>Ở Vue bạn tạo dự án bằng <code>npm create vue@latest</code> (create-vue, dùng Vite). Angular có <b>Angular CLI</b>: không chỉ tạo dự án mà còn sinh code, chạy dev server, build, test, và <b>nâng cấp phiên bản</b>.</p>
+<pre lang="sh">
+node -v                       # cần Node LTS đang được hỗ trợ (xem angular.dev/reference/versions)
+npm install -g @angular/cli   # cài lệnh ng toàn cục
+ng version
+</pre>
+<pre lang="out" sim="1">
+$ ng version
+Angular CLI       : 20.3.x
+Node              : 22.x
+Package Manager   : npm 10.x
+OS                : darwin arm64
+</pre>
+<p>Phiên bản cụ thể trên máy bạn có thể khác (Angular ra bản lớn mỗi 6 tháng). Mọi thứ trong lộ trình chạy với Angular 20 trở lên.</p>
+<aside class="tip"><p>Không muốn cài toàn cục? Dùng <code>npx @angular/cli new ten-du-an</code>. Trong dự án đã có, các lệnh <code>ng</code> chạy được qua <code>npx ng ...</code> hoặc script trong <code>package.json</code>.</p></aside>
+
+<h2>Tạo dự án</h2>
+<pre lang="sh">
+ng new so-bai-tap
+</pre>
+<pre lang="out" sim="1">
+$ ng new so-bai-tap
+✔ Which stylesheet format would you like to use? CSS
+✔ Do you want to enable Server-Side Rendering (SSR) and Static Site Generation (SSG/Prerendering)? No
+✔ Do you want to create a 'zoneless' application without zone.js? Yes
+✔ Which AI tools do you want to configure with Angular best practices? None
+CREATE so-bai-tap/angular.json (2201 bytes)
+CREATE so-bai-tap/package.json (1077 bytes)
+CREATE so-bai-tap/src/main.ts (222 bytes)
+CREATE so-bai-tap/src/index.html (295 bytes)
+CREATE so-bai-tap/src/styles.css (80 bytes)
+CREATE so-bai-tap/src/app/app.ts (293 bytes)
+CREATE so-bai-tap/src/app/app.html (20221 bytes)
+CREATE so-bai-tap/src/app/app.config.ts (412 bytes)
+CREATE so-bai-tap/src/app/app.routes.ts (77 bytes)
+...
+✔ Packages installed successfully.
+</pre>
+<p>Câu hỏi có thể khác chút theo phiên bản. Chọn: CSS (hoặc SCSS nếu bạn quen), <b>không SSR</b> (bài {{n:ssr}} mới học), <b>zoneless có</b> (cách hiện đại, bài {{n:change-detection}} giải thích). Các tuỳ chọn có thể truyền thẳng: <code>ng new so-bai-tap --style=css --ssr=false --zoneless</code>.</p>
+<pre lang="sh">
+cd so-bai-tap
+ng serve          # hoặc npm start
+</pre>
+<pre lang="out" sim="1">
+$ ng serve
+Initial chunk files | Names         |  Raw size
+main.js             | main          |  48.21 kB |
+styles.css          | styles        |  95 bytes |
+
+                    | Initial total |  48.30 kB
+
+Application bundle generation complete. [1.204 seconds]
+
+Watch mode enabled. Watching for file changes...
+  ➜  Local:   http://localhost:4200/
+</pre>
+<aside class="fe"><p>Dev server của Angular (từ v17) chạy trên Vite và esbuild, nên khởi động và cập nhật nhanh như dự án Vue + Vite mà bạn quen. Cổng mặc định là <b>4200</b> thay vì 5173. Hot Module Replacement cho template và style cũng đã có sẵn.</p></aside>
+
+<h2>Từng file trong dự án mới</h2>
+<pre lang="text" file="cấu trúc thư mục">
+so-bai-tap/
+├── angular.json            cấu hình build / serve / test (giống vite.config.ts)
+├── package.json
+├── tsconfig.json           TypeScript strict + angularCompilerOptions
+├── tsconfig.app.json
+├── public/                 file tĩnh copy nguyên (favicon, ảnh) — giống public/ của Vite
+└── src/
+    ├── index.html          trang HTML gốc, có thẻ <app-root>
+    ├── main.ts             điểm khởi động: bootstrapApplication(App, appConfig)
+    ├── styles.css          CSS toàn cục
+    └── app/
+        ├── app.ts          component gốc (giống App.vue)
+        ├── app.html        template của component gốc
+        ├── app.css
+        ├── app.config.ts   cấu hình ứng dụng: router, http, ... (giống app.use(...) trong main.ts của Vue)
+        └── app.routes.ts   danh sách route
+</pre>
+<pre lang="ts" file="src/main.ts">
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { App } from './app/app';
+
+bootstrapApplication(App, appConfig)
+  .catch((err) => console.error(err));
+</pre>
+<pre lang="ts" file="src/app/app.config.ts">
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideZonelessChangeDetection(), // ứng dụng không dùng zone.js (mặc định từ v21 thì không cần dòng này)
+    provideRouter(routes),
+  ],
+};
+</pre>
+<p>Đối chiếu với Vue:</p>
+<pre lang="ts" file="main.ts (Vue, để so sánh)">
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import router from './router'
+
+createApp(App).use(createPinia()).use(router).mount('#app')
+</pre>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td><code>createApp(App).mount('#app')</code></td><td><code>bootstrapApplication(App, appConfig)</code>, gắn vào thẻ có selector của App (<code>&lt;app-root&gt;</code>)</td></tr>
+<tr><td><code>app.use(router)</code></td><td><code>provideRouter(routes)</code> trong <code>providers</code></td></tr>
+<tr><td><code>app.use(pinia)</code></td><td>không cần: service có <code>providedIn: 'root'</code> tự có sẵn</td></tr>
+<tr><td><code>app.config.errorHandler</code></td><td><code>provideBrowserGlobalErrorListeners()</code> + <code>ErrorHandler</code></td></tr>
+</table>
+<p>Mọi "plugin" của Angular đều có dạng hàm <code>provideXxx()</code>: <code>provideHttpClient()</code>, <code>provideAnimations()</code>, <code>provideServiceWorker()</code>... Bạn sẽ thêm dần vào mảng <code>providers</code>.</p>
+
+<h2>Component gốc</h2>
+<pre lang="ts" file="src/app/app.ts">
+import { Component, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+
+@Component({
+  selector: 'app-root',          // tên thẻ HTML
+  imports: [RouterOutlet],       // component / directive dùng trong template
+  templateUrl: './app.html',     // template ở file riêng
+  styleUrl: './app.css',
+})
+export class App {
+  protected readonly title = signal('so-bai-tap');
+}
+</pre>
+<pre lang="html" file="src/app/app.html (rút gọn)">
+<h1>Xin chào, {{ title() }}</h1>
+<router-outlet />
+</pre>
+<p><code>&lt;router-outlet /&gt;</code> giống <code>&lt;RouterView /&gt;</code> của vue-router: chỗ hiển thị component của route hiện tại.</p>
+<aside class="tip"><p>Quy ước đặt tên từ Angular 20: file <code>app.ts</code>, class <code>App</code> (không còn hậu tố <code>.component.ts</code> và <code>AppComponent</code>). Dự án cũ thì là <code>app.component.ts</code> / <code>AppComponent</code>. Cả hai đều đúng, cứ theo quy ước của dự án.</p></aside>
+
+<h2>Sinh code bằng ng generate</h2>
+<pre lang="sh">
+ng generate component features/class-list   # viết tắt: ng g c features/class-list
+ng g service core/class-store              # ng g s
+ng g directive shared/autofocus            # ng g d
+ng g pipe shared/vnd                       # ng g p
+ng g guard core/auth                       # hỏi loại guard
+ng g interceptor core/auth-token
+ng g interface models/assignment
+ng g environments                          # tạo src/environments/
+</pre>
+<pre lang="out" sim="1">
+$ ng g c features/class-list
+CREATE src/app/features/class-list/class-list.css (0 bytes)
+CREATE src/app/features/class-list/class-list.html (26 bytes)
+CREATE src/app/features/class-list/class-list.spec.ts (559 bytes)
+CREATE src/app/features/class-list/class-list.ts (205 bytes)
+</pre>
+<p>Thêm <code>--inline-template --inline-style</code> (hay <code>-t -s</code>) nếu muốn template và style nằm luôn trong file <code>.ts</code>, giống SFC. <code>--skip-tests</code> để không sinh file test. <code>--dry-run</code> xem trước sẽ tạo gì.</p>
+<aside class="fe"><p>Vue không có tương đương chính thức (bạn tự tạo file). Lúc đầu thấy thừa, nhưng ở dự án nhiều người, <code>ng g</code> giúp mọi file theo một khuôn: đúng tên, đúng chỗ, có sẵn file test.</p></aside>
+
+<h2>Các lệnh hằng ngày</h2>
+<table>
+<tr><th>Lệnh</th><th>Làm gì</th><th>Tương đương Vue + Vite</th></tr>
+<tr><td><code>ng serve</code> / <code>npm start</code></td><td>dev server, tự tải lại</td><td><code>npm run dev</code></td></tr>
+<tr><td><code>ng build</code></td><td>build production vào <code>dist/</code></td><td><code>npm run build</code></td></tr>
+<tr><td><code>ng test</code></td><td>chạy unit test</td><td><code>vitest</code></td></tr>
+<tr><td><code>ng lint</code></td><td>lint (sau khi <code>ng add @angular-eslint/schematics</code>)</td><td><code>eslint .</code></td></tr>
+<tr><td><code>ng add &lt;gói&gt;</code></td><td>cài thư viện <b>và</b> tự cấu hình (Material, PWA, SSR...)</td><td><code>npm i</code> rồi tự sửa cấu hình</td></tr>
+<tr><td><code>ng update</code></td><td>nâng cấp Angular, tự sửa code theo thay đổi phá vỡ (migration)</td><td>không có, tự làm tay</td></tr>
+</table>
+<pre lang="out" sim="1">
+$ ng build
+Initial chunk files   | Names         |  Raw size | Estimated transfer size
+main-5XOTWNQG.js      | main          | 187.63 kB |                51.42 kB
+styles-5INURTSO.css   | styles        |   0 bytes |                 0 bytes
+
+                      | Initial total | 187.63 kB |                51.42 kB
+
+Application bundle generation complete. [2.817 seconds]
+Output location: /Users/ban/so-bai-tap/dist/so-bai-tap
+</pre>
+<p>Tên file có hash để cache vĩnh viễn. "Estimated transfer size" là kích thước sau nén gzip, con số thực sự tải về.</p>
+
+<h2>Biên dịch AOT: điều khác biệt quan trọng</h2>
+<p>Template Vue được biên dịch thành hàm render (lúc build với SFC). Angular cũng vậy nhưng chặt hơn: trình biên dịch Angular (AOT, Ahead-of-Time) <b>kiểm tra kiểu cả template</b>.</p>
+<arch w="820" h="200" caption="Template và class được biên dịch cùng nhau thành JavaScript tối ưu. Sai tên thuộc tính, sai kiểu input: lỗi ngay lúc build, không đợi tới khi chạy">
+node ts 100 90 file "class + template" "app.ts, app.html"
+node ngc 320 90 ngsvc "Angular compiler" "kiểm tra kiểu template"
+node es 540 90 bundle "esbuild" "gộp, rút gọn"
+node out 740 90 browser "dist/" "JS + CSS + HTML"
+edge ts ngc ""
+edge ngc es ""
+edge es out ""
+text 320 170 "lỗi kiểu → dừng build" small c=bad
+</arch>
+<pre lang="out" sim="1">
+$ ng build
+✘ [ERROR] NG9: Property 'titel' does not exist on type 'App'. [plugin angular-compiler]
+
+    src/app/app.html:1:17:
+      1 │ <h1>Xin chào, {{ titel() }}</h1>
+        ╵                  ~~~~~
+</pre>
+<p>Gõ sai <code>titel</code> thay vì <code>title</code>: build dừng, chỉ đúng dòng. Trong Vue, lỗi tương tự thường chỉ hiện cảnh báo lúc chạy (hoặc khi bạn bật vue-tsc).</p>
+
+<h2>Công cụ nên cài</h2>
+<ul>
+<li><b>Angular Language Service</b> (extension VS Code): gợi ý và báo lỗi trong template, nhảy tới định nghĩa. Giống Volar (Vue - Official) của Vue.</li>
+<li><b>Angular DevTools</b> (extension Chrome / Firefox): xem cây component, giá trị input, signal, đo hiệu năng. Giống Vue DevTools.</li>
+<li><b>ESLint cho Angular</b>: <code>ng add @angular-eslint/schematics</code>.</li>
+<li><b>Prettier</b>: dùng như bình thường. Prettier hiểu cú pháp control flow mới của Angular.</li>
+</ul>
+
+<quiz q="Ở Vue bạn thêm router bằng <code>app.use(router)</code>. Ở Angular hiện đại, bạn thêm router ở đâu?">
+- Trong NgModule
++ Thêm <code>provideRouter(routes)</code> vào mảng <code>providers</code> của <code>appConfig</code>
+- Import RouterModule vào main.ts
+? Ứng dụng standalone cấu hình mọi thứ qua các hàm provideXxx() trong app.config.ts. RouterModule.forRoot chỉ còn ở dự án dùng NgModule.
+</quiz>
+<quiz q="Lệnh nào nâng cấp Angular lên bản mới và tự sửa code theo các thay đổi phá vỡ?">
+- npm update
++ ng update @angular/core @angular/cli
+- ng upgrade
+? ng update chạy các migration (schematic) do đội Angular viết, tự sửa code cũ sang cú pháp mới.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Tạo dự án và trang chào đầu tiên</summary>
+<p>Tạo dự án <code>so-bai-tap</code>, xoá nội dung mẫu trong <code>app.html</code>, sinh component <code>welcome</code> hiển thị "Chào mừng giáo viên" kèm ngày hôm nay, và đặt nó vào component gốc.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>ng new so-bai-tap --style=css --ssr=false --zoneless</code>, rồi <code>ng g c welcome -t -s --skip-tests</code>.</li>
+<li>Trong <code>welcome.ts</code>: thêm thuộc tính <code>today = new Date()</code>.</li>
+<li>Hiển thị ngày bằng pipe có sẵn: <code>{{ today | date:'dd/MM/yyyy' }}</code>. Pipe <code>date</code> cần import <code>DatePipe</code> vào <code>imports</code> của component.</li>
+<li>Trong <code>app.ts</code>: thêm <code>Welcome</code> vào <code>imports</code>, trong <code>app.html</code> đặt <code>&lt;app-welcome /&gt;</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="src/app/welcome/welcome.ts">
+import { Component } from '@angular/core';
+import { DatePipe } from '@angular/common';
+
+@Component({
+  selector: 'app-welcome',
+  imports: [DatePipe],
+  template: `
+    <h1>Chào mừng giáo viên</h1>
+    <p>Hôm nay: {{ today | date: 'dd/MM/yyyy' }}</p>
+  `,
+  styles: `h1 { color: #dd0031; }`,
+})
+export class Welcome {
+  today = new Date();
+}
+</pre>
+<pre lang="ts" file="src/app/app.ts">
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { Welcome } from './welcome/welcome';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, Welcome],
+  templateUrl: './app.html',
+})
+export class App {}
+</pre>
+<pre lang="html" file="src/app/app.html">
+<app-welcome />
+<router-outlet />
+</pre>
+<pre lang="ui">
+<h1 style="color:#dd0031;margin:0 0 8px">Chào mừng giáo viên</h1>
+<p>Hôm nay: 04/11/2026</p>
+</pre>
+<p><b>Giải thích:</b> quên thêm <code>Welcome</code> vào <code>imports</code> của <code>App</code> thì build báo <code>NG8001: 'app-welcome' is not a known element</code>. Đây là lỗi hay gặp nhất của người mới: mỗi component phải tự khai báo những component con nó dùng. Ở Vue với <code>&lt;script setup&gt;</code>, chỉ cần <code>import</code> là xong. Ở Angular, cần cả <code>import</code> TypeScript lẫn <code>imports: [...]</code> của decorator.</p>
+</details>
+</details>

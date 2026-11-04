@@ -1,0 +1,284 @@
+<h2>Vì sao cần ôn lại TypeScript</h2>
+<p>Ở Vue, TypeScript là tuỳ chọn, và kể cả khi dùng thì <code>&lt;script setup&gt;</code> giấu gần hết class và decorator. Angular thì ngược lại: <b>mọi thứ là class có decorator</b>, dự án mặc định bật <code>strict</code>, template cũng được kiểm tra kiểu. Bài này ôn đúng những phần TypeScript mà Angular dùng mỗi ngày.</p>
+
+<h2>Class: viên gạch của Angular</h2>
+<pre lang="ts">
+export class ClassCard {
+  // thuộc tính có giá trị ban đầu: kiểu được suy ra (number)
+  count = 0;
+
+  // khai báo kiểu rõ ràng
+  title: string = 'Lớp 5A';
+
+  // readonly: không gán lại được sau khi khởi tạo
+  readonly maxStudents = 40;
+
+  // private / protected / public (mặc định public)
+  private secret = 'chỉ trong class';
+  protected shown = 'class con và template dùng được';
+
+  // ! : "tôi hứa sẽ gán trước khi dùng" (definite assignment) — hạn chế dùng
+  teacherName!: string;
+
+  // method
+  rename(next: string): void {
+    this.title = next;
+  }
+
+  // getter: dùng như thuộc tính
+  get isFull(): boolean {
+    return this.count >= this.maxStudents;
+  }
+}
+</pre>
+<aside class="fe"><p>Trong <code>&lt;script setup&gt;</code> của Vue, mọi biến khai báo ở top-level đều dùng được trong template. Ở Angular, template chỉ thấy các thành viên <b>public hoặc protected</b> của class. Quy ước hiện đại: những thứ chỉ dùng trong template thì để <code>protected</code>, để code bên ngoài không gọi nhầm.</p></aside>
+<aside class="warn"><p>Luôn dùng <code>this.</code> khi truy cập thuộc tính trong method. Quên <code>this</code> là lỗi kinh điển của người đến từ Vue Composition API (nơi biến chỉ là biến).</p></aside>
+
+<h2>Decorator</h2>
+<p>Decorator là hàm gắn vào class (hoặc thuộc tính, tham số) bằng cú pháp <code>@Ten(...)</code>, cho Angular biết class này là gì và cấu hình ra sao.</p>
+<table>
+<tr><th>Decorator</th><th>Gắn vào</th><th>Nghĩa</th></tr>
+<tr><td><code>@Component({...})</code></td><td>class</td><td>class này là một component: selector, template, style, imports</td></tr>
+<tr><td><code>@Directive({...})</code></td><td>class</td><td>directive (bài {{n:directive-pipe}})</td></tr>
+<tr><td><code>@Pipe({...})</code></td><td>class</td><td>pipe biến đổi giá trị trong template</td></tr>
+<tr><td><code>@Injectable({...})</code></td><td>class</td><td>service có thể được inject (bài {{n:di-service}})</td></tr>
+<tr><td><code>@Input()</code>, <code>@Output()</code>, <code>@HostListener()</code>, <code>@ViewChild()</code></td><td>thuộc tính / method</td><td><b>kiểu cũ</b>, nay thay bằng hàm <code>input()</code>, <code>output()</code>, <code>host: {}</code>, <code>viewChild()</code></td></tr>
+</table>
+<p>Ở Angular hiện đại bạn chỉ còn dùng decorator ở <b>cấp class</b>. Các decorator thuộc tính chuyển thành hàm (signal-based), nên code ngắn và an toàn kiểu hơn.</p>
+<pre lang="ts">
+// Kiểu cũ (vẫn gặp nhiều trong dự án công ty)
+@Component({ selector: 'app-old', template: '...' })
+export class OldCard implements OnChanges {
+  @Input() title = '';
+  @Input({ required: true }) id!: number;
+  @Output() removed = new EventEmitter<number>();
+  @ViewChild('box') box!: ElementRef<HTMLDivElement>;
+}
+
+// Kiểu mới
+@Component({ selector: 'app-new', template: '...' })
+export class NewCard {
+  title = input('');
+  id = input.required<number>();
+  removed = output<number>();
+  box = viewChild.required<ElementRef<HTMLDivElement>>('box');
+}
+</pre>
+
+<h2>Interface, type và mô hình dữ liệu</h2>
+<pre lang="ts" file="src/app/models/assignment.ts">
+// Dữ liệu từ API: dùng interface hoặc type, KHÔNG dùng class
+export interface Assignment {
+  id: number;
+  classId: number;
+  title: string;
+  dueDate: string;              // 'YYYY-MM-DD' — JSON không có kiểu Date
+  status: AssignmentStatus;
+  note?: string;                // có thể không có
+  attachments: readonly Attachment[];
+}
+
+export type AssignmentStatus = 'draft' | 'published' | 'closed'; // union của chuỗi thay cho enum
+
+export interface Attachment {
+  key: string;
+  name: string;
+  size: number;
+}
+
+// Dữ liệu gửi lên khi tạo mới: suy ra từ kiểu chính
+export type NewAssignment = Omit<Assignment, 'id' | 'status' | 'attachments'>;
+export type AssignmentPatch = Partial<Pick<Assignment, 'title' | 'dueDate' | 'note'>>;
+</pre>
+<aside class="tip"><p>Ưu tiên <b>union chuỗi</b> (<code>'draft' | 'published'</code>) hơn <code>enum</code>: không sinh thêm code JavaScript, dễ so khớp với JSON từ API, và template so sánh được trực tiếp <code>@if (a.status === 'draft')</code>.</p></aside>
+<p>Utility type hay dùng:</p>
+<table>
+<tr><th>Kiểu</th><th>Ví dụ</th><th>Dùng khi</th></tr>
+<tr><td><code>Partial&lt;T&gt;</code></td><td><code>Partial&lt;Assignment&gt;</code></td><td>form sửa một phần, PATCH</td></tr>
+<tr><td><code>Pick&lt;T, K&gt;</code> / <code>Omit&lt;T, K&gt;</code></td><td><code>Omit&lt;Assignment, 'id'&gt;</code></td><td>dữ liệu tạo mới chưa có id</td></tr>
+<tr><td><code>Readonly&lt;T&gt;</code>, <code>readonly T[]</code></td><td><code>readonly Attachment[]</code></td><td>state không được sửa trực tiếp (đặc biệt với signal)</td></tr>
+<tr><td><code>Record&lt;K, V&gt;</code></td><td><code>Record&lt;AssignmentStatus, string&gt;</code></td><td>bảng tra: trạng thái → nhãn tiếng Việt</td></tr>
+<tr><td><code>ReturnType</code>, <code>Awaited</code></td><td><code>Awaited&lt;ReturnType&lt;typeof load&gt;&gt;</code></td><td>lấy kiểu kết quả của một hàm</td></tr>
+</table>
+<pre lang="ts">
+const STATUS_LABEL: Record<AssignmentStatus, string> = {
+  draft: 'Nháp',
+  published: 'Đã giao',
+  closed: 'Đã đóng',
+}; // thiếu một khoá → lỗi biên dịch
+</pre>
+
+<h2>Generic</h2>
+<p>Bạn sẽ gặp generic ở mọi nơi trong Angular: <code>signal&lt;number&gt;()</code>, <code>input.required&lt;string&gt;()</code>, <code>http.get&lt;Assignment[]&gt;(url)</code>, <code>Observable&lt;T&gt;</code>, <code>FormControl&lt;string&gt;</code>.</p>
+<pre lang="ts">
+// Kiểu chung cho mọi API phân trang
+export interface Page<T> {
+  items: T[];
+  page: number;
+  totalPages: number;
+}
+
+// Hàm generic: dùng cho mọi loại phần tử
+export function byId<T extends { id: number }>(list: readonly T[], id: number): T | undefined {
+  return list.find((x) => x.id === id);
+}
+
+const page: Page<Assignment> = await firstValueFrom(http.get<Page<Assignment>>('/api/assignments'));
+const a = byId(page.items, 9); // a có kiểu Assignment | undefined
+</pre>
+<aside class="warn"><p><code>http.get&lt;Assignment[]&gt;(url)</code> chỉ là <b>lời hứa với trình biên dịch</b>, không kiểm tra dữ liệu thật lúc chạy. Server trả sai cấu trúc thì code vẫn chạy và lỗi ở chỗ khác. Với dữ liệu quan trọng, kiểm tra bằng thư viện như Zod / Valibot.</p></aside>
+
+<h2>strict mode và null</h2>
+<p>Dự án Angular mới bật <code>strict: true</code> và <code>strictTemplates: true</code>. Hệ quả hằng ngày:</p>
+<pre lang="ts">
+assignment: Assignment | undefined;
+
+dueText() {
+  return this.assignment.dueDate;      // ✘ lỗi: 'this.assignment' is possibly 'undefined'
+  return this.assignment?.dueDate;     // ✓ optional chaining
+  return this.assignment?.dueDate ?? 'Chưa đặt hạn'; // ✓ có giá trị mặc định
+}
+</pre>
+<pre lang="html">
+<!-- Template cũng bị kiểm tra -->
+<p>{{ assignment.title }}</p>            <!-- ✘ lỗi biên dịch nếu assignment có thể undefined -->
+@if (assignment; as a) {
+  <p>{{ a.title }}</p>                  <!-- ✓ trong khối @if, a chắc chắn có giá trị -->
+}
+</pre>
+<p>Cấu hình liên quan trong <code>tsconfig.json</code>:</p>
+<pre lang="json" file="tsconfig.json (trích)">
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "angularCompilerOptions": {
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  }
+}
+</pre>
+<aside class="real"><p>Dự án cũ hay tắt <code>strictTemplates</code> vì bật lên ra hàng trăm lỗi. Nếu vào dự án như vậy, đừng tắt thêm gì. Mỗi khi sửa file nào, sửa luôn lỗi kiểu của file đó. Bật strict dần dần là cách các đội lớn vẫn làm.</p></aside>
+
+<h2>Narrowing và kiểu cho sự kiện DOM</h2>
+<pre lang="ts">
+onInput(e: Event) {
+  const value = (e.target as HTMLInputElement).value; // ép kiểu target
+}
+
+onKey(e: KeyboardEvent) {
+  if (e.key === 'Enter') this.save();
+}
+
+// Phân biệt các loại kết quả bằng trường chung (discriminated union)
+type LoadState<T> =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ok'; data: T };
+
+function render(s: LoadState<Assignment[]>) {
+  switch (s.kind) {
+    case 'loading': return 'Đang tải…';
+    case 'error': return s.message;        // ở đây TS biết s có message
+    case 'ok': return `${s.data.length} bài`;
+  }
+}
+</pre>
+<p>Trong template, Angular cũng có cú pháp gọn để lấy giá trị từ sự kiện: <code>(input)="name.set($any($event.target).value)"</code>. <code>$any</code> tắt kiểm tra kiểu cho một biểu thức, dùng hạn chế. Cách đúng hơn là truyền <code>$event</code> vào method có kiểu, hoặc dùng forms (bài {{n:forms}}).</p>
+
+<h2>Module ES và path alias</h2>
+<pre lang="json" file="tsconfig.json">
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@core/*": ["src/app/core/*"],
+      "@shared/*": ["src/app/shared/*"],
+      "@models/*": ["src/app/models/*"]
+    }
+  }
+}
+</pre>
+<pre lang="ts">
+import { Assignment } from '@models/assignment';  // thay cho '../../../models/assignment'
+</pre>
+<aside class="fe"><p>Giống alias <code>@/</code> trong <code>vite.config.ts</code> của Vue. Khác: ở Angular chỉ cần khai báo trong <code>tsconfig.json</code>, builder tự đọc.</p></aside>
+
+<quiz q="Template của component dùng được thành viên nào của class?">
+- Mọi thành viên, kể cả private
++ Thành viên public và protected
+- Chỉ những thành viên có decorator
+? Template được biên dịch như một phần của class nên thấy được protected. Private thì không: lỗi biên dịch.
+</quiz>
+<quiz q="Dữ liệu JSON từ API nên được mô tả bằng gì?">
++ interface hoặc type
+- class có constructor
+- enum
+? JSON chỉ là object thuần, không phải instance của class. Dùng class sẽ gây hiểu nhầm (method trên class không tồn tại trên object từ JSON).
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Mô hình dữ liệu cho "Sổ bài tập"</summary>
+<p>Viết file <code>models.ts</code> mô tả: <code>Classroom</code> (id, tên, sĩ số, năm học), <code>Submission</code> (id, mã học sinh, mã bài, trạng thái: chưa nộp / đã nộp / đã chấm, điểm có thể không có, nhận xét có thể không có), bảng nhãn tiếng Việt cho trạng thái, và hàm generic <code>groupBy</code> nhóm danh sách theo một khoá.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Trạng thái: <code>type SubmissionStatus = 'missing' | 'submitted' | 'graded'</code>.</li>
+<li>Điểm có thể không có: <code>score: number | null</code> (API thường trả null) hoặc <code>score?: number</code>.</li>
+<li>Bảng nhãn: <code>Record&lt;SubmissionStatus, string&gt;</code>.</li>
+<li><code>groupBy&lt;T, K extends string | number&gt;(list: readonly T[], key: (x: T) =&gt; K): Record&lt;K, T[]&gt;</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="src/app/models.ts">
+export interface Classroom {
+  id: number;
+  name: string;
+  capacity: number;
+  schoolYear: `${number}-${number}`; // template literal type: '2026-2027'
+}
+
+export type SubmissionStatus = 'missing' | 'submitted' | 'graded';
+
+export interface Submission {
+  id: number;
+  studentId: number;
+  assignmentId: number;
+  status: SubmissionStatus;
+  score: number | null;
+  comment?: string;
+}
+
+export const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
+  missing: 'Chưa nộp',
+  submitted: 'Đã nộp',
+  graded: 'Đã chấm',
+};
+
+export function groupBy<T, K extends string | number>(list: readonly T[], key: (x: T) => K): Record<K, T[]> {
+  const out = {} as Record<K, T[]>;
+  for (const item of list) {
+    (out[key(item)] ??= []).push(item);
+  }
+  return out;
+}
+
+// Dùng thử
+const subs: Submission[] = [
+  { id: 1, studentId: 7, assignmentId: 9, status: 'graded', score: 9 },
+  { id: 2, studentId: 8, assignmentId: 9, status: 'missing', score: null },
+  { id: 3, studentId: 9, assignmentId: 9, status: 'graded', score: 7 },
+];
+const byStatus = groupBy(subs, (s) => s.status);
+console.log(Object.keys(byStatus), byStatus.graded.length);
+</pre>
+<pre lang="out" sim="1">
+$ npx tsx src/app/models.ts
+[ 'graded', 'missing' ] 2
+</pre>
+<p><b>Giải thích:</b> <code>schoolYear</code> dùng template literal type nên gán <code>'năm nay'</code> sẽ lỗi biên dịch. <code>??=</code> gán khi giá trị đang là null hoặc undefined, gọn cho việc tạo mảng lần đầu. Kiểu trả về <code>Record&lt;K, T[]&gt;</code> giúp <code>byStatus.graded</code> có gợi ý và kiểm tra kiểu.</p>
+</details>
+</details>

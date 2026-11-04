@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bài 11: Router · Angular cho dân Vue</title>
+<meta name="description" content="Routes, lazy loading, tham số qua input, guard dạng hàm, resolver, route con, chuyển trang bằng code. So với vue-router.">
+<meta name="theme-color" content="#dd0031">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker></defs></svg>
+<header class="top">
+  <button class="menu" type="button" aria-label="Mở danh sách bài"><span></span><span></span><span></span></button>
+  <a class="brand" href="index.html"><img src="favicon.svg" alt="" width="28" height="28">Angular <b>cho dân Vue</b></a>
+  <nav class="topnav"><a href="index.html#lo-trinh">Lộ trình</a><a href="thuat-ngu.html">Vue → Angular</a><a href="nguyen-tac.html">Nguyên tắc</a></nav>
+  <button class="theme" type="button" aria-label="Đổi giao diện sáng / tối"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg></button>
+</header>
+<div class="layout">
+  <aside class="side" aria-label="Danh sách bài">
+    <div class="prog"><div class="prog-t"><span>Tiến độ</span><b class="prog-n">0/25</b></div><div class="prog-b"><i></i></div></div>
+    <div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Chặng 0</span> Khởi động</div><ol><li><a href="lo-trinh.html" data-slug="lo-trinh"><i class="dot"></i><span class="no">00</span><span class="tx">Angular nhìn từ mắt dân Vue</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#dd0031"><span>Chặng 1</span> Nền tảng Angular</div><ol><li><a href="cai-dat.html" data-slug="cai-dat"><i class="dot"></i><span class="no">01</span><span class="tx">Cài Angular CLI và dự án đầu tiên</span></a></li><li><a href="typescript.html" data-slug="typescript"><i class="dot"></i><span class="no">02</span><span class="tx">TypeScript mà Angular dùng mỗi ngày</span></a></li><li><a href="component.html" data-slug="component"><i class="dot"></i><span class="no">03</span><span class="tx">Component: từ SFC sang class + template</span></a></li><li><a href="template.html" data-slug="template"><i class="dot"></i><span class="no">04</span><span class="tx">Cú pháp template: binding và event</span></a></li><li><a href="control-flow.html" data-slug="control-flow"><i class="dot"></i><span class="no">05</span><span class="tx">Control flow: @if, @for, @switch, @defer</span></a></li><li><a href="signals.html" data-slug="signals"><i class="dot"></i><span class="no">06</span><span class="tx">Signals: reactivity của Angular</span></a></li><li><a href="input-output.html" data-slug="input-output"><i class="dot"></i><span class="no">07</span><span class="tx">Giao tiếp giữa component: input, output, model</span></a></li><li><a href="directive-pipe.html" data-slug="directive-pipe"><i class="dot"></i><span class="no">08</span><span class="tx">Directive và pipe</span></a></li><li><a href="lifecycle.html" data-slug="lifecycle"><i class="dot"></i><span class="no">09</span><span class="tx">Vòng đời component và DOM</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#7c3aed"><span>Chặng 2</span> Kiến trúc ứng dụng</div><ol><li><a href="di-service.html" data-slug="di-service"><i class="dot"></i><span class="no">10</span><span class="tx">Dependency injection và service</span></a></li><li><a href="router.html" data-slug="router" aria-current="page"><i class="dot"></i><span class="no">11</span><span class="tx">Router</span></a></li><li><a href="forms.html" data-slug="forms"><i class="dot"></i><span class="no">12</span><span class="tx">Forms: reactive forms và signal forms</span></a></li><li><a href="http.html" data-slug="http"><i class="dot"></i><span class="no">13</span><span class="tx">Gọi API: HttpClient, interceptor, resource</span></a></li><li><a href="rxjs.html" data-slug="rxjs"><i class="dot"></i><span class="no">14</span><span class="tx">RxJS vừa đủ dùng</span></a></li><li><a href="state.html" data-slug="state"><i class="dot"></i><span class="no">15</span><span class="tx">Quản lý state</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#059669"><span>Chặng 3</span> Chất lượng</div><ol><li><a href="change-detection.html" data-slug="change-detection"><i class="dot"></i><span class="no">16</span><span class="tx">Change detection: zone.js, OnPush, zoneless</span></a></li><li><a href="hieu-nang.html" data-slug="hieu-nang"><i class="dot"></i><span class="no">17</span><span class="tx">Hiệu năng</span></a></li><li><a href="testing.html" data-slug="testing"><i class="dot"></i><span class="no">18</span><span class="tx">Kiểm thử</span></a></li><li><a href="styling-ui.html" data-slug="styling-ui"><i class="dot"></i><span class="no">19</span><span class="tx">Style, thư viện UI và accessibility</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#d97706"><span>Chặng 4</span> Đưa lên production</div><ol><li><a href="ssr.html" data-slug="ssr"><i class="dot"></i><span class="no">20</span><span class="tx">SSR, hydration và prerender</span></a></li><li><a href="i18n-pwa.html" data-slug="i18n-pwa"><i class="dot"></i><span class="no">21</span><span class="tx">Đa ngôn ngữ và PWA</span></a></li><li><a href="bao-mat.html" data-slug="bao-mat"><i class="dot"></i><span class="no">22</span><span class="tx">Bảo mật ứng dụng Angular</span></a></li><li><a href="trien-khai.html" data-slug="trien-khai"><i class="dot"></i><span class="no">23</span><span class="tx">Build, cấu hình môi trường và triển khai</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#0f766e"><span>Chặng 5</span> Dự án cuối</div><ol><li><a href="du-an.html" data-slug="du-an"><i class="dot"></i><span class="no">24</span><span class="tx">Dự án: ứng dụng &quot;Sổ bài tập&quot;</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Tra cứu</span></div><ol><li><a href="thuat-ngu.html"><i class="dot plain"></i><span class="tx">Bảng đối chiếu Vue → Angular</span></a></li><li><a href="nguyen-tac.html"><i class="dot plain"></i><span class="tx">Nguyên tắc viết Angular</span></a></li></ol></div>
+  </aside>
+  <div class="scrim"></div>
+  <main id="main"><article class="lesson" data-slug="router">
+  <header class="l-head">
+    <div class="l-meta"><span class="ph" style="--pc:#7c3aed">Chặng 2 · Kiến trúc ứng dụng</span><span>Bài 11</span><span>55 phút đọc + làm bài</span></div>
+    <h1>Router</h1>
+    <p class="lead">Routes, lazy loading, tham số qua input, guard dạng hàm, resolver, route con, chuyển trang bằng code. So với vue-router.</p>
+    <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Cấu hình router với lazy loading</li><li>Bảo vệ route bằng guard</li><li>Nhận tham số route vào component qua input</li></ul></div>
+  </header>
+  <div class="prose"><p>Bài này đang được viết.</p></div>
+  <div class="done-box"><button class="done-btn" type="button" data-slug="router">Đánh dấu đã học xong bài này</button></div>
+  <nav class="pn"><a class="prev" href="di-service.html"><small>Bài trước</small>Dependency injection và service</a><a class="next" href="forms.html"><small>Bài tiếp theo</small>Forms: reactive forms và signal forms</a></nav>
+</article></main>
+  
+</div>
+</body>
+</html>

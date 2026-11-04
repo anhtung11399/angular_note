@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bài 09: Vòng đời component và DOM · Angular cho dân Vue</title>
+<meta name="description" content="Constructor và ngOnInit, ngOnChanges, afterNextRender, afterRenderEffect, DestroyRef, ElementRef và Renderer2. So với onMounted, onUnmounted.">
+<meta name="theme-color" content="#dd0031">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker></defs></svg>
+<header class="top">
+  <button class="menu" type="button" aria-label="Mở danh sách bài"><span></span><span></span><span></span></button>
+  <a class="brand" href="index.html"><img src="favicon.svg" alt="" width="28" height="28">Angular <b>cho dân Vue</b></a>
+  <nav class="topnav"><a href="index.html#lo-trinh">Lộ trình</a><a href="thuat-ngu.html">Vue → Angular</a><a href="nguyen-tac.html">Nguyên tắc</a></nav>
+  <button class="theme" type="button" aria-label="Đổi giao diện sáng / tối"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg></button>
+</header>
+<div class="layout">
+  <aside class="side" aria-label="Danh sách bài">
+    <div class="prog"><div class="prog-t"><span>Tiến độ</span><b class="prog-n">0/25</b></div><div class="prog-b"><i></i></div></div>
+    <div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Chặng 0</span> Khởi động</div><ol><li><a href="lo-trinh.html" data-slug="lo-trinh"><i class="dot"></i><span class="no">00</span><span class="tx">Angular nhìn từ mắt dân Vue</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#dd0031"><span>Chặng 1</span> Nền tảng Angular</div><ol><li><a href="cai-dat.html" data-slug="cai-dat"><i class="dot"></i><span class="no">01</span><span class="tx">Cài Angular CLI và dự án đầu tiên</span></a></li><li><a href="typescript.html" data-slug="typescript"><i class="dot"></i><span class="no">02</span><span class="tx">TypeScript mà Angular dùng mỗi ngày</span></a></li><li><a href="component.html" data-slug="component"><i class="dot"></i><span class="no">03</span><span class="tx">Component: từ SFC sang class + template</span></a></li><li><a href="template.html" data-slug="template"><i class="dot"></i><span class="no">04</span><span class="tx">Cú pháp template: binding và event</span></a></li><li><a href="control-flow.html" data-slug="control-flow"><i class="dot"></i><span class="no">05</span><span class="tx">Control flow: @if, @for, @switch, @defer</span></a></li><li><a href="signals.html" data-slug="signals"><i class="dot"></i><span class="no">06</span><span class="tx">Signals: reactivity của Angular</span></a></li><li><a href="input-output.html" data-slug="input-output"><i class="dot"></i><span class="no">07</span><span class="tx">Giao tiếp giữa component: input, output, model</span></a></li><li><a href="directive-pipe.html" data-slug="directive-pipe"><i class="dot"></i><span class="no">08</span><span class="tx">Directive và pipe</span></a></li><li><a href="lifecycle.html" data-slug="lifecycle" aria-current="page"><i class="dot"></i><span class="no">09</span><span class="tx">Vòng đời component và DOM</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#7c3aed"><span>Chặng 2</span> Kiến trúc ứng dụng</div><ol><li><a href="di-service.html" data-slug="di-service"><i class="dot"></i><span class="no">10</span><span class="tx">Dependency injection và service</span></a></li><li><a href="router.html" data-slug="router"><i class="dot"></i><span class="no">11</span><span class="tx">Router</span></a></li><li><a href="forms.html" data-slug="forms"><i class="dot"></i><span class="no">12</span><span class="tx">Forms: reactive forms và signal forms</span></a></li><li><a href="http.html" data-slug="http"><i class="dot"></i><span class="no">13</span><span class="tx">Gọi API: HttpClient, interceptor, resource</span></a></li><li><a href="rxjs.html" data-slug="rxjs"><i class="dot"></i><span class="no">14</span><span class="tx">RxJS vừa đủ dùng</span></a></li><li><a href="state.html" data-slug="state"><i class="dot"></i><span class="no">15</span><span class="tx">Quản lý state</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#059669"><span>Chặng 3</span> Chất lượng</div><ol><li><a href="change-detection.html" data-slug="change-detection"><i class="dot"></i><span class="no">16</span><span class="tx">Change detection: zone.js, OnPush, zoneless</span></a></li><li><a href="hieu-nang.html" data-slug="hieu-nang"><i class="dot"></i><span class="no">17</span><span class="tx">Hiệu năng</span></a></li><li><a href="testing.html" data-slug="testing"><i class="dot"></i><span class="no">18</span><span class="tx">Kiểm thử</span></a></li><li><a href="styling-ui.html" data-slug="styling-ui"><i class="dot"></i><span class="no">19</span><span class="tx">Style, thư viện UI và accessibility</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#d97706"><span>Chặng 4</span> Đưa lên production</div><ol><li><a href="ssr.html" data-slug="ssr"><i class="dot"></i><span class="no">20</span><span class="tx">SSR, hydration và prerender</span></a></li><li><a href="i18n-pwa.html" data-slug="i18n-pwa"><i class="dot"></i><span class="no">21</span><span class="tx">Đa ngôn ngữ và PWA</span></a></li><li><a href="bao-mat.html" data-slug="bao-mat"><i class="dot"></i><span class="no">22</span><span class="tx">Bảo mật ứng dụng Angular</span></a></li><li><a href="trien-khai.html" data-slug="trien-khai"><i class="dot"></i><span class="no">23</span><span class="tx">Build, cấu hình môi trường và triển khai</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#0f766e"><span>Chặng 5</span> Dự án cuối</div><ol><li><a href="du-an.html" data-slug="du-an"><i class="dot"></i><span class="no">24</span><span class="tx">Dự án: ứng dụng &quot;Sổ bài tập&quot;</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Tra cứu</span></div><ol><li><a href="thuat-ngu.html"><i class="dot plain"></i><span class="tx">Bảng đối chiếu Vue → Angular</span></a></li><li><a href="nguyen-tac.html"><i class="dot plain"></i><span class="tx">Nguyên tắc viết Angular</span></a></li></ol></div>
+  </aside>
+  <div class="scrim"></div>
+  <main id="main"><article class="lesson" data-slug="lifecycle">
+  <header class="l-head">
+    <div class="l-meta"><span class="ph" style="--pc:#dd0031">Chặng 1 · Nền tảng Angular</span><span>Bài 09</span><span>35 phút đọc + làm bài</span></div>
+    <h1>Vòng đời component và DOM</h1>
+    <p class="lead">Constructor và ngOnInit, ngOnChanges, afterNextRender, afterRenderEffect, DestroyRef, ElementRef và Renderer2. So với onMounted, onUnmounted.</p>
+    <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Đặt code vào đúng giai đoạn vòng đời</li><li>Dọn dẹp tài nguyên bằng DestroyRef</li><li>Thao tác DOM an toàn (cả khi SSR)</li></ul></div>
+  </header>
+  <div class="prose"><h2 id="vong-doi-cua-component"><a href="#vong-doi-cua-component" class="anchor" aria-hidden="true">#</a>Vòng đời của component</h2>
+<figure class="dg arch"><svg viewBox="0 0 840 230" style="min-width:640px;max-width:840px" role="img" aria-label="Thứ tự: tạo class (constructor, input chưa có giá trị) → nhận input → ngOnInit → render → afterNextRender (DOM có rồi) → ... → ngOnDestroy / DestroyRef khi bị gỡ khỏi màn hình"><path d="M106.0 90.0 L204.0 90.0" class="ae" marker-end="url(#ar)"/><path d="M256.0 90.0 L354.0 90.0" class="ae" marker-end="url(#ar)"/><path d="M406.0 90.0 L504.0 90.0" class="ae" marker-end="url(#ar)"/><path d="M556.0 90.0 L654.0 90.0" class="ae" marker-end="url(#ar)"/><g class="an an-ng"><rect x="58" y="68" width="44" height="44" rx="9"/><text x="80" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">CMP</text><text x="80" y="128" text-anchor="middle" class="an-l">constructor</text><text x="80" y="142" text-anchor="middle" class="an-s">inject(), effect()</text></g><g class="an an-ai"><rect x="208" y="68" width="44" height="44" rx="9"/><text x="230" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">EVT</text><text x="230" y="128" text-anchor="middle" class="an-l">ngOnChanges</text><text x="230" y="142" text-anchor="middle" class="an-s">input đổi (cũ)</text></g><g class="an an-ng"><rect x="358" y="68" width="44" height="44" rx="9"/><text x="380" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">EFF</text><text x="380" y="128" text-anchor="middle" class="an-l">ngOnInit</text><text x="380" y="142" text-anchor="middle" class="an-s">input đã có</text></g><g class="an an-gen"><rect x="508" y="68" width="44" height="44" rx="9"/><text x="530" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">DOM</text><text x="530" y="128" text-anchor="middle" class="an-l">Render</text><text x="530" y="142" text-anchor="middle" class="an-s">DOM được tạo</text></g><g class="an an-ng"><rect x="658" y="68" width="44" height="44" rx="9"/><text x="680" y="94.5" text-anchor="middle" class="an-i" style="font-size:13px">EFF</text><text x="680" y="128" text-anchor="middle" class="an-l">afterNextRender</text><text x="680" y="142" text-anchor="middle" class="an-s">đo DOM, thư viện</text></g><g class="an an-ai"><rect x="358" y="168" width="44" height="44" rx="9"/><text x="380" y="194.5" text-anchor="middle" class="an-i" style="font-size:13px">EVT</text><text x="380" y="228" text-anchor="middle" class="an-l">ngOnDestroy</text><text x="380" y="242" text-anchor="middle" class="an-s">DestroyRef.onDestroy</text></g></svg><figcaption>Thứ tự: tạo class (constructor, input chưa có giá trị) → nhận input → ngOnInit → render → afterNextRender (DOM có rồi) → ... → ngOnDestroy / DestroyRef khi bị gỡ khỏi màn hình</figcaption></figure>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Dùng cho</th></tr>
+<tr><td><code>setup()</code> / <code>&lt;script setup&gt;</code></td><td><code>constructor</code> và khởi tạo thuộc tính</td><td><code>inject()</code>, tạo signal / computed / effect</td></tr>
+<tr><td><code>onBeforeMount</code></td><td><code>ngOnInit</code></td><td>logic cần input đã có giá trị (ở code cũ, nơi gọi API ban đầu)</td></tr>
+<tr><td><code>onMounted</code></td><td><code>afterNextRender</code> (một lần) / <code>ngAfterViewInit</code> (cũ)</td><td>đọc kích thước DOM, focus, khởi tạo thư viện DOM</td></tr>
+<tr><td><code>onUpdated</code></td><td><code>afterEveryRender</code> / <code>afterRenderEffect</code></td><td>đồng bộ DOM sau mỗi lần cập nhật</td></tr>
+<tr><td><code>watch(props.x)</code></td><td><code>computed</code> / <code>effect</code> trên input signal (code cũ: <code>ngOnChanges</code>)</td><td>phản ứng khi input đổi</td></tr>
+<tr><td><code>onUnmounted</code></td><td><code>inject(DestroyRef).onDestroy(...)</code> / <code>ngOnDestroy</code></td><td>dọn timer, listener, kết nối</td></tr>
+</table>
+
+<h2 id="constructor-hay-ngoninit"><a href="#constructor-hay-ngoninit" class="anchor" aria-hidden="true">#</a>constructor hay ngOnInit</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> ClassDetail <span class="k">implements</span> OnInit {
+  id = <span class="b">input</span>.required&lt;<span class="t">number</span>&gt;();
+  private store = <span class="b">inject</span>(ClassStore);   <span class="c">// ✓ inject ở khởi tạo thuộc tính / constructor</span>
+
+  <span class="f">constructor</span>() {
+    <span class="b">console</span>.<span class="f">log</span>(<span class="k">this</span>.<span class="f">id</span>());              <span class="c">// ✘ lỗi: input bắt buộc chưa có giá trị ở constructor</span>
+  }
+
+  <span class="f">ngOnInit</span>() {
+    <span class="b">console</span>.<span class="f">log</span>(<span class="k">this</span>.<span class="f">id</span>());              <span class="c">// ✓ input đã được gán</span>
+  }
+}</code></pre></div>
+<ul>
+<li><b>constructor</b>: chỉ để inject và tạo signal / computed / effect. Input <b>chưa có giá trị</b>.</li>
+<li><b>ngOnInit</b>: chạy một lần khi input đã có giá trị lần đầu. Ở code cũ, đây là chỗ gọi API ban đầu.</li>
+<li>Ở code hiện đại với signal, bạn ít cần <code>ngOnInit</code>: tải dữ liệu bằng <code>resource</code> / <code>httpResource</code> phụ thuộc input (bài 13) tự chạy khi input có giá trị và chạy lại khi input đổi.</li>
+</ul>
+<aside class="fe"><p>Bẫy kinh điển: dùng <code>ngOnInit</code> để tải dữ liệu theo id từ route. Router dùng lại cùng component khi chỉ đổi tham số (<code>/lop/1</code> → <code>/lop/2</code>), nên <code>ngOnInit</code> không chạy lại và trang hiện dữ liệu cũ. Vue cũng có bẫy này (cần <code>watch(() =&gt; route.params.id)</code>). Ở Angular, đọc id bằng input signal và dùng <code>computed</code> / <code>httpResource</code> sẽ tự chạy lại.</p></aside>
+
+<h2 id="lam-viec-voi-dom-sau-khi-render"><a href="#lam-viec-voi-dom-sau-khi-render" class="anchor" aria-hidden="true">#</a>Làm việc với DOM sau khi render</h2>
+<div class="code"><div class="code-h"><span>chart-box.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, ElementRef, afterNextRender, afterRenderEffect, <span class="b">inject</span>, <span class="b">input</span>, <span class="b">viewChild</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-chart-box'</span>,
+  template: <span class="s">`&lt;canvas #cv width=&quot;600&quot; height=&quot;240&quot;&gt;&lt;/canvas&gt;`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> ChartBox {
+  data = <span class="b">input</span>.required&lt;<span class="t">number</span>[]&gt;();
+  private cv = <span class="b">viewChild</span>.required&lt;ElementRef&lt;HTMLCanvasElement&gt;&gt;(<span class="s">'cv'</span>);
+  private chart?: ChartLib;
+
+  <span class="f">constructor</span>() {
+    <span class="c">// Một lần, sau lần render đầu tiên: khởi tạo thư viện</span>
+    <span class="f">afterNextRender</span>(() =&gt; {
+      <span class="k">this</span>.chart = <span class="k">new</span> <span class="f">ChartLib</span>(<span class="k">this</span>.<span class="f">cv</span>().nativeElement);
+    });
+
+    <span class="c">// Mỗi khi data đổi VÀ sau khi DOM đã cập nhật: vẽ lại</span>
+    <span class="f">afterRenderEffect</span>(() =&gt; {
+      <span class="k">this</span>.chart?.<span class="f">draw</span>(<span class="k">this</span>.<span class="f">data</span>());
+    });
+  }
+}</code></pre></div>
+<p><code>afterNextRender</code> và <code>afterRenderEffect</code> <b>chỉ chạy trên trình duyệt</b>, không chạy khi render phía server. Vì vậy đây là chỗ an toàn để dùng <code>window</code>, <code>document</code>, <code>localStorage</code>, đo kích thước (bài 20).</p>
+
+<h2 id="don-dep-destroyref"><a href="#don-dep-destroyref" class="anchor" aria-hidden="true">#</a>Dọn dẹp: DestroyRef</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { DestroyRef, <span class="b">inject</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+<span class="k">export</span> <span class="k">class</span> LiveClock {
+  now = <span class="b">signal</span>(<span class="k">new</span> <span class="f">Date</span>());
+
+  <span class="f">constructor</span>() {
+    <span class="k">const</span> id = <span class="f">setInterval</span>(() =&gt; <span class="k">this</span>.now.<span class="f">set</span>(<span class="k">new</span> <span class="f">Date</span>()), <span class="n">1000</span>);
+    <span class="b">inject</span>(DestroyRef).<span class="f">onDestroy</span>(() =&gt; <span class="f">clearInterval</span>(id));
+  }
+}</code></pre></div>
+<p><code>DestroyRef</code> dùng được cả trong service và hàm tiện ích (miễn là trong injection context), nên hay được dùng hơn <code>ngOnDestroy</code>. Những thứ Angular <b>tự dọn</b> cho bạn: effect, listener khai báo trong template / <code>host</code>, <code>takeUntilDestroyed()</code> (bài 14), <code>toSignal()</code>.</p>
+<aside class="warn"><p>Những thứ <b>không</b> tự dọn: <code>setInterval</code>, <code>addEventListener</code> gọi tay, WebSocket, <code>subscribe()</code> không có <code>takeUntilDestroyed</code>, instance của thư viện bên ngoài (bản đồ, biểu đồ, trình soạn thảo). Quên dọn → rò rỉ bộ nhớ và chạy ngầm sau khi rời trang.</p></aside>
+
+<h2 id="thao-tac-dom-an-toan"><a href="#thao-tac-dom-an-toan" class="anchor" aria-hidden="true">#</a>Thao tác DOM an toàn</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>private el = <span class="b">inject</span>&lt;ElementRef&lt;HTMLElement&gt;&gt;(ElementRef);  <span class="c">// phần tử host của component / directive</span>
+private renderer = <span class="b">inject</span>(Renderer2);
+private doc = <span class="b">inject</span>(DOCUMENT);                            <span class="c">// document, thay cho biến toàn cục</span>
+
+<span class="f">highlight</span>() {
+  <span class="k">this</span>.renderer.<span class="f">addClass</span>(<span class="k">this</span>.el.nativeElement, <span class="s">'flash'</span>);  <span class="c">// không chạm thẳng DOM</span>
+  <span class="k">this</span>.doc.title = <span class="s">'Đang chấm bài'</span>;
+}</code></pre></div>
+<p>Thứ tự ưu tiên: binding trong template → <code>host</code> → <code>Renderer2</code> → <code>nativeElement</code> trực tiếp (chỉ trong <code>afterNextRender</code>). Đi thẳng vào DOM khiến component khó chạy khi SSR và dễ xung đột với cách Angular cập nhật giao diện.</p>
+
+<h2 id="lifecycle-hook-kieu-cu"><a href="#lifecycle-hook-kieu-cu" class="anchor" aria-hidden="true">#</a>Lifecycle hook kiểu cũ</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> OldComponent <span class="k">implements</span> OnChanges, OnInit, AfterViewInit, OnDestroy {
+  @<span class="f">Input</span>() id!: <span class="t">number</span>;
+  private sub?: Subscription;
+
+  <span class="f">ngOnChanges</span>(changes: SimpleChanges) { <span class="k">if</span> (changes[<span class="s">'id'</span>]) <span class="k">this</span>.<span class="f">load</span>(); }
+  <span class="f">ngOnInit</span>() { <span class="k">this</span>.sub = <span class="k">this</span>.service.updates$.<span class="f">subscribe</span>(...); }
+  <span class="f">ngAfterViewInit</span>() { <span class="k">this</span>.<span class="b">input</span>.nativeElement.<span class="f">focus</span>(); }
+  <span class="f">ngOnDestroy</span>() { <span class="k">this</span>.sub?.<span class="f">unsubscribe</span>(); }
+}</code></pre></div>
+<p>Ngoài ra còn <code>ngDoCheck</code>, <code>ngAfterContentInit</code>, <code>ngAfterContentChecked</code>, <code>ngAfterViewChecked</code>: hiếm khi cần. Nếu gặp <code>ngDoCheck</code> trong code cũ, thường đó là chỗ đang làm việc mà signals làm tốt hơn.</p>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Component nhận <code>id = input.required&lt;number&gt;()</code>. Đọc <code>this.id()</code> trong constructor thì sao?</p><div class="qo"><button type="button" class="opt">Được giá trị đúng</button><button type="button" class="opt" data-ok>Lỗi NG0950: input bắt buộc chưa được gán</button><button type="button" class="opt">Được undefined, không lỗi</button></div><p class="why" hidden>Input được gán sau khi class được tạo. Đọc trong ngOnInit, computed, effect hoặc template.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Khởi tạo thư viện bản đồ cần phần tử div đã có trong DOM. Đặt code ở đâu?</p><div class="qo"><button type="button" class="opt">constructor</button><button type="button" class="opt">ngOnInit</button><button type="button" class="opt" data-ok>afterNextRender</button></div><p class="why" hidden>DOM chỉ tồn tại sau lần render đầu. afterNextRender còn không chạy khi SSR, tránh lỗi window không tồn tại.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Đồng hồ đếm ngược hạn nộp</summary>
+<p>Viết component nhận input <code>deadline</code> (chuỗi ISO), hiển thị "còn X giờ Y phút Z giây", cập nhật mỗi giây, chuyển sang "Đã hết hạn" màu đỏ khi quá hạn. Đổi input sang hạn khác thì hiển thị cập nhật ngay. Không rò rỉ timer khi component bị gỡ.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>now = signal(Date.now())</code>, cập nhật bằng <code>setInterval</code> trong constructor, dọn bằng <code>DestroyRef</code>.</li>
+<li><code>remainMs = computed(() =&gt; Date.parse(this.deadline()) - this.now())</code>: tự tính lại khi deadline hoặc now đổi.</li>
+<li>Định dạng giờ / phút / giây bằng <code>Math.floor</code> và <code>padStart(2, '0')</code>.</li>
+<li>Ẩn / gỡ component để thử: bọc nơi dùng trong <code>@if (show()) { ... }</code>, kiểm tra trong DevTools rằng timer dừng.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>countdown.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, DestroyRef, <span class="b">computed</span>, <span class="b">inject</span>, <span class="b">input</span>, <span class="b">signal</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-countdown'</span>,
+  host: { <span class="s">'[class.over]'</span>: <span class="s">'remainMs() &lt;= 0'</span> },
+  template: <span class="s">`
+    @if (remainMs() &gt; 0) {
+      Còn {{ text() }}
+    } @else {
+      Đã hết hạn
+    }
+  `</span>,
+  styles: <span class="s">`:host { font-variant-numeric: tabular-nums; } :host(.over) { color: #dc2626; font-weight: 600; }`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> Countdown {
+  deadline = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  private now = <span class="b">signal</span>(Date.<span class="f">now</span>());
+  protected remainMs = <span class="b">computed</span>(() =&gt; Date.<span class="f">parse</span>(<span class="k">this</span>.<span class="f">deadline</span>()) - <span class="k">this</span>.<span class="f">now</span>());
+  protected text = <span class="b">computed</span>(() =&gt; {
+    <span class="k">const</span> s = Math.<span class="f">floor</span>(<span class="k">this</span>.<span class="f">remainMs</span>() / <span class="n">1000</span>);
+    <span class="k">const</span> h = Math.<span class="f">floor</span>(s / <span class="n">3600</span>);
+    <span class="k">const</span> m = Math.<span class="f">floor</span>((s % <span class="n">3600</span>) / <span class="n">60</span>);
+    <span class="k">const</span> sec = s % <span class="n">60</span>;
+    <span class="k">const</span> two = (n: <span class="t">number</span>) =&gt; <span class="f">String</span>(n).<span class="f">padStart</span>(<span class="n">2</span>, <span class="s">'0'</span>);
+    <span class="k">return</span> <span class="s">`${h} giờ ${two(m)} phút ${two(sec)} giây`</span>;
+  });
+
+  <span class="f">constructor</span>() {
+    <span class="k">const</span> id = <span class="f">setInterval</span>(() =&gt; <span class="k">this</span>.now.<span class="f">set</span>(Date.<span class="f">now</span>()), <span class="n">1000</span>);
+    <span class="b">inject</span>(DestroyRef).<span class="f">onDestroy</span>(() =&gt; {
+      <span class="f">clearInterval</span>(id);
+      <span class="b">console</span>.<span class="f">log</span>(<span class="s">'countdown: đã dọn timer'</span>);
+    });
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>nơi dùng</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;<span class="k">label</span>&gt;&lt;<span class="k">input</span> type=<span class="s">&quot;checkbox&quot;</span> [checked]=<span class="s">&quot;show()&quot;</span> (change)=<span class="s">&quot;show.set(!show())&quot;</span> /&gt; Hiện đồng hồ&lt;/<span class="k">label</span>&gt;
+@<span class="t">if</span> (<span class="f">show</span>()) {
+  &lt;<span class="k">p</span>&gt;Bài <span class="n">3</span>: &lt;app-countdown deadline=<span class="s">&quot;2026-11-04T23:59:00+07:00&quot;</span> /&gt;&lt;/<span class="k">p</span>&gt;
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><label><input type="checkbox" checked /> Hiện đồng hồ</label>
+<p>Bài 3: <span style="font-variant-numeric:tabular-nums">Còn 5 giờ 12 phút 08 giây</span></p></div></div>
+<div class="term sim" role="img" aria-label="Console của trình duyệt (sau khi bỏ tích ô)"><div class="term-h"><i></i><i></i><i></i><span>Console của trình duyệt (sau khi bỏ tích ô)</span><b class="term-sim">Mô phỏng</b></div><pre>countdown: đã dọn timer</pre></div>
+<p><b>Giải thích:</b> không cần <code>ngOnChanges</code> hay <code>ngOnInit</code>: <code>remainMs</code> đọc cả <code>deadline()</code> và <code>now()</code>, nên đổi hạn hay qua mỗi giây đều tự tính lại. Khi bỏ tích ô, khối <code>@if</code> gỡ component, <code>DestroyRef</code> chạy và timer dừng. Không dọn thì timer vẫn chạy mãi, mỗi lần bật lại tạo thêm một timer mới.</p>
+</details>
+</details>
+</div>
+  <div class="done-box"><button class="done-btn" type="button" data-slug="lifecycle">Đánh dấu đã học xong bài này</button></div>
+  <nav class="pn"><a class="prev" href="directive-pipe.html"><small>Bài trước</small>Directive và pipe</a><a class="next" href="di-service.html"><small>Bài tiếp theo</small>Dependency injection và service</a></nav>
+</article></main>
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#vong-doi-cua-component">Vòng đời của component</a><a href="#constructor-hay-ngoninit">constructor hay ngOnInit</a><a href="#lam-viec-voi-dom-sau-khi-render">Làm việc với DOM sau khi render</a><a href="#don-dep-destroyref">Dọn dẹp: DestroyRef</a><a href="#thao-tac-dom-an-toan">Thao tác DOM an toàn</a><a href="#lifecycle-hook-kieu-cu">Lifecycle hook kiểu cũ</a><a href="#bai-tap">Bài tập</a></nav>
+</div>
+</body>
+</html>

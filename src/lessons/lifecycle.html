@@ -1,0 +1,193 @@
+<h2>Vòng đời của component</h2>
+<arch w="840" h="230" caption="Thứ tự: tạo class (constructor, input chưa có giá trị) → nhận input → ngOnInit → render → afterNextRender (DOM có rồi) → ... → ngOnDestroy / DestroyRef khi bị gỡ khỏi màn hình">
+node c 80 90 cmp "constructor" "inject(), effect()"
+node ch 230 90 event "ngOnChanges" "input đổi (cũ)"
+node i 380 90 eff "ngOnInit" "input đã có"
+node r 530 90 dom "Render" "DOM được tạo"
+node a 680 90 eff "afterNextRender" "đo DOM, thư viện"
+node d 380 190 event "ngOnDestroy" "DestroyRef.onDestroy"
+edge c ch ""
+edge ch i ""
+edge i r ""
+edge r a ""
+</arch>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Dùng cho</th></tr>
+<tr><td><code>setup()</code> / <code>&lt;script setup&gt;</code></td><td><code>constructor</code> và khởi tạo thuộc tính</td><td><code>inject()</code>, tạo signal / computed / effect</td></tr>
+<tr><td><code>onBeforeMount</code></td><td><code>ngOnInit</code></td><td>logic cần input đã có giá trị (ở code cũ, nơi gọi API ban đầu)</td></tr>
+<tr><td><code>onMounted</code></td><td><code>afterNextRender</code> (một lần) / <code>ngAfterViewInit</code> (cũ)</td><td>đọc kích thước DOM, focus, khởi tạo thư viện DOM</td></tr>
+<tr><td><code>onUpdated</code></td><td><code>afterEveryRender</code> / <code>afterRenderEffect</code></td><td>đồng bộ DOM sau mỗi lần cập nhật</td></tr>
+<tr><td><code>watch(props.x)</code></td><td><code>computed</code> / <code>effect</code> trên input signal (code cũ: <code>ngOnChanges</code>)</td><td>phản ứng khi input đổi</td></tr>
+<tr><td><code>onUnmounted</code></td><td><code>inject(DestroyRef).onDestroy(...)</code> / <code>ngOnDestroy</code></td><td>dọn timer, listener, kết nối</td></tr>
+</table>
+
+<h2>constructor hay ngOnInit</h2>
+<pre lang="ts">
+export class ClassDetail implements OnInit {
+  id = input.required<number>();
+  private store = inject(ClassStore);   // ✓ inject ở khởi tạo thuộc tính / constructor
+
+  constructor() {
+    console.log(this.id());              // ✘ lỗi: input bắt buộc chưa có giá trị ở constructor
+  }
+
+  ngOnInit() {
+    console.log(this.id());              // ✓ input đã được gán
+  }
+}
+</pre>
+<ul>
+<li><b>constructor</b>: chỉ để inject và tạo signal / computed / effect. Input <b>chưa có giá trị</b>.</li>
+<li><b>ngOnInit</b>: chạy một lần khi input đã có giá trị lần đầu. Ở code cũ, đây là chỗ gọi API ban đầu.</li>
+<li>Ở code hiện đại với signal, bạn ít cần <code>ngOnInit</code>: tải dữ liệu bằng <code>resource</code> / <code>httpResource</code> phụ thuộc input (bài {{n:http}}) tự chạy khi input có giá trị và chạy lại khi input đổi.</li>
+</ul>
+<aside class="fe"><p>Bẫy kinh điển: dùng <code>ngOnInit</code> để tải dữ liệu theo id từ route. Router dùng lại cùng component khi chỉ đổi tham số (<code>/lop/1</code> → <code>/lop/2</code>), nên <code>ngOnInit</code> không chạy lại và trang hiện dữ liệu cũ. Vue cũng có bẫy này (cần <code>watch(() =&gt; route.params.id)</code>). Ở Angular, đọc id bằng input signal và dùng <code>computed</code> / <code>httpResource</code> sẽ tự chạy lại.</p></aside>
+
+<h2>Làm việc với DOM sau khi render</h2>
+<pre lang="ts" file="chart-box.ts">
+import { Component, ElementRef, afterNextRender, afterRenderEffect, inject, input, viewChild } from '@angular/core';
+
+@Component({
+  selector: 'app-chart-box',
+  template: `<canvas #cv width="600" height="240"></canvas>`,
+})
+export class ChartBox {
+  data = input.required<number[]>();
+  private cv = viewChild.required<ElementRef<HTMLCanvasElement>>('cv');
+  private chart?: ChartLib;
+
+  constructor() {
+    // Một lần, sau lần render đầu tiên: khởi tạo thư viện
+    afterNextRender(() => {
+      this.chart = new ChartLib(this.cv().nativeElement);
+    });
+
+    // Mỗi khi data đổi VÀ sau khi DOM đã cập nhật: vẽ lại
+    afterRenderEffect(() => {
+      this.chart?.draw(this.data());
+    });
+  }
+}
+</pre>
+<p><code>afterNextRender</code> và <code>afterRenderEffect</code> <b>chỉ chạy trên trình duyệt</b>, không chạy khi render phía server. Vì vậy đây là chỗ an toàn để dùng <code>window</code>, <code>document</code>, <code>localStorage</code>, đo kích thước (bài {{n:ssr}}).</p>
+
+<h2>Dọn dẹp: DestroyRef</h2>
+<pre lang="ts">
+import { DestroyRef, inject } from '@angular/core';
+
+export class LiveClock {
+  now = signal(new Date());
+
+  constructor() {
+    const id = setInterval(() => this.now.set(new Date()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(id));
+  }
+}
+</pre>
+<p><code>DestroyRef</code> dùng được cả trong service và hàm tiện ích (miễn là trong injection context), nên hay được dùng hơn <code>ngOnDestroy</code>. Những thứ Angular <b>tự dọn</b> cho bạn: effect, listener khai báo trong template / <code>host</code>, <code>takeUntilDestroyed()</code> (bài {{n:rxjs}}), <code>toSignal()</code>.</p>
+<aside class="warn"><p>Những thứ <b>không</b> tự dọn: <code>setInterval</code>, <code>addEventListener</code> gọi tay, WebSocket, <code>subscribe()</code> không có <code>takeUntilDestroyed</code>, instance của thư viện bên ngoài (bản đồ, biểu đồ, trình soạn thảo). Quên dọn → rò rỉ bộ nhớ và chạy ngầm sau khi rời trang.</p></aside>
+
+<h2>Thao tác DOM an toàn</h2>
+<pre lang="ts">
+private el = inject<ElementRef<HTMLElement>>(ElementRef);  // phần tử host của component / directive
+private renderer = inject(Renderer2);
+private doc = inject(DOCUMENT);                            // document, thay cho biến toàn cục
+
+highlight() {
+  this.renderer.addClass(this.el.nativeElement, 'flash');  // không chạm thẳng DOM
+  this.doc.title = 'Đang chấm bài';
+}
+</pre>
+<p>Thứ tự ưu tiên: binding trong template → <code>host</code> → <code>Renderer2</code> → <code>nativeElement</code> trực tiếp (chỉ trong <code>afterNextRender</code>). Đi thẳng vào DOM khiến component khó chạy khi SSR và dễ xung đột với cách Angular cập nhật giao diện.</p>
+
+<h2>Lifecycle hook kiểu cũ</h2>
+<pre lang="ts">
+export class OldComponent implements OnChanges, OnInit, AfterViewInit, OnDestroy {
+  @Input() id!: number;
+  private sub?: Subscription;
+
+  ngOnChanges(changes: SimpleChanges) { if (changes['id']) this.load(); }
+  ngOnInit() { this.sub = this.service.updates$.subscribe(...); }
+  ngAfterViewInit() { this.input.nativeElement.focus(); }
+  ngOnDestroy() { this.sub?.unsubscribe(); }
+}
+</pre>
+<p>Ngoài ra còn <code>ngDoCheck</code>, <code>ngAfterContentInit</code>, <code>ngAfterContentChecked</code>, <code>ngAfterViewChecked</code>: hiếm khi cần. Nếu gặp <code>ngDoCheck</code> trong code cũ, thường đó là chỗ đang làm việc mà signals làm tốt hơn.</p>
+
+<quiz q="Component nhận <code>id = input.required&lt;number&gt;()</code>. Đọc <code>this.id()</code> trong constructor thì sao?">
+- Được giá trị đúng
++ Lỗi NG0950: input bắt buộc chưa được gán
+- Được undefined, không lỗi
+? Input được gán sau khi class được tạo. Đọc trong ngOnInit, computed, effect hoặc template.
+</quiz>
+<quiz q="Khởi tạo thư viện bản đồ cần phần tử div đã có trong DOM. Đặt code ở đâu?">
+- constructor
+- ngOnInit
++ afterNextRender
+? DOM chỉ tồn tại sau lần render đầu. afterNextRender còn không chạy khi SSR, tránh lỗi window không tồn tại.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Đồng hồ đếm ngược hạn nộp</summary>
+<p>Viết component nhận input <code>deadline</code> (chuỗi ISO), hiển thị "còn X giờ Y phút Z giây", cập nhật mỗi giây, chuyển sang "Đã hết hạn" màu đỏ khi quá hạn. Đổi input sang hạn khác thì hiển thị cập nhật ngay. Không rò rỉ timer khi component bị gỡ.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>now = signal(Date.now())</code>, cập nhật bằng <code>setInterval</code> trong constructor, dọn bằng <code>DestroyRef</code>.</li>
+<li><code>remainMs = computed(() =&gt; Date.parse(this.deadline()) - this.now())</code>: tự tính lại khi deadline hoặc now đổi.</li>
+<li>Định dạng giờ / phút / giây bằng <code>Math.floor</code> và <code>padStart(2, '0')</code>.</li>
+<li>Ẩn / gỡ component để thử: bọc nơi dùng trong <code>@if (show()) { ... }</code>, kiểm tra trong DevTools rằng timer dừng.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="countdown.ts">
+import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+
+@Component({
+  selector: 'app-countdown',
+  host: { '[class.over]': 'remainMs() <= 0' },
+  template: `
+    @if (remainMs() > 0) {
+      Còn {{ text() }}
+    } @else {
+      Đã hết hạn
+    }
+  `,
+  styles: `:host { font-variant-numeric: tabular-nums; } :host(.over) { color: #dc2626; font-weight: 600; }`,
+})
+export class Countdown {
+  deadline = input.required<string>();
+  private now = signal(Date.now());
+  protected remainMs = computed(() => Date.parse(this.deadline()) - this.now());
+  protected text = computed(() => {
+    const s = Math.floor(this.remainMs() / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const two = (n: number) => String(n).padStart(2, '0');
+    return `${h} giờ ${two(m)} phút ${two(sec)} giây`;
+  });
+
+  constructor() {
+    const id = setInterval(() => this.now.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(id);
+      console.log('countdown: đã dọn timer');
+    });
+  }
+}
+</pre>
+<pre lang="html" file="nơi dùng">
+<label><input type="checkbox" [checked]="show()" (change)="show.set(!show())" /> Hiện đồng hồ</label>
+@if (show()) {
+  <p>Bài 3: <app-countdown deadline="2026-11-04T23:59:00+07:00" /></p>
+}
+</pre>
+<pre lang="ui">
+<label><input type="checkbox" checked /> Hiện đồng hồ</label>
+<p>Bài 3: <span style="font-variant-numeric:tabular-nums">Còn 5 giờ 12 phút 08 giây</span></p>
+</pre>
+<pre lang="out" file="Console của trình duyệt (sau khi bỏ tích ô)" sim="1">
+countdown: đã dọn timer
+</pre>
+<p><b>Giải thích:</b> không cần <code>ngOnChanges</code> hay <code>ngOnInit</code>: <code>remainMs</code> đọc cả <code>deadline()</code> và <code>now()</code>, nên đổi hạn hay qua mỗi giây đều tự tính lại. Khi bỏ tích ô, khối <code>@if</code> gỡ component, <code>DestroyRef</code> chạy và timer dừng. Không dọn thì timer vẫn chạy mãi, mỗi lần bật lại tạo thêm một timer mới.</p>
+</details>
+</details>

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bài 00: Angular nhìn từ mắt dân Vue · Angular cho dân Vue</title>
+<meta name="description" content="Angular là framework &quot;đủ pin&quot;, khác Vue ở triết lý, cấu trúc và công cụ. Bảng đối chiếu tổng quát và cách học lộ trình này.">
+<meta name="theme-color" content="#dd0031">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker></defs></svg>
+<header class="top">
+  <button class="menu" type="button" aria-label="Mở danh sách bài"><span></span><span></span><span></span></button>
+  <a class="brand" href="index.html"><img src="favicon.svg" alt="" width="28" height="28">Angular <b>cho dân Vue</b></a>
+  <nav class="topnav"><a href="index.html#lo-trinh">Lộ trình</a><a href="thuat-ngu.html">Vue → Angular</a><a href="nguyen-tac.html">Nguyên tắc</a></nav>
+  <button class="theme" type="button" aria-label="Đổi giao diện sáng / tối"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg></button>
+</header>
+<div class="layout">
+  <aside class="side" aria-label="Danh sách bài">
+    <div class="prog"><div class="prog-t"><span>Tiến độ</span><b class="prog-n">0/25</b></div><div class="prog-b"><i></i></div></div>
+    <div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Chặng 0</span> Khởi động</div><ol><li><a href="lo-trinh.html" data-slug="lo-trinh" aria-current="page"><i class="dot"></i><span class="no">00</span><span class="tx">Angular nhìn từ mắt dân Vue</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#dd0031"><span>Chặng 1</span> Nền tảng Angular</div><ol><li><a href="cai-dat.html" data-slug="cai-dat"><i class="dot"></i><span class="no">01</span><span class="tx">Cài Angular CLI và dự án đầu tiên</span></a></li><li><a href="typescript.html" data-slug="typescript"><i class="dot"></i><span class="no">02</span><span class="tx">TypeScript mà Angular dùng mỗi ngày</span></a></li><li><a href="component.html" data-slug="component"><i class="dot"></i><span class="no">03</span><span class="tx">Component: từ SFC sang class + template</span></a></li><li><a href="template.html" data-slug="template"><i class="dot"></i><span class="no">04</span><span class="tx">Cú pháp template: binding và event</span></a></li><li><a href="control-flow.html" data-slug="control-flow"><i class="dot"></i><span class="no">05</span><span class="tx">Control flow: @if, @for, @switch, @defer</span></a></li><li><a href="signals.html" data-slug="signals"><i class="dot"></i><span class="no">06</span><span class="tx">Signals: reactivity của Angular</span></a></li><li><a href="input-output.html" data-slug="input-output"><i class="dot"></i><span class="no">07</span><span class="tx">Giao tiếp giữa component: input, output, model</span></a></li><li><a href="directive-pipe.html" data-slug="directive-pipe"><i class="dot"></i><span class="no">08</span><span class="tx">Directive và pipe</span></a></li><li><a href="lifecycle.html" data-slug="lifecycle"><i class="dot"></i><span class="no">09</span><span class="tx">Vòng đời component và DOM</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#7c3aed"><span>Chặng 2</span> Kiến trúc ứng dụng</div><ol><li><a href="di-service.html" data-slug="di-service"><i class="dot"></i><span class="no">10</span><span class="tx">Dependency injection và service</span></a></li><li><a href="router.html" data-slug="router"><i class="dot"></i><span class="no">11</span><span class="tx">Router</span></a></li><li><a href="forms.html" data-slug="forms"><i class="dot"></i><span class="no">12</span><span class="tx">Forms: reactive forms và signal forms</span></a></li><li><a href="http.html" data-slug="http"><i class="dot"></i><span class="no">13</span><span class="tx">Gọi API: HttpClient, interceptor, resource</span></a></li><li><a href="rxjs.html" data-slug="rxjs"><i class="dot"></i><span class="no">14</span><span class="tx">RxJS vừa đủ dùng</span></a></li><li><a href="state.html" data-slug="state"><i class="dot"></i><span class="no">15</span><span class="tx">Quản lý state</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#059669"><span>Chặng 3</span> Chất lượng</div><ol><li><a href="change-detection.html" data-slug="change-detection"><i class="dot"></i><span class="no">16</span><span class="tx">Change detection: zone.js, OnPush, zoneless</span></a></li><li><a href="hieu-nang.html" data-slug="hieu-nang"><i class="dot"></i><span class="no">17</span><span class="tx">Hiệu năng</span></a></li><li><a href="testing.html" data-slug="testing"><i class="dot"></i><span class="no">18</span><span class="tx">Kiểm thử</span></a></li><li><a href="styling-ui.html" data-slug="styling-ui"><i class="dot"></i><span class="no">19</span><span class="tx">Style, thư viện UI và accessibility</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#d97706"><span>Chặng 4</span> Đưa lên production</div><ol><li><a href="ssr.html" data-slug="ssr"><i class="dot"></i><span class="no">20</span><span class="tx">SSR, hydration và prerender</span></a></li><li><a href="i18n-pwa.html" data-slug="i18n-pwa"><i class="dot"></i><span class="no">21</span><span class="tx">Đa ngôn ngữ và PWA</span></a></li><li><a href="bao-mat.html" data-slug="bao-mat"><i class="dot"></i><span class="no">22</span><span class="tx">Bảo mật ứng dụng Angular</span></a></li><li><a href="trien-khai.html" data-slug="trien-khai"><i class="dot"></i><span class="no">23</span><span class="tx">Build, cấu hình môi trường và triển khai</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#0f766e"><span>Chặng 5</span> Dự án cuối</div><ol><li><a href="du-an.html" data-slug="du-an"><i class="dot"></i><span class="no">24</span><span class="tx">Dự án: ứng dụng &quot;Sổ bài tập&quot;</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Tra cứu</span></div><ol><li><a href="thuat-ngu.html"><i class="dot plain"></i><span class="tx">Bảng đối chiếu Vue → Angular</span></a></li><li><a href="nguyen-tac.html"><i class="dot plain"></i><span class="tx">Nguyên tắc viết Angular</span></a></li></ol></div>
+  </aside>
+  <div class="scrim"></div>
+  <main id="main"><article class="lesson" data-slug="lo-trinh">
+  <header class="l-head">
+    <div class="l-meta"><span class="ph" style="--pc:#64748b">Chặng 0 · Khởi động</span><span>Bài 00</span><span>30 phút đọc + làm bài</span></div>
+    <h1>Angular nhìn từ mắt dân Vue</h1>
+    <p class="lead">Angular là framework &quot;đủ pin&quot;, khác Vue ở triết lý, cấu trúc và công cụ. Bảng đối chiếu tổng quát và cách học lộ trình này.</p>
+    <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Hiểu Angular khác Vue ở đâu về triết lý và cấu trúc</li><li>Có bảng đối chiếu Vue → Angular trong đầu</li><li>Biết Angular hiện đại (standalone, signals, zoneless) khác Angular cũ thế nào</li></ul></div>
+  </header>
+  <div class="prose"><h2 id="vue-va-angular-hai-triet-ly"><a href="#vue-va-angular-hai-triet-ly" class="anchor" aria-hidden="true">#</a>Vue và Angular: hai triết lý</h2>
+<p>Bạn đã làm Vue 4 năm. Bạn biết component, reactivity, router, store, build tool. Tin tốt: <b>khoảng 70% kiến thức đó dùng lại được</b>. Angular không khó hơn Vue ở khái niệm, nó khác ở <b>cách tổ chức</b> và <b>mức độ "đóng khung"</b>.</p>
+<table>
+<tr><th></th><th>Vue</th><th>Angular</th></tr>
+<tr><td>Định vị</td><td>"progressive framework": lõi nhỏ, tự chọn thêm router, store, form, HTTP</td><td>"platform": có sẵn router, forms, HTTP, i18n, test, SSR, animation, CLI, cùng một đội phát triển</td></tr>
+<tr><td>Ngôn ngữ</td><td>JavaScript hoặc TypeScript</td><td>TypeScript bắt buộc, chế độ strict mặc định</td></tr>
+<tr><td>Component</td><td>Single File Component <code>.vue</code></td><td>class TypeScript + template (cùng file hoặc file riêng)</td></tr>
+<tr><td>Reactivity</td><td>Proxy: <code>ref</code>, <code>reactive</code>, <code>computed</code></td><td>Signals: <code>signal</code>, <code>computed</code>, <code>effect</code> (giống Vue tới bất ngờ)</td></tr>
+<tr><td>Chia sẻ logic</td><td>composable (<code>useXxx()</code>)</td><td>service + dependency injection</td></tr>
+<tr><td>Bất đồng bộ</td><td>Promise, async / await</td><td>Promise và <b>RxJS Observable</b> (HttpClient, router, forms đều trả Observable)</td></tr>
+<tr><td>Quy ước</td><td>linh hoạt, mỗi dự án một kiểu</td><td>chặt: style guide chính thức, CLI sinh code theo một khuôn</td></tr>
+<tr><td>Hợp với</td><td>dự án mọi cỡ, đội nhỏ, cần nhanh</td><td>ứng dụng doanh nghiệp lớn, nhiều đội, sống nhiều năm</td></tr>
+</table>
+<aside class="fe"><p>Hãy nghĩ Angular giống như Vue 3 + Vue Router + Pinia + VeeValidate + Axios + Vue I18n + Vitest + Nuxt, nhưng tất cả do một đội làm, cùng phong cách, cùng lịch phát hành, và CLI biết cách nâng cấp tất cả cùng lúc.</p></aside>
+
+<h2 id="cung-mot-component-hai-cach-viet"><a href="#cung-mot-component-hai-cach-viet" class="anchor" aria-hidden="true">#</a>Cùng một component, hai cách viết</h2>
+<p>Một bộ đếm có nút tăng, hiển thị số và "gấp đôi". Đây là thứ bạn viết mỗi ngày ở Vue:</p>
+<div class="code"><div class="code-h"><span>Counter.vue</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;script setup lang=<span class="s">&quot;ts&quot;</span>&gt;
+import { ref, computed } from <span class="s">'vue'</span>
+
+const props = defineProps&lt;{ start: number }&gt;()
+const emit = defineEmits&lt;{ changed: [value: number] }&gt;()
+
+const count = <span class="f">ref</span>(props.start)
+const double = <span class="f">computed</span>(() =&gt; count.value * <span class="n">2</span>)
+
+function <span class="f">inc</span>() {
+  count.value++
+  <span class="f">emit</span>(<span class="s">'changed'</span>, count.value)
+}
+&lt;/script&gt;
+
+&lt;<span class="k">template</span>&gt;
+  &lt;<span class="k">button</span> @click=<span class="s">&quot;inc&quot;</span>&gt;Tăng&lt;/<span class="k">button</span>&gt;
+  &lt;<span class="k">p</span> v-<span class="t">if</span>=<span class="s">&quot;count &gt; 0&quot;</span>&gt;{{ count }} × <span class="n">2</span> = {{ double }}&lt;/<span class="k">p</span>&gt;
+&lt;/<span class="k">template</span>&gt;
+
+&lt;style scoped&gt;
+<span class="k">button</span> { font-weight: <span class="n">600</span>; }
+&lt;/style&gt;</code></pre></div>
+<p>Và đây là Angular hiện đại:</p>
+<div class="code"><div class="code-h"><span>counter.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">computed</span>, <span class="b">input</span>, <span class="b">linkedSignal</span>, <span class="b">output</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-counter'</span>,
+  template: <span class="s">`
+    &lt;button (click)=&quot;inc()&quot;&gt;Tăng&lt;/button&gt;
+    @if (count() &gt; 0) {
+      &lt;p&gt;{{ count() }} × 2 = {{ double() }}&lt;/p&gt;
+    }
+  `</span>,
+  styles: <span class="s">`button { font-weight: 600; }`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> Counter {
+  start = <span class="b">input</span>.required&lt;<span class="t">number</span>&gt;();       <span class="c">// defineProps</span>
+  changed = <span class="b">output</span>&lt;<span class="t">number</span>&gt;();             <span class="c">// defineEmits</span>
+
+  count = <span class="b">linkedSignal</span>(() =&gt; <span class="k">this</span>.<span class="f">start</span>()); <span class="c">// ref, khởi tạo từ input</span>
+  double = <span class="b">computed</span>(() =&gt; <span class="k">this</span>.<span class="f">count</span>() * <span class="n">2</span>);
+
+  <span class="f">inc</span>() {
+    <span class="k">this</span>.count.<span class="f">update</span>((c) =&gt; c + <span class="n">1</span>);
+    <span class="k">this</span>.changed.<span class="f">emit</span>(<span class="k">this</span>.<span class="f">count</span>());
+  }
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><button>Tăng</button>
+<p>3 × 2 = 6</p></div></div>
+<p>Nhìn kỹ, gần như mọi dòng đều có cặp tương ứng:</p>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Khác biệt</th></tr>
+<tr><td><code>defineProps</code></td><td><code>input()</code></td><td>input là một signal, đọc bằng <code>start()</code></td></tr>
+<tr><td><code>defineEmits</code></td><td><code>output()</code></td><td>gọi <code>.emit(giá trị)</code></td></tr>
+<tr><td><code>ref(0)</code>, đọc <code>.value</code></td><td><code>signal(0)</code>, đọc bằng cách <b>gọi hàm</b> <code>count()</code></td><td>ghi bằng <code>.set()</code> / <code>.update()</code>, không gán trực tiếp</td></tr>
+<tr><td><code>computed</code></td><td><code>computed</code></td><td>giống hệt</td></tr>
+<tr><td><code>@click="inc"</code></td><td><code>(click)="inc()"</code></td><td>ngoặc tròn cho event, phải có <code>()</code></td></tr>
+<tr><td><code>v-if</code></td><td><code>@if (...) { }</code></td><td>khối riêng, không phải thuộc tính</td></tr>
+<tr><td><code>&lt;style scoped&gt;</code></td><td><code>styles</code></td><td>mặc định đã "scoped" (view encapsulation)</td></tr>
+</table>
+<aside class="warn"><p>Lỗi số một của dân Vue khi sang Angular: quên dấu <code>()</code> khi đọc signal trong template. Viết <code>{{ count }}</code> thì Angular in ra cả hàm signal (kiểu <code>[Signal: 3]</code>) thay vì số 3. Trong Vue, template tự "unwrap" ref, Angular thì không.</p></aside>
+
+<h2 id="buc-tranh-mot-ung-dung-angular"><a href="#buc-tranh-mot-ung-dung-angular" class="anchor" aria-hidden="true">#</a>Bức tranh một ứng dụng Angular</h2>
+<figure class="dg arch"><svg viewBox="0 0 840 380" style="min-width:640px;max-width:840px" role="img" aria-label="Component lo giao diện, service lo logic và dữ liệu, được tiêm (inject) vào component. Router chọn component theo URL, HttpClient gọi API, interceptor chen vào mọi request"><g class="ag ag-plain"><rect x="20" y="20" width="800" height="340" rx="8"/><text x="30" y="38" class="ag-t">Ứng dụng Angular (trình duyệt)</text></g><path d="M136.0 110.0 L274.0 110.0" class="ae" marker-end="url(#ar)"/><path d="M300.0 168.0 L300.0 234.0" class="ae" marker-end="url(#ar)"/><path d="M494.0 110.0 L326.0 110.0" class="ae ae-go" marker-end="url(#ar)"/><path d="M546.0 110.0 L674.0 110.0" class="ae" marker-end="url(#ar)"/><path d="M700.0 154.0 L700.0 234.0" class="ae" marker-end="url(#ar)"/><path d="M674.0 260.0 L546.0 260.0" class="ae ae-go" marker-end="url(#ar)"/><g class="an an-nw"><rect x="88" y="88" width="44" height="44" rx="9"/><text x="110" y="114.5" text-anchor="middle" class="an-i" style="font-size:11px">ROUT</text><text x="110" y="148" text-anchor="middle" class="an-l">Router</text><text x="110" y="162" text-anchor="middle" class="an-s">URL → component</text></g><g class="an an-ng"><rect x="278" y="88" width="44" height="44" rx="9"/><text x="300" y="114.5" text-anchor="middle" class="an-i" style="font-size:11px">PAGE</text><text x="300" y="148" text-anchor="middle" class="an-l">ClassListPage</text><text x="300" y="162" text-anchor="middle" class="an-s">component trang</text></g><g class="an an-ng"><rect x="278" y="238" width="44" height="44" rx="9"/><text x="300" y="264.5" text-anchor="middle" class="an-i" style="font-size:13px">CMP</text><text x="300" y="298" text-anchor="middle" class="an-l">ClassCard</text><text x="300" y="312" text-anchor="middle" class="an-s">component con</text></g><g class="an an-dv"><rect x="498" y="88" width="44" height="44" rx="9"/><text x="520" y="114.5" text-anchor="middle" class="an-i" style="font-size:13px">SVC</text><text x="520" y="148" text-anchor="middle" class="an-l">ClassStore</text><text x="520" y="162" text-anchor="middle" class="an-s">service + signals</text></g><g class="an an-nw"><rect x="678" y="88" width="44" height="44" rx="9"/><text x="700" y="114.5" text-anchor="middle" class="an-i" style="font-size:11px">HTTP</text><text x="700" y="148" text-anchor="middle" class="an-l">HttpClient</text></g><g class="an an-sec"><rect x="678" y="238" width="44" height="44" rx="9"/><text x="700" y="264.5" text-anchor="middle" class="an-i" style="font-size:13px">INT</text><text x="700" y="298" text-anchor="middle" class="an-l">Interceptor</text><text x="700" y="312" text-anchor="middle" class="an-s">gắn token, bắt lỗi</text></g><g class="an an-gen"><rect x="498" y="238" width="44" height="44" rx="9"/><text x="520" y="264.5" text-anchor="middle" class="an-i" style="font-size:13px">API</text><text x="520" y="298" text-anchor="middle" class="an-l">Backend API</text><text x="520" y="312" text-anchor="middle" class="an-s">REST / JSON</text></g><g class="ae-lb"><rect x="272.6" y="192.0" width="54.8" height="17" rx="4"/><text x="300.0" y="204.5" text-anchor="middle">input()</text></g><g class="ae-lb"><rect x="379.4" y="101.0" width="61.2" height="17" rx="4"/><text x="410.0" y="113.5" text-anchor="middle">inject()</text></g><g class="ae-lb"><rect x="582.6" y="251.0" width="54.8" height="17" rx="4"/><text x="610.0" y="263.5" text-anchor="middle">request</text></g></svg><figcaption>Component lo giao diện, service lo logic và dữ liệu, được tiêm (inject) vào component. Router chọn component theo URL, HttpClient gọi API, interceptor chen vào mọi request</figcaption></figure>
+<p>Ba thứ bạn sẽ thấy ở mọi dự án:</p>
+<ul>
+<li><b>Component</b>: giao diện. Nhận dữ liệu qua <code>input()</code>, báo sự kiện qua <code>output()</code>, giữ state cục bộ bằng signal.</li>
+<li><b>Service</b>: logic và dữ liệu dùng chung. Một class bình thường có <code>@Injectable</code>, Angular tạo và "tiêm" nó vào nơi cần qua <code>inject()</code>. Đây là chỗ bạn đặt những gì ở Vue bạn để trong composable hay store Pinia.</li>
+<li><b>Dependency injection (DI)</b>: cơ chế Angular tự tạo đối tượng và đưa cho nơi cần. Bài 10 đi sâu, đây là khái niệm quan trọng nhất mà Vue không có tương đương đầy đủ (gần nhất là <code>provide / inject</code>).</li>
+</ul>
+
+<h2 id="angular-cu-va-angular-moi"><a href="#angular-cu-va-angular-moi" class="anchor" aria-hidden="true">#</a>Angular cũ và Angular mới</h2>
+<p>Angular thay đổi rất nhiều từ bản 14 đến bản 20. Trên mạng (và trong dự án công ty) bạn sẽ gặp cả hai kiểu. Lộ trình này dạy kiểu mới, nhưng bạn phải đọc được kiểu cũ.</p>
+<table>
+<tr><th>Chủ đề</th><th>Angular cũ (trước ~v16)</th><th>Angular hiện đại</th></tr>
+<tr><td>Tổ chức</td><td><code>NgModule</code> khai báo mọi component</td><td><b>standalone</b> component tự khai báo <code>imports</code></td></tr>
+<tr><td>Reactivity</td><td>thuộc tính class thường + Zone.js tự phát hiện thay đổi</td><td><b>signals</b>, ứng dụng <b>zoneless</b></td></tr>
+<tr><td>Input / output</td><td><code>@Input()</code>, <code>@Output() x = new EventEmitter()</code></td><td><code>input()</code>, <code>output()</code>, <code>model()</code></td></tr>
+<tr><td>Rẽ nhánh, lặp</td><td><code>*ngIf</code>, <code>*ngFor</code>, <code>[ngSwitch]</code></td><td><code>@if</code>, <code>@for</code>, <code>@switch</code></td></tr>
+<tr><td>Inject</td><td>tham số constructor <code>constructor(private http: HttpClient)</code></td><td><code>private http = inject(HttpClient)</code></td></tr>
+<tr><td>Guard, interceptor</td><td>class implements <code>CanActivate</code>, <code>HttpInterceptor</code></td><td>hàm thường</td></tr>
+<tr><td>Tải dữ liệu</td><td>subscribe Observable, lưu vào biến</td><td><code>httpResource</code>, <code>toSignal</code></td></tr>
+<tr><td>Build</td><td>webpack</td><td>esbuild + Vite (dev server)</td></tr>
+<tr><td>Test</td><td>Karma + Jasmine</td><td>Vitest (mặc định cho dự án mới từ v21), Jasmine vẫn dùng được</td></tr>
+</table>
+<aside class="real"><p>Ở các công ty Việt Nam, nhiều dự án Angular viết từ 2018 đến 2022 vẫn dùng NgModule và Zone.js, đang nâng cấp dần. Angular giữ tương thích rất tốt: code cũ và code mới chạy chung trong một ứng dụng. Nên bạn thường sẽ viết component mới theo kiểu mới, đặt cạnh component cũ.</p></aside>
+
+<h2 id="nhung-thu-se-lam-ban-kho-chiu-luc-dau"><a href="#nhung-thu-se-lam-ban-kho-chiu-luc-dau" class="anchor" aria-hidden="true">#</a>Những thứ sẽ làm bạn "khó chịu" lúc đầu</h2>
+<ol>
+<li><b>Nhiều chữ hơn.</b> Decorator, class, kiểu dữ liệu, import. Một component Angular thường dài hơn Vue 20 đến 30%. Đổi lại, đọc code của người khác rất dễ vì ai cũng viết giống nhau.</li>
+<li><b>RxJS.</b> HttpClient trả Observable chứ không phải Promise. Bài 14 dạy đúng phần cần dùng. Với signals và <code>httpResource</code>, bạn ngày càng ít phải viết RxJS.</li>
+<li><b>Dependency injection.</b> Lúc đầu thấy vòng vo ("sao không import rồi gọi luôn?"). Sau vài tuần, bạn sẽ thấy nó giúp test và thay thế cài đặt dễ như thế nào.</li>
+<li><b>Template nghiêm hơn.</b> Template được biên dịch và kiểm tra kiểu: gõ sai tên thuộc tính là lỗi biên dịch, không phải lỗi lúc chạy.</li>
+</ol>
+
+<h2 id="lo-trinh-nay-day-gi"><a href="#lo-trinh-nay-day-gi" class="anchor" aria-hidden="true">#</a>Lộ trình này dạy gì</h2>
+<figure class="dg"><svg viewBox="0 0 886.8000000000001 432" style="min-width:600px;max-width:886.8000000000001px" role="img" aria-label="Sáu chặng, mỗi chặng xây trên chặng trước"><g class="nd "><rect x="10" y="10" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="41" class="tt" text-anchor="middle">Chặng 0 · Khởi động</text></g><text x="238.00000000000003" y="41" class="tl" text-anchor="start">bạn đang ở đây</text><line x1="114.00000000000001" y1="62" x2="114.00000000000001" y2="80" class="ln" marker-end="url(#ar)"/><g class="nd go"><rect x="10" y="82" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="113" class="tt" text-anchor="middle">Chặng 1 · Nền tảng</text></g><text x="238.00000000000003" y="113" class="tl" text-anchor="start">component, template, control flow, signals, input / output, directive, pipe, vòng đời</text><line x1="114.00000000000001" y1="134" x2="114.00000000000001" y2="152" class="ln" marker-end="url(#ar)"/><g class="nd q"><rect x="10" y="154" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="185" class="tt" text-anchor="middle">Chặng 2 · Kiến trúc</text></g><text x="238.00000000000003" y="185" class="tl" text-anchor="start">DI, router, forms, HTTP, RxJS, state</text><line x1="114.00000000000001" y1="206" x2="114.00000000000001" y2="224" class="ln" marker-end="url(#ar)"/><g class="nd ok"><rect x="10" y="226" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="257" class="tt" text-anchor="middle">Chặng 3 · Chất lượng</text></g><text x="238.00000000000003" y="257" class="tl" text-anchor="start">change detection, hiệu năng, test, style và UI</text><line x1="114.00000000000001" y1="278" x2="114.00000000000001" y2="296" class="ln" marker-end="url(#ar)"/><g class="nd warn"><rect x="10" y="298" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="329" class="tt" text-anchor="middle">Chặng 4 · Production</text></g><text x="238.00000000000003" y="329" class="tl" text-anchor="start">SSR, i18n, PWA, bảo mật, deploy</text><line x1="114.00000000000001" y1="350" x2="114.00000000000001" y2="368" class="ln" marker-end="url(#ar)"/><g class="nd db"><rect x="10" y="370" width="208.00000000000003" height="52" rx="10"/><text x="114.00000000000001" y="401" class="tt" text-anchor="middle">Chặng 5 · Dự án cuối</text></g><text x="238.00000000000003" y="401" class="tl" text-anchor="start">ứng dụng &quot;Sổ bài tập&quot; hoàn chỉnh</text></svg><figcaption>Sáu chặng, mỗi chặng xây trên chặng trước</figcaption></figure>
+<p>Mỗi bài có: giải thích kèm hộp <b>So với Vue</b>, sơ đồ, code chạy được, khung <b>kết quả hiển thị</b> (minh hoạ giao diện), hộp <b>Ngoài thực tế</b> và <b>Chuẩn production</b>, câu hỏi nhanh và bài tập có lời giải.</p>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Trong template Angular, signal <code>name = signal('Lan')</code> được hiển thị đúng bằng cách nào?</p><div class="qo"><button type="button" class="opt"><code>{{ name }}</code></button><button type="button" class="opt" data-ok><code>{{ name() }}</code></button><button type="button" class="opt"><code>{{ name.value }}</code></button></div><p class="why" hidden>Signal là một hàm, đọc giá trị bằng cách gọi nó. Template Angular không tự unwrap như ref của Vue.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Ở Vue bạn đặt logic gọi API dùng chung trong composable <code>useClasses()</code>. Ở Angular, chỗ tương ứng thường là?</p><div class="qo"><button type="button" class="opt">Một component cha</button><button type="button" class="opt" data-ok>Một service <code>@Injectable</code>, inject vào component bằng <code>inject()</code></button><button type="button" class="opt">Một directive</button></div><p class="why" hidden>Service là nơi chứa logic và state dùng chung. Dependency injection tạo và chia sẻ nó.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Dịch một component Vue sang Angular (trên giấy)</summary>
+<p>Chưa cần cài gì. Dịch component Vue sau sang Angular dựa vào bảng đối chiếu ở trên:</p>
+<div class="code"><div class="code-h"><span>Greeting.vue</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;script setup lang=<span class="s">&quot;ts&quot;</span>&gt;
+import { ref, computed } from <span class="s">'vue'</span>
+const props = defineProps&lt;{ firstName: string }&gt;()
+const shout = <span class="f">ref</span>(<span class="b">false</span>)
+const text = <span class="f">computed</span>(() =&gt; `Xin chào, ${props.firstName}` + (shout.value ? <span class="s">'!!!'</span> : <span class="s">'.'</span>))
+&lt;/script&gt;
+
+&lt;<span class="k">template</span>&gt;
+  &lt;<span class="k">label</span>&gt;&lt;<span class="k">input</span> type=<span class="s">&quot;checkbox&quot;</span> v-model=<span class="s">&quot;shout&quot;</span> /&gt; Hét lên&lt;/<span class="k">label</span>&gt;
+  &lt;<span class="k">h2</span>&gt;{{ text }}&lt;/<span class="k">h2</span>&gt;
+&lt;/<span class="k">template</span>&gt;</code></pre></div>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>defineProps</code> → <code>firstName = input.required&lt;string&gt;()</code>.</li>
+<li><code>ref(false)</code> → <code>shout = signal(false)</code>.</li>
+<li>Trong <code>computed</code>, đọc input và signal bằng cách gọi hàm: <code>this.firstName()</code>, <code>this.shout()</code>.</li>
+<li><code>v-model</code> trên checkbox: chưa học forms, dùng <code>[checked]="shout()"</code> và <code>(change)="shout.set($any($event.target).checked)"</code>. Bài 4 sẽ chỉ cách gọn hơn.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>greeting.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">computed</span>, <span class="b">input</span>, <span class="b">signal</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-greeting'</span>,
+  template: <span class="s">`
+    &lt;label&gt;
+      &lt;input type=&quot;checkbox&quot; [checked]=&quot;shout()&quot; (change)=&quot;toggle($event)&quot; /&gt; Hét lên
+    &lt;/label&gt;
+    &lt;h2&gt;{{ text() }}&lt;/h2&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> Greeting {
+  firstName = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  shout = <span class="b">signal</span>(<span class="b">false</span>);
+  text = <span class="b">computed</span>(() =&gt; <span class="s">`Xin chào, ${this.firstName()}`</span> + (<span class="k">this</span>.<span class="f">shout</span>() ? <span class="s">'!!!'</span> : <span class="s">'.'</span>));
+
+  <span class="f">toggle</span>(e: Event) {
+    <span class="k">this</span>.shout.<span class="f">set</span>((e.target as HTMLInputElement).checked);
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>app.html (nơi dùng)</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-greeting firstName=<span class="s">&quot;Lan&quot;</span> /&gt;</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><label><input type="checkbox" checked /> Hét lên</label>
+<h2>Xin chào, Lan!!!</h2></div></div>
+<p><b>Giải thích:</b> <code>firstName="Lan"</code> truyền chuỗi tĩnh. Nếu muốn truyền biến thì viết <code>[firstName]="ten()"</code> (ngoặc vuông = binding, giống <code>:firstName</code> của Vue). Ép kiểu <code>e.target as HTMLInputElement</code> là cách TypeScript bắt buộc: Angular kiểm tra kiểu cả trong template.</p>
+</details>
+</details>
+</div>
+  <div class="done-box"><button class="done-btn" type="button" data-slug="lo-trinh">Đánh dấu đã học xong bài này</button></div>
+  <nav class="pn"><span></span><a class="next" href="cai-dat.html"><small>Bài tiếp theo</small>Cài Angular CLI và dự án đầu tiên</a></nav>
+</article></main>
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#vue-va-angular-hai-triet-ly">Vue và Angular: hai triết lý</a><a href="#cung-mot-component-hai-cach-viet">Cùng một component, hai cách viết</a><a href="#buc-tranh-mot-ung-dung-angular">Bức tranh một ứng dụng Angular</a><a href="#angular-cu-va-angular-moi">Angular cũ và Angular mới</a><a href="#nhung-thu-se-lam-ban-kho-chiu-luc-dau">Những thứ sẽ làm bạn &quot;khó chịu&quot; lúc đầu</a><a href="#lo-trinh-nay-day-gi">Lộ trình này dạy gì</a><a href="#bai-tap">Bài tập</a></nav>
+</div>
+</body>
+</html>

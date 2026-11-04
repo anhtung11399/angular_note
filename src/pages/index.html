@@ -1,0 +1,58 @@
+<div class="home">
+<section class="hero">
+  <div>
+    <h1>Từ Vue sang <em>Angular hiện đại</em>, đi từng bước một</h1>
+    <p class="lead">Lộ trình viết riêng cho người đã làm frontend vài năm với Vue. Không dạy lại HTML, CSS, JavaScript. Mỗi bài đối chiếu với thứ bạn đã quen ở Vue, có sơ đồ, code chạy được, kết quả hiển thị và bài tập có lời giải. Dùng Angular hiện đại: standalone component, signals, control flow mới, zoneless.</p>
+    <div class="stats">
+      <div><b>{{COUNT}}</b><span>bài học</span></div>
+      <div><b>~{{HOURS}} giờ</b><span>đọc và thực hành</span></div>
+      <div><b>1</b><span>dự án hoàn chỉnh để đưa vào CV</span></div>
+    </div>
+    <div class="cta"><a class="btn continue" href="lo-trinh.html">Bắt đầu từ bài 00</a><a class="btn ghost" href="#lo-trinh">Xem lộ trình</a></div>
+  </div>
+  <figure class="dg" style="margin:0">
+    <svg viewBox="0 0 520 430" role="img" aria-label="Bản đồ 6 chặng học">
+      <path d="M60 50 H420 Q470 50 470 100 Q470 150 420 150 H100 Q50 150 50 200 Q50 250 100 250 H420 Q470 250 470 300 Q470 350 420 350 H120" class="ln" style="stroke-width:5;stroke-dasharray:2 10;stroke-linecap:round"/>
+      <g>
+        <circle cx="60" cy="50" r="22" fill="#64748b"/><text x="60" y="56" class="tw" text-anchor="middle">0</text>
+        <text x="92" y="38" class="tl" style="font-weight:700">Khởi động</text><text x="92" y="76" class="ts">Angular vs Vue</text>
+        <circle cx="300" cy="50" r="22" fill="#dd0031"/><text x="300" y="56" class="tw" text-anchor="middle">1</text>
+        <text x="330" y="38" class="tl" style="font-weight:700">Nền tảng</text><text x="330" y="80" class="ts">9 bài: component, signals</text>
+        <circle cx="400" cy="150" r="22" fill="#7c3aed"/><text x="400" y="156" class="tw" text-anchor="middle">2</text>
+        <text x="300" y="138" class="tl" style="font-weight:700" text-anchor="end">Kiến trúc</text><text x="300" y="180" class="ts" text-anchor="end">DI, router, forms, HTTP, RxJS</text>
+        <circle cx="140" cy="150" r="22" fill="#059669"/><text x="140" y="156" class="tw" text-anchor="middle">3</text>
+        <text x="110" y="190" class="tl" style="font-weight:700">Chất lượng</text><text x="110" y="208" class="ts">hiệu năng, test, UI</text>
+        <circle cx="260" cy="250" r="22" fill="#d97706"/><text x="260" y="256" class="tw" text-anchor="middle">4</text>
+        <text x="290" y="238" class="tl" style="font-weight:700">Production</text><text x="290" y="282" class="ts">SSR, bảo mật, deploy</text>
+        <circle cx="120" cy="350" r="26" fill="#0f766e"/><text x="120" y="356" class="tw" text-anchor="middle">5</text>
+        <text x="156" y="380" class="tl" style="font-weight:700">Dự án cuối</text><text x="156" y="398" class="ts">ứng dụng hoàn chỉnh</text>
+      </g>
+    </svg>
+  </figure>
+</section>
+
+<h2 id="lo-trinh">Lộ trình</h2>
+<p>Học theo thứ tự. Mỗi chặng dựa trên chặng trước. Tiến độ được lưu trên trình duyệt của bạn: bấm "Đánh dấu đã học xong" ở cuối mỗi bài.</p>
+{{PHASES}}
+
+<h2>Cách học để thật sự làm được</h2>
+<div class="how">
+  <div><b>Gõ lại, đừng chép</b><p>Mở một dự án Angular bên cạnh, gõ từng ví dụ, sửa thử một chỗ để xem giao diện đổi thế nào.</p></div>
+  <div><b>Dịch một component Vue của bạn</b><p>Sau mỗi bài ở chặng 1 và 2, chọn một component Vue bạn từng viết và viết lại bằng Angular. Cách nhanh nhất để "nghĩ bằng Angular".</p></div>
+  <div><b>Làm bài tập trước khi xem lời giải</b><p>Mỗi bài tập có gợi ý từng bước. Bí thì mở gợi ý, vẫn bí mới xem lời giải.</p></div>
+  <div><b>Dùng chỗ mạnh của bạn</b><p>Bạn đã hiểu component, reactivity, router, state, build tool. Angular chỉ đặt tên và tổ chức chúng khác đi.</p></div>
+  <div><b>Tra bảng đối chiếu</b><p>Quên Angular gọi cái gì? Trang <a href="thuat-ngu.html">Vue → Angular</a> gom mọi khái niệm tương ứng vào một chỗ.</p></div>
+  <div><b>Khoảng 1 giờ mỗi ngày</b><p>Với 4 năm kinh nghiệm Vue, học đều khoảng 5 đến 6 tuần là đủ để nhận task Angular ở công ty.</p></div>
+</div>
+<aside class="tip"><p>Lộ trình dùng Angular hiện đại (từ bản 20 trở lên): standalone component mặc định, signals, control flow <code>@if / @for</code>, ứng dụng zoneless. Dự án ở công ty còn dùng NgModule, <code>*ngIf</code>, Zone.js? Mỗi bài đều có phần "code cũ trông thế nào" để bạn đọc hiểu được.</p></aside>
+
+<h2>Tài liệu chính thức nên đánh dấu</h2>
+<ul>
+  <li><a href="https://angular.dev/" target="_blank" rel="noopener">angular.dev</a>: tài liệu chính thức, có hướng dẫn và playground chạy ngay trên trình duyệt.</li>
+  <li><a href="https://angular.dev/style-guide" target="_blank" rel="noopener">Angular Style Guide</a>: quy ước đặt tên và tổ chức code.</li>
+  <li><a href="https://angular.dev/reference/releases" target="_blank" rel="noopener">Lịch phát hành</a> và <a href="https://angular.dev/update-guide" target="_blank" rel="noopener">Update Guide</a>: nâng cấp phiên bản từng bước.</li>
+  <li><a href="https://rxjs.dev/" target="_blank" rel="noopener">rxjs.dev</a> và <a href="https://rxmarbles.com/" target="_blank" rel="noopener">RxMarbles</a>: tra cứu operator RxJS bằng hình.</li>
+  <li><a href="https://ngrx.io/" target="_blank" rel="noopener">ngrx.io</a>: NgRx Store và SignalStore.</li>
+  <li><a href="https://material.angular.dev/" target="_blank" rel="noopener">Angular Material</a>: thư viện component chính thức.</li>
+</ul>
+</div>

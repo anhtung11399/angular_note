@@ -1,0 +1,243 @@
+<h2>Bốn kiểu binding</h2>
+<p>Toàn bộ cú pháp template Angular xoay quanh 4 dấu ngoặc. Nhớ được bảng này là đọc được 90% template:</p>
+<table>
+<tr><th>Cú pháp</th><th>Hướng</th><th>Ví dụ</th><th>Vue</th></tr>
+<tr><td><code>{{ biểu thức }}</code></td><td>class → giao diện (chữ)</td><td><code>{{ name() }}</code></td><td><code>{{ name }}</code></td></tr>
+<tr><td><code>[thuộc tính]="biểu thức"</code></td><td>class → giao diện (thuộc tính)</td><td><code>[disabled]="saving()"</code></td><td><code>:disabled="saving"</code></td></tr>
+<tr><td><code>(sự kiện)="câu lệnh"</code></td><td>giao diện → class</td><td><code>(click)="save()"</code></td><td><code>@click="save"</code></td></tr>
+<tr><td><code>[(giá trị)]="signal"</code></td><td>hai chiều</td><td><code>[(value)]="query"</code></td><td><code>v-model="query"</code></td></tr>
+</table>
+<arch w="820" h="200" caption="Ngoặc vuông: dữ liệu đi từ class xuống template. Ngoặc tròn: sự kiện đi từ template lên class. &quot;Hộp chuối&quot; [( )]: cả hai chiều">
+node cls 160 90 cmp "Class" "name, saving, save()"
+node tpl 660 90 tpl "Template / DOM" ""
+path 186 70 634 70 "{{ }} và [ ] → giá trị" c=go
+path 634 110 186 110 "( ) → sự kiện" c=ok
+</arch>
+<aside class="fe"><p>Mẹo nhớ: ngoặc vuông <code>[ ]</code> như hộp chứa giá trị đưa vào, ngoặc tròn <code>( )</code> như tai nghe lắng nghe sự kiện. <code>[( )]</code> người ta gọi vui là "banana in a box" (quả chuối trong hộp).</p></aside>
+
+<h2>Interpolation</h2>
+<pre lang="html">
+<h2>{{ classroom().name }}</h2>
+<p>Sĩ số: {{ students().length }} / {{ capacity }}</p>
+<p>Điểm trung bình: {{ average() | number: '1.1-1' }}</p>
+<p>{{ isFull() ? 'Đã đủ' : 'Còn chỗ' }}</p>
+<p>{{ teacher()?.name ?? 'Chưa phân công' }}</p>
+</pre>
+<p>Biểu thức trong template Angular là một tập con của JavaScript: có <code>?.</code>, <code>??</code>, toán tử ba ngôi, gọi hàm, template literal (từ v19.2: <code>{{ `Lớp ${name()}` }}</code>). <b>Không có</b>: gán (<code>=</code>), <code>new</code>, <code>++</code>, toán tử bit, truy cập biến toàn cục như <code>window</code> hay <code>Math</code> (muốn dùng thì gán vào thuộc tính của class).</p>
+<aside class="warn"><p>Giữ biểu thức trong template <b>đơn giản và rẻ</b>. Gọi một method tính toán nặng như <code>{{ tinhXepHang() }}</code> sẽ bị chạy lại mỗi lần Angular kiểm tra giao diện. Đặt nó vào <code>computed()</code>: chỉ tính lại khi phụ thuộc đổi (giống <code>computed</code> của Vue so với method).</p></aside>
+
+<h2>Property binding</h2>
+<pre lang="html">
+<img [src]="avatarUrl()" [alt]="name()" />
+<button [disabled]="saving() || !valid()">Lưu</button>
+<input [value]="query()" />
+<app-class-card [name]="c.name" [students]="c.count" />
+<a [href]="docUrl">Hướng dẫn</a>
+</pre>
+<p>Không có ngoặc vuông thì giá trị là <b>chuỗi tĩnh</b>:</p>
+<pre lang="html">
+<app-class-card name="Lớp 5A" />          <!-- input name nhận chuỗi 'Lớp 5A' -->
+<app-class-card [name]="'Lớp 5A'" />      <!-- giống hệt, dài hơn -->
+<app-class-card [students]="30" />        <!-- số 30 -->
+<app-class-card students="30" />          <!-- chuỗi '30': lỗi kiểu nếu input là number -->
+</pre>
+
+<h3>Property hay attribute?</h3>
+<p>Ngoặc vuông gán vào <b>property của DOM</b>, không phải attribute HTML. Hầu hết trùng tên nên bạn không để ý, nhưng một số attribute không có property tương ứng (<code>aria-*</code>, <code>colspan</code> trên một số phần tử, <code>data-*</code>, thuộc tính SVG). Khi đó dùng <code>attr.</code>:</p>
+<pre lang="html">
+<button [attr.aria-label]="'Xoá ' + name()" [attr.aria-expanded]="open()">✕</button>
+<td [attr.colspan]="span()">...</td>
+<div [attr.data-id]="id()">...</div>
+<!-- Từ v20, aria-* gán được trực tiếp: [aria-label]="..." -->
+</pre>
+<p>Giá trị <code>null</code> hoặc <code>undefined</code> trong <code>[attr.x]</code> sẽ <b>xoá</b> attribute, đúng điều bạn muốn với <code>aria-*</code> tuỳ chọn.</p>
+
+<h3>Class và style</h3>
+<pre lang="html">
+<!-- một class bật / tắt -->
+<li [class.done]="a.status === 'graded'">...</li>
+
+<!-- nhiều class: chuỗi, mảng hoặc object (giống :class của Vue) -->
+<div [class]="'card ' + tone()"></div>
+<div [class]="['card', tone()]"></div>
+<div [class]="{ card: true, active: selected(), danger: late() }"></div>
+
+<!-- style -->
+<div [style.width.px]="width()"></div>
+<div [style.background-color]="color()"></div>
+<div [style]="{ 'grid-template-columns': cols(), opacity: dim() ? 0.5 : 1 }"></div>
+</pre>
+<aside class="fe"><p>Giống <code>:class</code> và <code>:style</code> của Vue, kể cả cách gộp với <code>class="..."</code> tĩnh. Cú pháp <code>[style.width.px]</code> (thêm đơn vị vào tên) là riêng của Angular và rất tiện. <code>[ngClass]</code>, <code>[ngStyle]</code> là cách cũ, không cần dùng nữa.</p></aside>
+
+<h2>Event binding</h2>
+<pre lang="html">
+<button (click)="save()">Lưu</button>
+<button (click)="remove(a.id); $event.stopPropagation()">Xoá</button>
+<input (input)="onSearch($event)" (blur)="touched.set(true)" />
+<input (keydown.enter)="submit()" (keydown.escape)="cancel()" />
+<input (keydown.control.s)="$event.preventDefault(); save()" />
+<form (submit)="$event.preventDefault(); save()">...</form>
+<app-class-card (removed)="onRemoved($event)" />   <!-- output của component con -->
+</pre>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td><code>@click="save"</code> hoặc <code>@click="save()"</code></td><td><code>(click)="save()"</code> — luôn phải gọi hàm</td></tr>
+<tr><td><code>@input="onSearch($event)"</code></td><td><code>(input)="onSearch($event)"</code></td></tr>
+<tr><td><code>@keydown.enter</code></td><td><code>(keydown.enter)</code></td></tr>
+<tr><td><code>@click.stop</code>, <code>@submit.prevent</code></td><td>không có modifier: gọi <code>$event.stopPropagation()</code>, <code>$event.preventDefault()</code></td></tr>
+<tr><td><code>@click.once</code>, <code>.self</code>, <code>.capture</code></td><td>không có, tự xử lý trong hàm</td></tr>
+</table>
+<pre lang="ts">
+protected onSearch(e: Event) {
+  const text = (e.target as HTMLInputElement).value;
+  this.query.set(text.trim());
+}
+</pre>
+
+<h2>Two-way binding</h2>
+<p>Với component con có <code>model()</code> (bài {{n:input-output}}) hoặc với signal, cú pháp <code>[( )]</code> làm cả hai chiều:</p>
+<pre lang="ts">
+@Component({
+  selector: 'app-search',
+  imports: [FormsModule],
+  template: `
+    <input [(ngModel)]="query" placeholder="Tìm học sinh" />
+    <app-toggle [(checked)]="onlyLate" /> Chỉ học sinh nộp muộn
+    <p>Đang tìm: "{{ query() }}", chỉ nộp muộn: {{ onlyLate() }}</p>
+  `,
+})
+export class Search {
+  query = signal('');
+  onlyLate = signal(false);
+}
+</pre>
+<pre lang="ui">
+<input placeholder="Tìm học sinh" value="Lan" /> <label style="margin-left:12px"><input type="checkbox" checked /> Chỉ học sinh nộp muộn</label>
+<p>Đang tìm: "Lan", chỉ nộp muộn: true</p>
+</pre>
+<p><code>[(ngModel)]="query"</code> là cách nhanh nhất để có "v-model" cho ô nhập: cần import <code>FormsModule</code>, và truyền <b>signal</b> (không gọi <code>query()</code>). Với form thật nhiều trường, dùng reactive forms (bài {{n:forms}}).</p>
+<aside class="warn"><p><code>[(ngModel)]="query()"</code> (có ngoặc gọi hàm) là sai: bạn đang truyền giá trị, Angular không ghi ngược lại được. Two-way binding với signal: truyền chính signal, <code>[(ngModel)]="query"</code>.</p></aside>
+
+<h2>Template reference variable</h2>
+<p><code>#ten</code> đặt tên cho một phần tử hay component để dùng ở chỗ khác trong cùng template, không cần viết code trong class:</p>
+<pre lang="html">
+<input #box placeholder="Tên lớp" />
+<button (click)="add(box.value); box.value = ''; box.focus()">Thêm</button>
+
+<app-date-picker #picker />
+<button (click)="picker.open()">Chọn ngày</button>
+</pre>
+<aside class="fe"><p>Giống <code>ref="box"</code> của Vue, nhưng dùng được thẳng trong template mà không cần khai báo <code>const box = ref()</code> trong script. Muốn truy cập từ class thì dùng <code>viewChild('box')</code> (bài {{n:input-output}}).</p></aside>
+
+<h2>@let: biến cục bộ trong template</h2>
+<pre lang="html">
+@let user = currentUser();
+@let total = assignments().length;
+@let late = assignments() | lateCount;
+
+<h2>Chào {{ user.name }}</h2>
+<p>{{ late }} / {{ total }} bài nộp muộn</p>
+@if (total > 0) {
+  <app-progress [value]="(total - late) / total" />
+}
+</pre>
+<p><code>@let</code> (từ v18.1) tránh gọi đi gọi lại cùng một biểu thức. Biến chỉ đọc, sống trong phạm vi khối chứa nó.</p>
+
+<h2>Bảng dịch nhanh Vue → Angular</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td><code>{{ msg }}</code></td><td><code>{{ msg() }}</code> (signal) hoặc <code>{{ msg }}</code> (thuộc tính thường)</td></tr>
+<tr><td><code>v-bind:href</code> / <code>:href</code></td><td><code>[href]</code></td></tr>
+<tr><td><code>v-bind="obj"</code> (rải nhiều thuộc tính)</td><td>không có tương đương: gán từng thuộc tính</td></tr>
+<tr><td><code>v-on:click</code> / <code>@click</code></td><td><code>(click)</code></td></tr>
+<tr><td><code>v-model</code></td><td><code>[(ngModel)]</code>, <code>[formControl]</code>, hoặc <code>[(x)]</code> với <code>model()</code></td></tr>
+<tr><td><code>v-if / v-else-if / v-else</code></td><td><code>@if / @else if / @else</code></td></tr>
+<tr><td><code>v-for="x in list" :key="x.id"</code></td><td><code>@for (x of list; track x.id)</code></td></tr>
+<tr><td><code>v-show</code></td><td><code>[hidden]="!show()"</code> hoặc <code>[style.display]</code></td></tr>
+<tr><td><code>v-html</code></td><td><code>[innerHTML]</code> (tự sanitize, bài {{n:bao-mat}})</td></tr>
+<tr><td><code>v-text</code></td><td><code>[textContent]</code></td></tr>
+<tr><td><code>ref="x"</code></td><td><code>#x</code></td></tr>
+<tr><td><code>&lt;slot&gt;</code></td><td><code>&lt;ng-content&gt;</code></td></tr>
+<tr><td><code>&lt;template v-if&gt;</code> (nhóm không sinh thẻ)</td><td><code>&lt;ng-container&gt;</code>, hoặc khối <code>@if</code> (không sinh thẻ)</td></tr>
+<tr><td><code>&lt;component :is="x"&gt;</code></td><td><code>*ngComponentOutlet="x"</code> hoặc <code>ViewContainerRef.createComponent</code></td></tr>
+</table>
+<aside class="warn"><p><code>[hidden]</code> bị vô hiệu nếu CSS của bạn có <code>display: ...</code> cho phần tử đó (CSS thắng thuộc tính hidden). Thêm vào style toàn cục: <code>[hidden] { display: none !important; }</code>.</p></aside>
+
+<quiz q="Cách nào truyền số 30 (kiểu number) vào input <code>students</code> của component con?">
+- <code>students="30"</code>
++ <code>[students]="30"</code>
+- <code>(students)="30"</code>
+? Không có ngoặc vuông thì giá trị luôn là chuỗi. Ngoặc vuông đánh giá biểu thức, 30 là số.
+</quiz>
+<quiz q="Vue có <code>@submit.prevent="save"</code>. Viết tương đương trong Angular?">
+- <code>(submit.prevent)="save()"</code>
++ <code>(submit)="$event.preventDefault(); save()"</code> (hoặc dùng ngSubmit của forms)
+- <code>[submit]="save()"</code>
+? Angular không có modifier .prevent / .stop. Với form Angular, (ngSubmit) đã tự ngăn reload trang.
+</quiz>
+<quiz q="Muốn gán <code>aria-label</code> động trên phiên bản Angular cũ hơn 20, viết thế nào?">
++ <code>[attr.aria-label]="label()"</code>
+- <code>[aria-label]="label()"</code> luôn đúng ở mọi phiên bản
+- <code>aria-label="{{ label }}"</code> là cách duy nhất
+? aria-label là attribute, không phải property DOM, nên cần tiền tố attr. Từ v20 Angular hỗ trợ gán trực tiếp các thuộc tính aria-*.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Thẻ bài tập có trạng thái và nút hành động</summary>
+<p>Viết component hiển thị một bài tập: tiêu đề, hạn nộp, nhãn trạng thái có màu (nháp xám, đã giao xanh, quá hạn đỏ), nút "Giao bài" chỉ bật khi đang là nháp, và ô ghi chú nhập trực tiếp (hiển thị số ký tự đã gõ / 200).</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>State: <code>status = signal&lt;'draft' | 'published'&gt;('draft')</code>, <code>due = signal('2026-11-10')</code>, <code>note = signal('')</code>.</li>
+<li>Quá hạn: <code>late = computed(() =&gt; this.status() === 'published' &amp;&amp; this.due() &lt; hôm nay)</code> (so sánh chuỗi YYYY-MM-DD được).</li>
+<li>Nhãn: <code>[class]="{ tag: true, gray: ..., green: ..., red: late() }"</code>.</li>
+<li>Nút: <code>[disabled]="status() !== 'draft'"</code>, <code>(click)="status.set('published')"</code>.</li>
+<li>Ghi chú: <code>[value]="note()"</code> và <code>(input)</code> cập nhật signal, <code>maxlength="200"</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="assignment-card.ts">
+import { Component, computed, signal } from '@angular/core';
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+@Component({
+  selector: 'app-assignment-card',
+  template: `
+    <h3>Bài 3: Phân số</h3>
+    <p>Hạn nộp: {{ due() }}</p>
+    <span [class]="{ tag: true, gray: status() === 'draft', green: status() === 'published' && !late(), red: late() }">
+      {{ late() ? 'Quá hạn' : status() === 'draft' ? 'Nháp' : 'Đã giao' }}
+    </span>
+    <button [disabled]="status() !== 'draft'" (click)="status.set('published')">Giao bài</button>
+
+    <label for="note">Ghi chú</label>
+    <textarea id="note" maxlength="200" [value]="note()" (input)="onNote($event)"></textarea>
+    <small>{{ note().length }}/200</small>
+  `,
+  styles: `
+    :host { display: block; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+    .tag { padding: 2px 10px; border-radius: 99px; font-size: 13px; margin-right: 8px; }
+    .gray { background: #f1f5f9; } .green { background: #dcfce7; color: #166534; } .red { background: #fee2e2; color: #b91c1c; }
+    textarea { display: block; width: 100%; margin-top: 6px; }
+  `,
+})
+export class AssignmentCard {
+  protected status = signal<'draft' | 'published'>('draft');
+  protected due = signal('2026-11-10');
+  protected note = signal('');
+  protected late = computed(() => this.status() === 'published' && this.due() < today());
+
+  protected onNote(e: Event) {
+    this.note.set((e.target as HTMLTextAreaElement).value);
+  }
+}
+</pre>
+<pre lang="ui">
+<div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px">
+<h3 style="margin:0 0 6px">Bài 3: Phân số</h3><p style="margin:0 0 8px">Hạn nộp: 2026-11-10</p>
+<span style="background:#f1f5f9;padding:2px 10px;border-radius:99px;font-size:13px;margin-right:8px">Nháp</span><button>Giao bài</button>
+<p style="margin:12px 0 4px">Ghi chú</p><textarea style="width:100%">Nhắc các em làm câu 4 bằng bút chì</textarea><small>34/200</small>
+</div>
+</pre>
+<p><b>Giải thích:</b> <code>status.set('published')</code> gọi thẳng trong template được vì đó là gọi method của signal, không phải gán. Sau khi bấm, nút tự tắt nhờ <code>[disabled]</code>, nhãn đổi sang "Đã giao". Nếu hạn đã qua, <code>late()</code> đúng và nhãn chuyển đỏ. Ô ghi chú dùng <code>[value]</code> + <code>(input)</code>, chính là thứ <code>v-model</code> làm ngầm trong Vue. Bài {{n:forms}} sẽ thay bằng form control gọn hơn.</p>
+</details>
+</details>

@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bài 02: TypeScript mà Angular dùng mỗi ngày · Angular cho dân Vue</title>
+<meta name="description" content="Class, decorator, access modifier, generic, strict mode, kiểu cho template. Những thứ Vue cho phép bỏ qua nhưng Angular thì không.">
+<meta name="theme-color" content="#dd0031">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker></defs></svg>
+<header class="top">
+  <button class="menu" type="button" aria-label="Mở danh sách bài"><span></span><span></span><span></span></button>
+  <a class="brand" href="index.html"><img src="favicon.svg" alt="" width="28" height="28">Angular <b>cho dân Vue</b></a>
+  <nav class="topnav"><a href="index.html#lo-trinh">Lộ trình</a><a href="thuat-ngu.html">Vue → Angular</a><a href="nguyen-tac.html">Nguyên tắc</a></nav>
+  <button class="theme" type="button" aria-label="Đổi giao diện sáng / tối"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg></button>
+</header>
+<div class="layout">
+  <aside class="side" aria-label="Danh sách bài">
+    <div class="prog"><div class="prog-t"><span>Tiến độ</span><b class="prog-n">0/25</b></div><div class="prog-b"><i></i></div></div>
+    <div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Chặng 0</span> Khởi động</div><ol><li><a href="lo-trinh.html" data-slug="lo-trinh"><i class="dot"></i><span class="no">00</span><span class="tx">Angular nhìn từ mắt dân Vue</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#dd0031"><span>Chặng 1</span> Nền tảng Angular</div><ol><li><a href="cai-dat.html" data-slug="cai-dat"><i class="dot"></i><span class="no">01</span><span class="tx">Cài Angular CLI và dự án đầu tiên</span></a></li><li><a href="typescript.html" data-slug="typescript" aria-current="page"><i class="dot"></i><span class="no">02</span><span class="tx">TypeScript mà Angular dùng mỗi ngày</span></a></li><li><a href="component.html" data-slug="component"><i class="dot"></i><span class="no">03</span><span class="tx">Component: từ SFC sang class + template</span></a></li><li><a href="template.html" data-slug="template"><i class="dot"></i><span class="no">04</span><span class="tx">Cú pháp template: binding và event</span></a></li><li><a href="control-flow.html" data-slug="control-flow"><i class="dot"></i><span class="no">05</span><span class="tx">Control flow: @if, @for, @switch, @defer</span></a></li><li><a href="signals.html" data-slug="signals"><i class="dot"></i><span class="no">06</span><span class="tx">Signals: reactivity của Angular</span></a></li><li><a href="input-output.html" data-slug="input-output"><i class="dot"></i><span class="no">07</span><span class="tx">Giao tiếp giữa component: input, output, model</span></a></li><li><a href="directive-pipe.html" data-slug="directive-pipe"><i class="dot"></i><span class="no">08</span><span class="tx">Directive và pipe</span></a></li><li><a href="lifecycle.html" data-slug="lifecycle"><i class="dot"></i><span class="no">09</span><span class="tx">Vòng đời component và DOM</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#7c3aed"><span>Chặng 2</span> Kiến trúc ứng dụng</div><ol><li><a href="di-service.html" data-slug="di-service"><i class="dot"></i><span class="no">10</span><span class="tx">Dependency injection và service</span></a></li><li><a href="router.html" data-slug="router"><i class="dot"></i><span class="no">11</span><span class="tx">Router</span></a></li><li><a href="forms.html" data-slug="forms"><i class="dot"></i><span class="no">12</span><span class="tx">Forms: reactive forms và signal forms</span></a></li><li><a href="http.html" data-slug="http"><i class="dot"></i><span class="no">13</span><span class="tx">Gọi API: HttpClient, interceptor, resource</span></a></li><li><a href="rxjs.html" data-slug="rxjs"><i class="dot"></i><span class="no">14</span><span class="tx">RxJS vừa đủ dùng</span></a></li><li><a href="state.html" data-slug="state"><i class="dot"></i><span class="no">15</span><span class="tx">Quản lý state</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#059669"><span>Chặng 3</span> Chất lượng</div><ol><li><a href="change-detection.html" data-slug="change-detection"><i class="dot"></i><span class="no">16</span><span class="tx">Change detection: zone.js, OnPush, zoneless</span></a></li><li><a href="hieu-nang.html" data-slug="hieu-nang"><i class="dot"></i><span class="no">17</span><span class="tx">Hiệu năng</span></a></li><li><a href="testing.html" data-slug="testing"><i class="dot"></i><span class="no">18</span><span class="tx">Kiểm thử</span></a></li><li><a href="styling-ui.html" data-slug="styling-ui"><i class="dot"></i><span class="no">19</span><span class="tx">Style, thư viện UI và accessibility</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#d97706"><span>Chặng 4</span> Đưa lên production</div><ol><li><a href="ssr.html" data-slug="ssr"><i class="dot"></i><span class="no">20</span><span class="tx">SSR, hydration và prerender</span></a></li><li><a href="i18n-pwa.html" data-slug="i18n-pwa"><i class="dot"></i><span class="no">21</span><span class="tx">Đa ngôn ngữ và PWA</span></a></li><li><a href="bao-mat.html" data-slug="bao-mat"><i class="dot"></i><span class="no">22</span><span class="tx">Bảo mật ứng dụng Angular</span></a></li><li><a href="trien-khai.html" data-slug="trien-khai"><i class="dot"></i><span class="no">23</span><span class="tx">Build, cấu hình môi trường và triển khai</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#0f766e"><span>Chặng 5</span> Dự án cuối</div><ol><li><a href="du-an.html" data-slug="du-an"><i class="dot"></i><span class="no">24</span><span class="tx">Dự án: ứng dụng &quot;Sổ bài tập&quot;</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Tra cứu</span></div><ol><li><a href="thuat-ngu.html"><i class="dot plain"></i><span class="tx">Bảng đối chiếu Vue → Angular</span></a></li><li><a href="nguyen-tac.html"><i class="dot plain"></i><span class="tx">Nguyên tắc viết Angular</span></a></li></ol></div>
+  </aside>
+  <div class="scrim"></div>
+  <main id="main"><article class="lesson" data-slug="typescript">
+  <header class="l-head">
+    <div class="l-meta"><span class="ph" style="--pc:#dd0031">Chặng 1 · Nền tảng Angular</span><span>Bài 02</span><span>40 phút đọc + làm bài</span></div>
+    <h1>TypeScript mà Angular dùng mỗi ngày</h1>
+    <p class="lead">Class, decorator, access modifier, generic, strict mode, kiểu cho template. Những thứ Vue cho phép bỏ qua nhưng Angular thì không.</p>
+    <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Đọc hiểu class và decorator của Angular</li><li>Dùng generic và kiểu chặt cho model dữ liệu</li><li>Hiểu strict template type checking</li></ul></div>
+  </header>
+  <div class="prose"><h2 id="vi-sao-can-on-lai-typescript"><a href="#vi-sao-can-on-lai-typescript" class="anchor" aria-hidden="true">#</a>Vì sao cần ôn lại TypeScript</h2>
+<p>Ở Vue, TypeScript là tuỳ chọn, và kể cả khi dùng thì <code>&lt;script setup&gt;</code> giấu gần hết class và decorator. Angular thì ngược lại: <b>mọi thứ là class có decorator</b>, dự án mặc định bật <code>strict</code>, template cũng được kiểm tra kiểu. Bài này ôn đúng những phần TypeScript mà Angular dùng mỗi ngày.</p>
+
+<h2 id="class-vien-gach-cua-angular"><a href="#class-vien-gach-cua-angular" class="anchor" aria-hidden="true">#</a>Class: viên gạch của Angular</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> ClassCard {
+  <span class="c">// thuộc tính có giá trị ban đầu: kiểu được suy ra (number)</span>
+  count = <span class="n">0</span>;
+
+  <span class="c">// khai báo kiểu rõ ràng</span>
+  title: <span class="t">string</span> = <span class="s">'Lớp 5A'</span>;
+
+  <span class="c">// readonly: không gán lại được sau khi khởi tạo</span>
+  readonly maxStudents = <span class="n">40</span>;
+
+  <span class="c">// private / protected / public (mặc định public)</span>
+  private secret = <span class="s">'chỉ trong class'</span>;
+  protected shown = <span class="s">'class con và template dùng được'</span>;
+
+  <span class="c">// ! : &quot;tôi hứa sẽ gán trước khi dùng&quot; (definite assignment) — hạn chế dùng</span>
+  teacherName!: <span class="t">string</span>;
+
+  <span class="c">// method</span>
+  <span class="f">rename</span>(next: <span class="t">string</span>): <span class="t">void</span> {
+    <span class="k">this</span>.title = next;
+  }
+
+  <span class="c">// getter: dùng như thuộc tính</span>
+  get <span class="f">isFull</span>(): <span class="t">boolean</span> {
+    <span class="k">return</span> <span class="k">this</span>.count &gt;= <span class="k">this</span>.maxStudents;
+  }
+}</code></pre></div>
+<aside class="fe"><p>Trong <code>&lt;script setup&gt;</code> của Vue, mọi biến khai báo ở top-level đều dùng được trong template. Ở Angular, template chỉ thấy các thành viên <b>public hoặc protected</b> của class. Quy ước hiện đại: những thứ chỉ dùng trong template thì để <code>protected</code>, để code bên ngoài không gọi nhầm.</p></aside>
+<aside class="warn"><p>Luôn dùng <code>this.</code> khi truy cập thuộc tính trong method. Quên <code>this</code> là lỗi kinh điển của người đến từ Vue Composition API (nơi biến chỉ là biến).</p></aside>
+
+<h2 id="decorator"><a href="#decorator" class="anchor" aria-hidden="true">#</a>Decorator</h2>
+<p>Decorator là hàm gắn vào class (hoặc thuộc tính, tham số) bằng cú pháp <code>@Ten(...)</code>, cho Angular biết class này là gì và cấu hình ra sao.</p>
+<table>
+<tr><th>Decorator</th><th>Gắn vào</th><th>Nghĩa</th></tr>
+<tr><td><code>@Component({...})</code></td><td>class</td><td>class này là một component: selector, template, style, imports</td></tr>
+<tr><td><code>@Directive({...})</code></td><td>class</td><td>directive (bài 8)</td></tr>
+<tr><td><code>@Pipe({...})</code></td><td>class</td><td>pipe biến đổi giá trị trong template</td></tr>
+<tr><td><code>@Injectable({...})</code></td><td>class</td><td>service có thể được inject (bài 10)</td></tr>
+<tr><td><code>@Input()</code>, <code>@Output()</code>, <code>@HostListener()</code>, <code>@ViewChild()</code></td><td>thuộc tính / method</td><td><b>kiểu cũ</b>, nay thay bằng hàm <code>input()</code>, <code>output()</code>, <code>host: {}</code>, <code>viewChild()</code></td></tr>
+</table>
+<p>Ở Angular hiện đại bạn chỉ còn dùng decorator ở <b>cấp class</b>. Các decorator thuộc tính chuyển thành hàm (signal-based), nên code ngắn và an toàn kiểu hơn.</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">// Kiểu cũ (vẫn gặp nhiều trong dự án công ty)</span>
+@<span class="f">Component</span>({ selector: <span class="s">'app-old'</span>, template: <span class="s">'...'</span> })
+<span class="k">export</span> <span class="k">class</span> OldCard <span class="k">implements</span> OnChanges {
+  @<span class="f">Input</span>() title = <span class="s">''</span>;
+  @<span class="f">Input</span>({ required: <span class="b">true</span> }) id!: <span class="t">number</span>;
+  @<span class="f">Output</span>() removed = <span class="k">new</span> EventEmitter&lt;<span class="t">number</span>&gt;();
+  @<span class="f">ViewChild</span>(<span class="s">'box'</span>) box!: ElementRef&lt;HTMLDivElement&gt;;
+}
+
+<span class="c">// Kiểu mới</span>
+@<span class="f">Component</span>({ selector: <span class="s">'app-new'</span>, template: <span class="s">'...'</span> })
+<span class="k">export</span> <span class="k">class</span> NewCard {
+  title = <span class="b">input</span>(<span class="s">''</span>);
+  id = <span class="b">input</span>.required&lt;<span class="t">number</span>&gt;();
+  removed = <span class="b">output</span>&lt;<span class="t">number</span>&gt;();
+  box = <span class="b">viewChild</span>.required&lt;ElementRef&lt;HTMLDivElement&gt;&gt;(<span class="s">'box'</span>);
+}</code></pre></div>
+
+<h2 id="interface-type-va-mo-hinh-du-lieu"><a href="#interface-type-va-mo-hinh-du-lieu" class="anchor" aria-hidden="true">#</a>Interface, type và mô hình dữ liệu</h2>
+<div class="code"><div class="code-h"><span>src/app/models/assignment.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">// Dữ liệu từ API: dùng interface hoặc type, KHÔNG dùng class</span>
+<span class="k">export</span> <span class="k">interface</span> Assignment {
+  id: <span class="t">number</span>;
+  classId: <span class="t">number</span>;
+  title: <span class="t">string</span>;
+  dueDate: <span class="t">string</span>;              <span class="c">// 'YYYY-MM-DD' — JSON không có kiểu Date</span>
+  status: AssignmentStatus;
+  note?: <span class="t">string</span>;                <span class="c">// có thể không có</span>
+  attachments: readonly Attachment[];
+}
+
+<span class="k">export</span> <span class="k">type</span> AssignmentStatus = <span class="s">'draft'</span> | <span class="s">'published'</span> | <span class="s">'closed'</span>; <span class="c">// union của chuỗi thay cho enum</span>
+
+<span class="k">export</span> <span class="k">interface</span> Attachment {
+  key: <span class="t">string</span>;
+  name: <span class="t">string</span>;
+  size: <span class="t">number</span>;
+}
+
+<span class="c">// Dữ liệu gửi lên khi tạo mới: suy ra từ kiểu chính</span>
+<span class="k">export</span> <span class="k">type</span> NewAssignment = Omit&lt;Assignment, <span class="s">'id'</span> | <span class="s">'status'</span> | <span class="s">'attachments'</span>&gt;;
+<span class="k">export</span> <span class="k">type</span> AssignmentPatch = <span class="t">Partial</span>&lt;Pick&lt;Assignment, <span class="s">'title'</span> | <span class="s">'dueDate'</span> | <span class="s">'note'</span>&gt;&gt;;</code></pre></div>
+<aside class="tip"><p>Ưu tiên <b>union chuỗi</b> (<code>'draft' | 'published'</code>) hơn <code>enum</code>: không sinh thêm code JavaScript, dễ so khớp với JSON từ API, và template so sánh được trực tiếp <code>@if (a.status === 'draft')</code>.</p></aside>
+<p>Utility type hay dùng:</p>
+<table>
+<tr><th>Kiểu</th><th>Ví dụ</th><th>Dùng khi</th></tr>
+<tr><td><code>Partial&lt;T&gt;</code></td><td><code>Partial&lt;Assignment&gt;</code></td><td>form sửa một phần, PATCH</td></tr>
+<tr><td><code>Pick&lt;T, K&gt;</code> / <code>Omit&lt;T, K&gt;</code></td><td><code>Omit&lt;Assignment, 'id'&gt;</code></td><td>dữ liệu tạo mới chưa có id</td></tr>
+<tr><td><code>Readonly&lt;T&gt;</code>, <code>readonly T[]</code></td><td><code>readonly Attachment[]</code></td><td>state không được sửa trực tiếp (đặc biệt với signal)</td></tr>
+<tr><td><code>Record&lt;K, V&gt;</code></td><td><code>Record&lt;AssignmentStatus, string&gt;</code></td><td>bảng tra: trạng thái → nhãn tiếng Việt</td></tr>
+<tr><td><code>ReturnType</code>, <code>Awaited</code></td><td><code>Awaited&lt;ReturnType&lt;typeof load&gt;&gt;</code></td><td>lấy kiểu kết quả của một hàm</td></tr>
+</table>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">const</span> STATUS_LABEL: <span class="t">Record</span>&lt;AssignmentStatus, <span class="t">string</span>&gt; = {
+  draft: <span class="s">'Nháp'</span>,
+  published: <span class="s">'Đã giao'</span>,
+  closed: <span class="s">'Đã đóng'</span>,
+}; <span class="c">// thiếu một khoá → lỗi biên dịch</span></code></pre></div>
+
+<h2 id="generic"><a href="#generic" class="anchor" aria-hidden="true">#</a>Generic</h2>
+<p>Bạn sẽ gặp generic ở mọi nơi trong Angular: <code>signal&lt;number&gt;()</code>, <code>input.required&lt;string&gt;()</code>, <code>http.get&lt;Assignment[]&gt;(url)</code>, <code>Observable&lt;T&gt;</code>, <code>FormControl&lt;string&gt;</code>.</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">// Kiểu chung cho mọi API phân trang</span>
+<span class="k">export</span> <span class="k">interface</span> Page&lt;T&gt; {
+  items: T[];
+  page: <span class="t">number</span>;
+  totalPages: <span class="t">number</span>;
+}
+
+<span class="c">// Hàm generic: dùng cho mọi loại phần tử</span>
+<span class="k">export</span> <span class="k">function</span> byId&lt;T <span class="k">extends</span> { id: <span class="t">number</span> }&gt;(list: readonly T[], id: <span class="t">number</span>): T | <span class="t">undefined</span> {
+  <span class="k">return</span> list.<span class="f">find</span>((x) =&gt; x.id === id);
+}
+
+<span class="k">const</span> page: Page&lt;Assignment&gt; = <span class="k">await</span> <span class="f">firstValueFrom</span>(http.get&lt;Page&lt;Assignment&gt;&gt;(<span class="s">'/api/assignments'</span>));
+<span class="k">const</span> a = <span class="f">byId</span>(page.items, <span class="n">9</span>); <span class="c">// a có kiểu Assignment | undefined</span></code></pre></div>
+<aside class="warn"><p><code>http.get&lt;Assignment[]&gt;(url)</code> chỉ là <b>lời hứa với trình biên dịch</b>, không kiểm tra dữ liệu thật lúc chạy. Server trả sai cấu trúc thì code vẫn chạy và lỗi ở chỗ khác. Với dữ liệu quan trọng, kiểm tra bằng thư viện như Zod / Valibot.</p></aside>
+
+<h2 id="strict-mode-va-null"><a href="#strict-mode-va-null" class="anchor" aria-hidden="true">#</a>strict mode và null</h2>
+<p>Dự án Angular mới bật <code>strict: true</code> và <code>strictTemplates: true</code>. Hệ quả hằng ngày:</p>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>assignment: Assignment | <span class="t">undefined</span>;
+
+<span class="f">dueText</span>() {
+  <span class="k">return</span> <span class="k">this</span>.assignment.dueDate;      <span class="c">// ✘ lỗi: 'this.assignment' is possibly 'undefined'</span>
+  <span class="k">return</span> <span class="k">this</span>.assignment?.dueDate;     <span class="c">// ✓ optional chaining</span>
+  <span class="k">return</span> <span class="k">this</span>.assignment?.dueDate ?? <span class="s">'Chưa đặt hạn'</span>; <span class="c">// ✓ có giá trị mặc định</span>
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>Template</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="c">&lt;!-- Template cũng bị kiểm tra --&gt;</span>
+&lt;<span class="k">p</span>&gt;{{ assignment.title }}&lt;/<span class="k">p</span>&gt;            <span class="c">&lt;!-- ✘ lỗi biên dịch nếu assignment có thể undefined --&gt;</span>
+@<span class="t">if</span> (assignment; <span class="b">as</span> <span class="k">a</span>) {
+  &lt;<span class="k">p</span>&gt;{{ <span class="k">a</span>.title }}&lt;/<span class="k">p</span>&gt;                  <span class="c">&lt;!-- ✓ trong khối @if, a chắc chắn có giá trị --&gt;</span>
+}</code></pre></div>
+<p>Cấu hình liên quan trong <code>tsconfig.json</code>:</p>
+<div class="code"><div class="code-h"><span>tsconfig.json (trích)</span><button class="copy" type="button">Sao chép</button></div><pre><code>{
+  <span class="s">&quot;compilerOptions&quot;</span>: {
+    <span class="s">&quot;strict&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;noImplicitOverride&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;noPropertyAccessFromIndexSignature&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;noImplicitReturns&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;noFallthroughCasesInSwitch&quot;</span>: <span class="b">true</span>
+  },
+  <span class="s">&quot;angularCompilerOptions&quot;</span>: {
+    <span class="s">&quot;strictInjectionParameters&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;strictInputAccessModifiers&quot;</span>: <span class="b">true</span>,
+    <span class="s">&quot;strictTemplates&quot;</span>: <span class="b">true</span>
+  }
+}</code></pre></div>
+<aside class="real"><p>Dự án cũ hay tắt <code>strictTemplates</code> vì bật lên ra hàng trăm lỗi. Nếu vào dự án như vậy, đừng tắt thêm gì. Mỗi khi sửa file nào, sửa luôn lỗi kiểu của file đó. Bật strict dần dần là cách các đội lớn vẫn làm.</p></aside>
+
+<h2 id="narrowing-va-kieu-cho-su-kien-dom"><a href="#narrowing-va-kieu-cho-su-kien-dom" class="anchor" aria-hidden="true">#</a>Narrowing và kiểu cho sự kiện DOM</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="f">onInput</span>(e: Event) {
+  <span class="k">const</span> value = (e.target as HTMLInputElement).value; <span class="c">// ép kiểu target</span>
+}
+
+<span class="f">onKey</span>(e: KeyboardEvent) {
+  <span class="k">if</span> (e.key === <span class="s">'Enter'</span>) <span class="k">this</span>.<span class="f">save</span>();
+}
+
+<span class="c">// Phân biệt các loại kết quả bằng trường chung (discriminated union)</span>
+<span class="k">type</span> LoadState&lt;T&gt; =
+  | { kind: <span class="s">'loading'</span> }
+  | { kind: <span class="s">'error'</span>; message: <span class="t">string</span> }
+  | { kind: <span class="s">'ok'</span>; data: T };
+
+<span class="k">function</span> <span class="f">render</span>(s: LoadState&lt;Assignment[]&gt;) {
+  <span class="k">switch</span> (s.kind) {
+    <span class="k">case</span> <span class="s">'loading'</span>: <span class="k">return</span> <span class="s">'Đang tải…'</span>;
+    <span class="k">case</span> <span class="s">'error'</span>: <span class="k">return</span> s.message;        <span class="c">// ở đây TS biết s có message</span>
+    <span class="k">case</span> <span class="s">'ok'</span>: <span class="k">return</span> <span class="s">`${s.data.length} bài`</span>;
+  }
+}</code></pre></div>
+<p>Trong template, Angular cũng có cú pháp gọn để lấy giá trị từ sự kiện: <code>(input)="name.set($any($event.target).value)"</code>. <code>$any</code> tắt kiểm tra kiểu cho một biểu thức, dùng hạn chế. Cách đúng hơn là truyền <code>$event</code> vào method có kiểu, hoặc dùng forms (bài 12).</p>
+
+<h2 id="module-es-va-path-alias"><a href="#module-es-va-path-alias" class="anchor" aria-hidden="true">#</a>Module ES và path alias</h2>
+<div class="code"><div class="code-h"><span>tsconfig.json</span><button class="copy" type="button">Sao chép</button></div><pre><code>{
+  <span class="s">&quot;compilerOptions&quot;</span>: {
+    <span class="s">&quot;baseUrl&quot;</span>: <span class="s">&quot;./&quot;</span>,
+    <span class="s">&quot;paths&quot;</span>: {
+      <span class="s">&quot;@core/*&quot;</span>: [<span class="s">&quot;src/app/core/*&quot;</span>],
+      <span class="s">&quot;@shared/*&quot;</span>: [<span class="s">&quot;src/app/shared/*&quot;</span>],
+      <span class="s">&quot;@models/*&quot;</span>: [<span class="s">&quot;src/app/models/*&quot;</span>]
+    }
+  }
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Assignment } <span class="k">from</span> <span class="s">'@models/assignment'</span>;  <span class="c">// thay cho '../../../models/assignment'</span></code></pre></div>
+<aside class="fe"><p>Giống alias <code>@/</code> trong <code>vite.config.ts</code> của Vue. Khác: ở Angular chỉ cần khai báo trong <code>tsconfig.json</code>, builder tự đọc.</p></aside>
+
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Template của component dùng được thành viên nào của class?</p><div class="qo"><button type="button" class="opt">Mọi thành viên, kể cả private</button><button type="button" class="opt" data-ok>Thành viên public và protected</button><button type="button" class="opt">Chỉ những thành viên có decorator</button></div><p class="why" hidden>Template được biên dịch như một phần của class nên thấy được protected. Private thì không: lỗi biên dịch.</p></div>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Dữ liệu JSON từ API nên được mô tả bằng gì?</p><div class="qo"><button type="button" class="opt" data-ok>interface hoặc type</button><button type="button" class="opt">class có constructor</button><button type="button" class="opt">enum</button></div><p class="why" hidden>JSON chỉ là object thuần, không phải instance của class. Dùng class sẽ gây hiểu nhầm (method trên class không tồn tại trên object từ JSON).</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Mô hình dữ liệu cho "Sổ bài tập"</summary>
+<p>Viết file <code>models.ts</code> mô tả: <code>Classroom</code> (id, tên, sĩ số, năm học), <code>Submission</code> (id, mã học sinh, mã bài, trạng thái: chưa nộp / đã nộp / đã chấm, điểm có thể không có, nhận xét có thể không có), bảng nhãn tiếng Việt cho trạng thái, và hàm generic <code>groupBy</code> nhóm danh sách theo một khoá.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Trạng thái: <code>type SubmissionStatus = 'missing' | 'submitted' | 'graded'</code>.</li>
+<li>Điểm có thể không có: <code>score: number | null</code> (API thường trả null) hoặc <code>score?: number</code>.</li>
+<li>Bảng nhãn: <code>Record&lt;SubmissionStatus, string&gt;</code>.</li>
+<li><code>groupBy&lt;T, K extends string | number&gt;(list: readonly T[], key: (x: T) =&gt; K): Record&lt;K, T[]&gt;</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>src/app/models.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">interface</span> Classroom {
+  id: <span class="t">number</span>;
+  name: <span class="t">string</span>;
+  capacity: <span class="t">number</span>;
+  schoolYear: <span class="s">`${number}-${number}`</span>; <span class="c">// template literal type: '2026-2027'</span>
+}
+
+<span class="k">export</span> <span class="k">type</span> SubmissionStatus = <span class="s">'missing'</span> | <span class="s">'submitted'</span> | <span class="s">'graded'</span>;
+
+<span class="k">export</span> <span class="k">interface</span> Submission {
+  id: <span class="t">number</span>;
+  studentId: <span class="t">number</span>;
+  assignmentId: <span class="t">number</span>;
+  status: SubmissionStatus;
+  score: <span class="t">number</span> | <span class="t">null</span>;
+  comment?: <span class="t">string</span>;
+}
+
+<span class="k">export</span> <span class="k">const</span> SUBMISSION_LABEL: <span class="t">Record</span>&lt;SubmissionStatus, <span class="t">string</span>&gt; = {
+  missing: <span class="s">'Chưa nộp'</span>,
+  submitted: <span class="s">'Đã nộp'</span>,
+  graded: <span class="s">'Đã chấm'</span>,
+};
+
+<span class="k">export</span> <span class="k">function</span> groupBy&lt;T, K <span class="k">extends</span> <span class="t">string</span> | <span class="t">number</span>&gt;(list: readonly T[], key: (x: T) =&gt; K): <span class="t">Record</span>&lt;K, T[]&gt; {
+  <span class="k">const</span> out = {} as <span class="t">Record</span>&lt;K, T[]&gt;;
+  <span class="k">for</span> (<span class="k">const</span> item <span class="k">of</span> list) {
+    (out[<span class="f">key</span>(item)] ??= []).<span class="f">push</span>(item);
+  }
+  <span class="k">return</span> out;
+}
+
+<span class="c">// Dùng thử</span>
+<span class="k">const</span> subs: Submission[] = [
+  { id: <span class="n">1</span>, studentId: <span class="n">7</span>, assignmentId: <span class="n">9</span>, status: <span class="s">'graded'</span>, score: <span class="n">9</span> },
+  { id: <span class="n">2</span>, studentId: <span class="n">8</span>, assignmentId: <span class="n">9</span>, status: <span class="s">'missing'</span>, score: <span class="t">null</span> },
+  { id: <span class="n">3</span>, studentId: <span class="n">9</span>, assignmentId: <span class="n">9</span>, status: <span class="s">'graded'</span>, score: <span class="n">7</span> },
+];
+<span class="k">const</span> byStatus = <span class="f">groupBy</span>(subs, (s) =&gt; s.status);
+<span class="b">console</span>.<span class="f">log</span>(Object.<span class="f">keys</span>(byStatus), byStatus.graded.length);</code></pre></div>
+<div class="term sim" role="img" aria-label="Terminal — kết quả minh hoạ"><div class="term-h"><i></i><i></i><i></i><span>Terminal — kết quả minh hoạ</span><b class="term-sim">Mô phỏng</b></div><pre><span class="t-p">$</span> <span class="t-c">npx tsx src/app/models.ts</span>
+[ 'graded', 'missing' ] 2</pre></div>
+<p><b>Giải thích:</b> <code>schoolYear</code> dùng template literal type nên gán <code>'năm nay'</code> sẽ lỗi biên dịch. <code>??=</code> gán khi giá trị đang là null hoặc undefined, gọn cho việc tạo mảng lần đầu. Kiểu trả về <code>Record&lt;K, T[]&gt;</code> giúp <code>byStatus.graded</code> có gợi ý và kiểm tra kiểu.</p>
+</details>
+</details>
+</div>
+  <div class="done-box"><button class="done-btn" type="button" data-slug="typescript">Đánh dấu đã học xong bài này</button></div>
+  <nav class="pn"><a class="prev" href="cai-dat.html"><small>Bài trước</small>Cài Angular CLI và dự án đầu tiên</a><a class="next" href="component.html"><small>Bài tiếp theo</small>Component: từ SFC sang class + template</a></nav>
+</article></main>
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#vi-sao-can-on-lai-typescript">Vì sao cần ôn lại TypeScript</a><a href="#class-vien-gach-cua-angular">Class: viên gạch của Angular</a><a href="#decorator">Decorator</a><a href="#interface-type-va-mo-hinh-du-lieu">Interface, type và mô hình dữ liệu</a><a href="#generic">Generic</a><a href="#strict-mode-va-null">strict mode và null</a><a href="#narrowing-va-kieu-cho-su-kien-dom">Narrowing và kiểu cho sự kiện DOM</a><a href="#module-es-va-path-alias">Module ES và path alias</a><a href="#bai-tap">Bài tập</a></nav>
+</div>
+</body>
+</html>

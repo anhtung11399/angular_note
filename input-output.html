@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bài 07: Giao tiếp giữa component: input, output, model · Angular cho dân Vue</title>
+<meta name="description" content="input() / output() / model(), required, transform, alias, content projection với ng-content (slot của Angular), viewChild / contentChild.">
+<meta name="theme-color" content="#dd0031">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="mk"/></marker></defs></svg>
+<header class="top">
+  <button class="menu" type="button" aria-label="Mở danh sách bài"><span></span><span></span><span></span></button>
+  <a class="brand" href="index.html"><img src="favicon.svg" alt="" width="28" height="28">Angular <b>cho dân Vue</b></a>
+  <nav class="topnav"><a href="index.html#lo-trinh">Lộ trình</a><a href="thuat-ngu.html">Vue → Angular</a><a href="nguyen-tac.html">Nguyên tắc</a></nav>
+  <button class="theme" type="button" aria-label="Đổi giao diện sáng / tối"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg></button>
+</header>
+<div class="layout">
+  <aside class="side" aria-label="Danh sách bài">
+    <div class="prog"><div class="prog-t"><span>Tiến độ</span><b class="prog-n">0/25</b></div><div class="prog-b"><i></i></div></div>
+    <div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Chặng 0</span> Khởi động</div><ol><li><a href="lo-trinh.html" data-slug="lo-trinh"><i class="dot"></i><span class="no">00</span><span class="tx">Angular nhìn từ mắt dân Vue</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#dd0031"><span>Chặng 1</span> Nền tảng Angular</div><ol><li><a href="cai-dat.html" data-slug="cai-dat"><i class="dot"></i><span class="no">01</span><span class="tx">Cài Angular CLI và dự án đầu tiên</span></a></li><li><a href="typescript.html" data-slug="typescript"><i class="dot"></i><span class="no">02</span><span class="tx">TypeScript mà Angular dùng mỗi ngày</span></a></li><li><a href="component.html" data-slug="component"><i class="dot"></i><span class="no">03</span><span class="tx">Component: từ SFC sang class + template</span></a></li><li><a href="template.html" data-slug="template"><i class="dot"></i><span class="no">04</span><span class="tx">Cú pháp template: binding và event</span></a></li><li><a href="control-flow.html" data-slug="control-flow"><i class="dot"></i><span class="no">05</span><span class="tx">Control flow: @if, @for, @switch, @defer</span></a></li><li><a href="signals.html" data-slug="signals"><i class="dot"></i><span class="no">06</span><span class="tx">Signals: reactivity của Angular</span></a></li><li><a href="input-output.html" data-slug="input-output" aria-current="page"><i class="dot"></i><span class="no">07</span><span class="tx">Giao tiếp giữa component: input, output, model</span></a></li><li><a href="directive-pipe.html" data-slug="directive-pipe"><i class="dot"></i><span class="no">08</span><span class="tx">Directive và pipe</span></a></li><li><a href="lifecycle.html" data-slug="lifecycle"><i class="dot"></i><span class="no">09</span><span class="tx">Vòng đời component và DOM</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#7c3aed"><span>Chặng 2</span> Kiến trúc ứng dụng</div><ol><li><a href="di-service.html" data-slug="di-service"><i class="dot"></i><span class="no">10</span><span class="tx">Dependency injection và service</span></a></li><li><a href="router.html" data-slug="router"><i class="dot"></i><span class="no">11</span><span class="tx">Router</span></a></li><li><a href="forms.html" data-slug="forms"><i class="dot"></i><span class="no">12</span><span class="tx">Forms: reactive forms và signal forms</span></a></li><li><a href="http.html" data-slug="http"><i class="dot"></i><span class="no">13</span><span class="tx">Gọi API: HttpClient, interceptor, resource</span></a></li><li><a href="rxjs.html" data-slug="rxjs"><i class="dot"></i><span class="no">14</span><span class="tx">RxJS vừa đủ dùng</span></a></li><li><a href="state.html" data-slug="state"><i class="dot"></i><span class="no">15</span><span class="tx">Quản lý state</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#059669"><span>Chặng 3</span> Chất lượng</div><ol><li><a href="change-detection.html" data-slug="change-detection"><i class="dot"></i><span class="no">16</span><span class="tx">Change detection: zone.js, OnPush, zoneless</span></a></li><li><a href="hieu-nang.html" data-slug="hieu-nang"><i class="dot"></i><span class="no">17</span><span class="tx">Hiệu năng</span></a></li><li><a href="testing.html" data-slug="testing"><i class="dot"></i><span class="no">18</span><span class="tx">Kiểm thử</span></a></li><li><a href="styling-ui.html" data-slug="styling-ui"><i class="dot"></i><span class="no">19</span><span class="tx">Style, thư viện UI và accessibility</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#d97706"><span>Chặng 4</span> Đưa lên production</div><ol><li><a href="ssr.html" data-slug="ssr"><i class="dot"></i><span class="no">20</span><span class="tx">SSR, hydration và prerender</span></a></li><li><a href="i18n-pwa.html" data-slug="i18n-pwa"><i class="dot"></i><span class="no">21</span><span class="tx">Đa ngôn ngữ và PWA</span></a></li><li><a href="bao-mat.html" data-slug="bao-mat"><i class="dot"></i><span class="no">22</span><span class="tx">Bảo mật ứng dụng Angular</span></a></li><li><a href="trien-khai.html" data-slug="trien-khai"><i class="dot"></i><span class="no">23</span><span class="tx">Build, cấu hình môi trường và triển khai</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#0f766e"><span>Chặng 5</span> Dự án cuối</div><ol><li><a href="du-an.html" data-slug="du-an"><i class="dot"></i><span class="no">24</span><span class="tx">Dự án: ứng dụng &quot;Sổ bài tập&quot;</span></a></li></ol></div><div class="sb-phase"><div class="sb-ph" style="--pc:#64748b"><span>Tra cứu</span></div><ol><li><a href="thuat-ngu.html"><i class="dot plain"></i><span class="tx">Bảng đối chiếu Vue → Angular</span></a></li><li><a href="nguyen-tac.html"><i class="dot plain"></i><span class="tx">Nguyên tắc viết Angular</span></a></li></ol></div>
+  </aside>
+  <div class="scrim"></div>
+  <main id="main"><article class="lesson" data-slug="input-output">
+  <header class="l-head">
+    <div class="l-meta"><span class="ph" style="--pc:#dd0031">Chặng 1 · Nền tảng Angular</span><span>Bài 07</span><span>50 phút đọc + làm bài</span></div>
+    <h1>Giao tiếp giữa component: input, output, model</h1>
+    <p class="lead">input() / output() / model(), required, transform, alias, content projection với ng-content (slot của Angular), viewChild / contentChild.</p>
+    <div class="goals"><b>Học xong bài này bạn sẽ:</b><ul><li>Truyền dữ liệu cha → con và sự kiện con → cha</li><li>Làm component có two-way binding bằng model()</li><li>Dùng ng-content thay cho slot</li></ul></div>
+  </header>
+  <div class="prose"><h2 id="ba-ham-cho-giao-tiep-cha-con"><a href="#ba-ham-cho-giao-tiep-cha-con" class="anchor" aria-hidden="true">#</a>Ba hàm cho giao tiếp cha con</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Hướng</th></tr>
+<tr><td><code>defineProps</code></td><td><code>input()</code>, <code>input.required()</code></td><td>cha → con</td></tr>
+<tr><td><code>defineEmits</code></td><td><code>output()</code></td><td>con → cha</td></tr>
+<tr><td><code>defineModel</code> (v-model trên component)</td><td><code>model()</code></td><td>hai chiều</td></tr>
+<tr><td><code>&lt;slot&gt;</code></td><td><code>&lt;ng-content&gt;</code></td><td>cha đưa nội dung vào con</td></tr>
+<tr><td><code>ref</code> tới component con</td><td><code>viewChild()</code></td><td>cha gọi method của con</td></tr>
+<tr><td><code>provide / inject</code></td><td>DI (bài 10)</td><td>xuyên nhiều tầng</td></tr>
+</table>
+
+<h2 id="input"><a href="#input" class="anchor" aria-hidden="true">#</a>input()</h2>
+<div class="code"><div class="code-h"><span>grade-badge.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, booleanAttribute, <span class="b">computed</span>, <span class="b">input</span>, numberAttribute } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-grade-badge'</span>,
+  template: <span class="s">`&lt;span [class]=&quot;tone()&quot;&gt;{{ label() }}{{ score() }}&lt;/span&gt;`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> GradeBadge {
+  score = <span class="b">input</span>.required&lt;<span class="t">number</span>&gt;();                     <span class="c">// bắt buộc: thiếu là lỗi biên dịch ở nơi dùng</span>
+  label = <span class="b">input</span>(<span class="s">'Điểm: '</span>);                              <span class="c">// có mặc định, kiểu suy ra là string</span>
+  max = <span class="b">input</span>(<span class="n">10</span>, { transform: numberAttribute });      <span class="c">// max=&quot;10&quot; (chuỗi) tự đổi thành số</span>
+  compact = <span class="b">input</span>(<span class="b">false</span>, { transform: booleanAttribute }); <span class="c">// &lt;app-grade-badge compact /&gt; → true</span>
+  studentName = <span class="b">input</span>&lt;<span class="t">string</span> | <span class="t">undefined</span>&gt;(<span class="t">undefined</span>, { alias: <span class="s">'student'</span> }); <span class="c">// dùng [student]=&quot;...&quot;</span>
+
+  protected tone = <span class="b">computed</span>(() =&gt; (<span class="k">this</span>.<span class="f">score</span>() / <span class="k">this</span>.<span class="f">max</span>() &gt;= <span class="n">0.8</span> ? <span class="s">'good'</span> : <span class="k">this</span>.<span class="f">score</span>() / <span class="k">this</span>.<span class="f">max</span>() &gt;= <span class="n">0.5</span> ? <span class="s">'ok'</span> : <span class="s">'low'</span>));
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>nơi dùng</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-grade-badge [score]=<span class="s">&quot;9&quot;</span> /&gt;
+&lt;app-grade-badge [score]=<span class="s">&quot;s.score&quot;</span> <span class="k">label</span>=<span class="s">&quot;&quot;</span> compact max=<span class="s">&quot;20&quot;</span> /&gt;
+&lt;app-grade-badge /&gt;            <span class="c">&lt;!-- ✘ lỗi biên dịch: thiếu input bắt buộc 'score' --&gt;</span></code></pre></div>
+<ul>
+<li>Input là <b>signal chỉ đọc</b>: đọc bằng <code>score()</code>, dùng được trong <code>computed</code> / <code>effect</code>. Con không được <code>set</code> input (giống không được sửa props trong Vue).</li>
+<li><code>transform</code> chuyển giá trị trước khi lưu. <code>booleanAttribute</code> cho phép viết thuộc tính trần như HTML (<code>&lt;app-x disabled /&gt;</code>), giống boolean prop của Vue.</li>
+</ul>
+<aside class="fe"><p>Khác Vue: Vue có <code>withDefaults</code> và kiểm tra kiểu prop lúc chạy. Angular kiểm tra hoàn toàn lúc biên dịch, nên truyền sai kiểu ở template là lỗi build. Không có kiểu "validator" lúc chạy cho input.</p></aside>
+<aside class="warn"><p>Muốn "sửa giá trị input ở trong con"? Đó là dấu hiệu cần <code>model()</code> (hai chiều) hoặc <code>linkedSignal(() =&gt; this.input())</code> (bản sao cục bộ có thể sửa).</p></aside>
+
+<h2 id="output"><a href="#output" class="anchor" aria-hidden="true">#</a>output()</h2>
+<div class="code"><div class="code-h"><span>assignment-item.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">input</span>, <span class="b">output</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-assignment-item'</span>,
+  template: <span class="s">`
+    &lt;span&gt;{{ assignment().title }}&lt;/span&gt;
+    &lt;button (click)=&quot;edit.emit(assignment().id)&quot;&gt;Sửa&lt;/button&gt;
+    &lt;button (click)=&quot;remove.emit(assignment())&quot;&gt;Xoá&lt;/button&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> AssignmentItem {
+  assignment = <span class="b">input</span>.required&lt;Assignment&gt;();
+  edit = <span class="b">output</span>&lt;<span class="t">number</span>&gt;();          <span class="c">// phát id</span>
+  remove = <span class="b">output</span>&lt;Assignment&gt;();    <span class="c">// phát cả object</span>
+  closed = <span class="b">output</span>();                <span class="c">// không mang dữ liệu: closed.emit()</span>
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>cha</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="t">for</span> (<span class="k">a</span> <span class="b">of</span> <span class="f">assignments</span>(); <span class="b">track</span> <span class="k">a</span>.id) {
+  &lt;app-assignment-item [assignment]=<span class="s">&quot;a&quot;</span> (edit)=<span class="s">&quot;openEditor($event)&quot;</span> (remove)=<span class="s">&quot;confirmRemove($event)&quot;</span> /&gt;
+}</code></pre></div>
+<p><code>$event</code> trong template của cha chính là giá trị được <code>emit</code>. Khác DOM event, output của Angular <b>không nổi bọt</b> (bubble): chỉ cha trực tiếp nghe được, giống emit của Vue.</p>
+
+<h2 id="model-two-way-binding-cho-component"><a href="#model-two-way-binding-cho-component" class="anchor" aria-hidden="true">#</a>model(): two-way binding cho component</h2>
+<div class="code"><div class="code-h"><span>rating.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">input</span>, <span class="b">model</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-rating'</span>,
+  template: <span class="s">`
+    @for (n of stars; track n) {
+      &lt;button type=&quot;button&quot; [class.on]=&quot;n &lt;= value()&quot; (click)=&quot;value.set(n)&quot; [attr.aria-label]=&quot;n + ' sao'&quot;&gt;★&lt;/button&gt;
+    }
+  `</span>,
+  styles: <span class="s">`button { border: 0; background: none; font-size: 22px; color: #cbd5e1; } .on { color: #f59e0b; }`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> Rating {
+  value = <span class="b">model</span>(<span class="n">0</span>);                 <span class="c">// signal ghi được; set() tự phát sự kiện valueChange</span>
+  protected stars = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>, <span class="n">5</span>];
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>cha</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-rating [(value)]=<span class="s">&quot;quality&quot;</span> /&gt;
+&lt;<span class="k">p</span>&gt;Chất lượng bài: {{ <span class="f">quality</span>() }} / <span class="n">5</span>&lt;/<span class="k">p</span>&gt;</code></pre></div>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code>quality = <span class="b">signal</span>(<span class="n">3</span>); <span class="c">// cha truyền signal vào [( )]</span></code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><span style="font-size:22px;color:#f59e0b">★★★★</span><span style="font-size:22px;color:#cbd5e1">★</span>
+<p>Chất lượng bài: 4 / 5</p></div></div>
+<p><code>[(value)]="quality"</code> là viết tắt của <code>[value]="quality()" (valueChange)="quality.set($event)"</code>. Giống hệt <code>v-model</code> trên component với <code>defineModel</code> của Vue 3.4+.</p>
+
+<h2 id="ng-content-slot-cua-angular"><a href="#ng-content-slot-cua-angular" class="anchor" aria-hidden="true">#</a>ng-content: slot của Angular</h2>
+<div class="code"><div class="code-h"><span>card.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-card'</span>,
+  template: <span class="s">`
+    &lt;header&gt;
+      &lt;ng-content select=&quot;[card-title]&quot; /&gt;      &lt;!-- slot có tên --&gt;
+    &lt;/header&gt;
+    &lt;section&gt;
+      &lt;ng-content /&gt;                            &lt;!-- slot mặc định: phần còn lại --&gt;
+    &lt;/section&gt;
+    &lt;footer&gt;
+      &lt;ng-content select=&quot;app-card-actions, [card-actions]&quot;&gt;
+        &lt;small&gt;Không có hành động&lt;/small&gt;        &lt;!-- nội dung mặc định khi trống (v18+) --&gt;
+      &lt;/ng-content&gt;
+    &lt;/footer&gt;
+  `</span>,
+  styles: <span class="s">`:host { display: block; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }`</span>,
+})
+<span class="k">export</span> <span class="k">class</span> Card {}</code></pre></div>
+<div class="code"><div class="code-h"><span>cha</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-card&gt;
+  &lt;<span class="k">h3</span> card-title&gt;Lớ<span class="k">p</span> 5A&lt;/<span class="k">h3</span>&gt;
+  &lt;<span class="k">p</span>&gt;<span class="n">30</span> học sinh · <span class="n">4</span> bài đang mở&lt;/<span class="k">p</span>&gt;
+  &lt;<span class="k">div</span> card-actions&gt;
+    &lt;<span class="k">button</span>&gt;Giao bài&lt;/<span class="k">button</span>&gt;
+  &lt;/<span class="k">div</span>&gt;
+&lt;/app-card&gt;</code></pre></div>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td><code>&lt;slot /&gt;</code></td><td><code>&lt;ng-content /&gt;</code></td></tr>
+<tr><td><code>&lt;slot name="title" /&gt;</code> + <code>&lt;template #title&gt;</code></td><td><code>&lt;ng-content select="[card-title]" /&gt;</code> + thuộc tính <code>card-title</code> trên phần tử</td></tr>
+<tr><td>Nội dung mặc định trong slot</td><td>nội dung bên trong <code>&lt;ng-content&gt;</code> (v18+)</td></tr>
+<tr><td><b>Scoped slot</b> <code>&lt;slot :item="x"&gt;</code></td><td>không dùng ng-content được: dùng <code>ng-template</code> + <code>ngTemplateOutlet</code> (bên dưới)</td></tr>
+<tr><td>Render slot có điều kiện / nhiều lần</td><td>ng-content không làm được: dùng <code>ng-template</code></td></tr>
+</table>
+<aside class="warn"><p><code>ng-content</code> chỉ "chiếu" nội dung một lần, nội dung luôn được tạo ra (dù bị bọc trong <code>@if</code> trong component con). Cần render có điều kiện, lặp lại, hay truyền dữ liệu ngược ra (scoped slot), dùng template.</p></aside>
+
+<h3>ng-template: scoped slot</h3>
+<div class="code"><div class="code-h"><span>data-list.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">contentChild</span>, <span class="b">input</span>, TemplateRef } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+<span class="k">import</span> { JsonPipe, NgTemplateOutlet } <span class="k">from</span> <span class="s">'@angular/common'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-data-list'</span>,
+  imports: [NgTemplateOutlet, JsonPipe],
+  template: <span class="s">`
+    &lt;ul&gt;
+      @for (item of items(); track $index) {
+        &lt;li&gt;
+          &lt;ng-container *ngTemplateOutlet=&quot;row() ?? defaultRow; context: { $implicit: item, index: $index }&quot; /&gt;
+        &lt;/li&gt;
+      }
+    &lt;/ul&gt;
+    &lt;ng-template #defaultRow let-item&gt;{{ item | json }}&lt;/ng-template&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> DataList&lt;T&gt; {
+  items = <span class="b">input</span>.required&lt;T[]&gt;();
+  row = <span class="b">contentChild</span>&lt;TemplateRef&lt;{ $implicit: T; index: <span class="t">number</span> }&gt;&gt;(<span class="s">'row'</span>); <span class="c">// template cha truyền vào</span>
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>cha</span><button class="copy" type="button">Sao chép</button></div><pre><code>&lt;app-data-list [items]=<span class="s">&quot;students()&quot;</span>&gt;
+  &lt;ng-<span class="k">template</span> #row <span class="t">let</span>-s <span class="t">let</span>-i=<span class="s">&quot;index&quot;</span>&gt;
+    {{ i + <span class="n">1</span> }}. &lt;b&gt;{{ s.name }}&lt;/b&gt; — {{ s.score ?? <span class="s">'chưa chấm'</span> }}
+  &lt;/ng-<span class="k">template</span>&gt;
+&lt;/app-data-list&gt;</code></pre></div>
+<p><code>let-s</code> nhận <code>$implicit</code>, <code>let-i="index"</code> nhận trường <code>index</code> của context. Giống <code>&lt;template #row="{ item, index }"&gt;</code> của Vue, chỉ dài hơn.</p>
+
+<h2 id="viewchild-va-contentchild"><a href="#viewchild-va-contentchild" class="anchor" aria-hidden="true">#</a>viewChild và contentChild</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, ElementRef, afterNextRender, <span class="b">viewChild</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-quick-add'</span>,
+  imports: [DatePicker],
+  template: <span class="s">`
+    &lt;input #title placeholder=&quot;Tên bài&quot; /&gt;
+    &lt;app-date-picker /&gt;
+    &lt;button (click)=&quot;picker().open()&quot;&gt;Chọn hạn&lt;/button&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> QuickAdd {
+  title = <span class="b">viewChild</span>.required&lt;ElementRef&lt;HTMLInputElement&gt;&gt;(<span class="s">'title'</span>); <span class="c">// theo #tên</span>
+  picker = <span class="b">viewChild</span>.<span class="f">required</span>(DatePicker);                            <span class="c">// theo kiểu component</span>
+
+  <span class="f">constructor</span>() {
+    <span class="f">afterNextRender</span>(() =&gt; <span class="k">this</span>.<span class="f">title</span>().nativeElement.<span class="f">focus</span>()); <span class="c">// DOM đã có sau lần render đầu</span>
+  }
+}</code></pre></div>
+<table>
+<tr><th>Hàm</th><th>Tìm trong</th><th>Vue</th></tr>
+<tr><td><code>viewChild</code> / <code>viewChildren</code></td><td>template của chính component</td><td><code>useTemplateRef</code> / <code>ref</code></td></tr>
+<tr><td><code>contentChild</code> / <code>contentChildren</code></td><td>nội dung cha chiếu vào qua ng-content</td><td>không có tương đương trực tiếp (slots API)</td></tr>
+</table>
+<p>Kết quả là signal: <code>viewChild()</code> trả <code>undefined</code> cho tới khi phần tử xuất hiện, bản <code>.required</code> báo lỗi nếu đọc quá sớm. Đọc trong event handler, <code>afterNextRender</code> hoặc <code>effect</code>, không đọc trong constructor.</p>
+<aside class="tip"><p>Hạn chế gọi method của con qua <code>viewChild</code>. Phần lớn trường hợp, truyền input / nhận output là đủ và dễ theo dõi hơn. viewChild hợp với: focus, scroll, gọi <code>open()</code> của dialog, tích hợp thư viện DOM.</p></aside>
+
+<h2 id="doc-code-cu-input-output"><a href="#doc-code-cu-input-output" class="anchor" aria-hidden="true">#</a>Đọc code cũ: @Input, @Output</h2>
+<div class="code"><div class="code-h"><span>TypeScript</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">export</span> <span class="k">class</span> OldItem <span class="k">implements</span> OnChanges {
+  @<span class="f">Input</span>() title = <span class="s">''</span>;
+  @<span class="f">Input</span>({ required: <span class="b">true</span> }) id!: <span class="t">number</span>;
+  @<span class="f">Input</span>() set <span class="f">score</span>(v: <span class="t">number</span>) { <span class="k">this</span>._score = v; <span class="k">this</span>.<span class="f">recalc</span>(); } <span class="c">// setter để phản ứng khi đổi</span>
+  @<span class="f">Output</span>() removed = <span class="k">new</span> EventEmitter&lt;<span class="t">number</span>&gt;();
+  @<span class="f">ViewChild</span>(<span class="s">'box'</span>) box?: ElementRef;
+
+  <span class="f">ngOnChanges</span>(changes: SimpleChanges) {
+    <span class="k">if</span> (changes[<span class="s">'title'</span>]) { <span class="c">/* title vừa đổi */</span> }
+  }
+}</code></pre></div>
+<p>Chuyển đổi tự động: <code>ng g @angular/core:signal-input-migration</code>, <code>ng g @angular/core:output-migration</code>, <code>ng g @angular/core:signal-queries-migration</code>. Với input dạng signal, bạn không cần <code>ngOnChanges</code> hay setter nữa: dùng <code>computed</code> hoặc <code>effect</code>.</p>
+
+<quiz q="Component con muốn cho phép cha dùng <code>[(open)]="isOpen"</code>. Khai báo gì trong con?">
+- <code>open = input(false)</code> và tự set nó
++ <code>open = model(false)</code>
+- <code>open = output&lt;boolean&gt;()</code>
+? model() tạo cặp input open + output openChange, và cho con set() giá trị.
+</quiz>
+<div class="quiz"><p class="qq"><b>Câu hỏi nhanh.</b> Cần một danh sách tái sử dụng mà cha quyết định mỗi dòng hiển thị thế nào, có truyền dữ liệu từng dòng ra. Dùng gì?</p><div class="qo"><button type="button" class="opt">Nhiều ng-content</button><button type="button" class="opt" data-ok>ng-template với let-, render bằng ngTemplateOutlet (tương đương scoped slot)</button><button type="button" class="opt">output cho từng dòng</button></div><p class="why" hidden>ng-content không truyền được dữ liệu ngược ra và không lặp được. Template mới làm được.</p></div>
+
+<h2 id="bai-tap"><a href="#bai-tap" class="anchor" aria-hidden="true">#</a>Bài tập</h2>
+<details class="ex"><summary>Hộp thoại xác nhận dùng lại được</summary>
+<p>Viết component <code>ConfirmDialog</code>: mở / đóng bằng <code>[(open)]</code>, tiêu đề qua input, nội dung chiếu qua <code>ng-content</code>, hai nút "Huỷ" (đóng) và nút xác nhận có chữ tuỳ chỉnh (mặc định "Đồng ý"), phát output <code>confirmed</code>. Bấm phím Escape thì đóng. Dùng nó để xác nhận xoá một bài tập.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>open = model(false)</code>, <code>title = input.required&lt;string&gt;()</code>, <code>okText = input('Đồng ý')</code>, <code>confirmed = output()</code>.</li>
+<li>Template bọc trong <code>@if (open()) { ... }</code>, nền mờ là một div phủ toàn màn hình.</li>
+<li>Escape: <code>host: { '(document:keydown.escape)': 'open.set(false)' }</code>.</li>
+<li>Nút xác nhận: <code>confirmed.emit(); open.set(false)</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<div class="code"><div class="code-h"><span>confirm-dialog.ts</span><button class="copy" type="button">Sao chép</button></div><pre><code><span class="k">import</span> { Component, <span class="b">input</span>, <span class="b">model</span>, <span class="b">output</span> } <span class="k">from</span> <span class="s">'@angular/core'</span>;
+
+@<span class="f">Component</span>({
+  selector: <span class="s">'app-confirm-dialog'</span>,
+  host: { <span class="s">'(document:keydown.escape)'</span>: <span class="s">'open.set(false)'</span> },
+  template: <span class="s">`
+    @if (open()) {
+      &lt;div class=&quot;backdrop&quot; (click)=&quot;open.set(false)&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;box&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot; [attr.aria-label]=&quot;title()&quot;&gt;
+        &lt;h3&gt;{{ title() }}&lt;/h3&gt;
+        &lt;ng-content /&gt;
+        &lt;div class=&quot;actions&quot;&gt;
+          &lt;button type=&quot;button&quot; (click)=&quot;open.set(false)&quot;&gt;Huỷ&lt;/button&gt;
+          &lt;button type=&quot;button&quot; class=&quot;danger&quot; (click)=&quot;confirmed.emit(); open.set(false)&quot;&gt;{{ okText() }}&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    }
+  `</span>,
+  styles: <span class="s">`
+    .backdrop { position: fixed; inset: 0; background: rgb(15 23 42 / .45); }
+    .box { position: fixed; left: 50%; top: 30%; translate: -50% 0; background: #fff; border-radius: 14px; padding: 18px 20px; width: min(420px, 92vw); }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .danger { background: #dc2626; color: #fff; border: 0; border-radius: 8px; padding: 6px 14px; }
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> ConfirmDialog {
+  open = <span class="b">model</span>(<span class="b">false</span>);
+  title = <span class="b">input</span>.required&lt;<span class="t">string</span>&gt;();
+  okText = <span class="b">input</span>(<span class="s">'Đồng ý'</span>);
+  confirmed = <span class="b">output</span>();
+}</code></pre></div>
+<div class="code"><div class="code-h"><span>assignment-page.ts (dùng thử)</span><button class="copy" type="button">Sao chép</button></div><pre><code>@<span class="f">Component</span>({
+  selector: <span class="s">'app-assignment-page'</span>,
+  imports: [ConfirmDialog],
+  template: <span class="s">`
+    &lt;p&gt;{{ title() }} &lt;button (click)=&quot;asking.set(true)&quot;&gt;Xoá&lt;/button&gt;&lt;/p&gt;
+    &lt;app-confirm-dialog [(open)]=&quot;asking&quot; title=&quot;Xoá bài tập?&quot; okText=&quot;Xoá&quot; (confirmed)=&quot;remove()&quot;&gt;
+      &lt;p&gt;Bài &quot;{{ title() }}&quot; và mọi bài nộp sẽ bị xoá. Không thể hoàn tác.&lt;/p&gt;
+    &lt;/app-confirm-dialog&gt;
+  `</span>,
+})
+<span class="k">export</span> <span class="k">class</span> AssignmentPage {
+  protected title = <span class="b">signal</span>(<span class="s">'Bài 3: Phân số'</span>);
+  protected asking = <span class="b">signal</span>(<span class="b">false</span>);
+  protected <span class="f">remove</span>() {
+    <span class="k">this</span>.title.<span class="f">set</span>(<span class="s">'(đã xoá)'</span>);
+  }
+}</code></pre></div>
+<div class="browser" role="img" aria-label="Kết quả hiển thị"><div class="browser-h"><i></i><i></i><i></i><span>localhost:4200</span><b>Minh hoạ</b></div><div class="browser-b"><div style="background:rgb(15 23 42 / .45);padding:28px;border-radius:10px">
+<div style="background:#fff;border-radius:14px;padding:18px 20px;max-width:420px;margin:auto">
+<h3 style="margin:0 0 8px">Xoá bài tập?</h3>
+<p>Bài "Bài 3: Phân số" và mọi bài nộp sẽ bị xoá. Không thể hoàn tác.</p>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button>Huỷ</button><button style="background:#dc2626;color:#fff;border:0">Xoá</button></div>
+</div></div></div></div>
+<p><b>Giải thích:</b> cha giữ state <code>asking</code>, con đọc và đóng nó qua <code>model</code>. Nội dung câu hỏi do cha quyết định qua <code>ng-content</code>, nên dialog dùng lại được cho mọi loại xác nhận. <code>host</code> nghe phím trên <code>document</code>, Angular tự gỡ listener khi component bị huỷ. Bản production nên dùng <code>Dialog</code> của Angular CDK (bài 19): nó xử lý giữ focus trong hộp thoại và trả focus khi đóng.</p>
+</details>
+</details>
+</div>
+  <div class="done-box"><button class="done-btn" type="button" data-slug="input-output">Đánh dấu đã học xong bài này</button></div>
+  <nav class="pn"><a class="prev" href="signals.html"><small>Bài trước</small>Signals: reactivity của Angular</a><a class="next" href="directive-pipe.html"><small>Bài tiếp theo</small>Directive và pipe</a></nav>
+</article></main>
+  <nav class="toc" aria-label="Trong bài này"><div class="toc-h">Trong bài này</div><a href="#ba-ham-cho-giao-tiep-cha-con">Ba hàm cho giao tiếp cha con</a><a href="#input">input()</a><a href="#output">output()</a><a href="#model-two-way-binding-cho-component">model(): two-way binding cho component</a><a href="#ng-content-slot-cua-angular">ng-content: slot của Angular</a><a href="#viewchild-va-contentchild">viewChild và contentChild</a><a href="#doc-code-cu-input-output">Đọc code cũ: @Input, @Output</a><a href="#bai-tap">Bài tập</a></nav>
+</div>
+</body>
+</html>

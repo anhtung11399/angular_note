@@ -1,0 +1,304 @@
+<h2>Ba hàm cho giao tiếp cha con</h2>
+<table>
+<tr><th>Vue</th><th>Angular</th><th>Hướng</th></tr>
+<tr><td><code>defineProps</code></td><td><code>input()</code>, <code>input.required()</code></td><td>cha → con</td></tr>
+<tr><td><code>defineEmits</code></td><td><code>output()</code></td><td>con → cha</td></tr>
+<tr><td><code>defineModel</code> (v-model trên component)</td><td><code>model()</code></td><td>hai chiều</td></tr>
+<tr><td><code>&lt;slot&gt;</code></td><td><code>&lt;ng-content&gt;</code></td><td>cha đưa nội dung vào con</td></tr>
+<tr><td><code>ref</code> tới component con</td><td><code>viewChild()</code></td><td>cha gọi method của con</td></tr>
+<tr><td><code>provide / inject</code></td><td>DI (bài {{n:di-service}})</td><td>xuyên nhiều tầng</td></tr>
+</table>
+
+<h2>input()</h2>
+<pre lang="ts" file="grade-badge.ts">
+import { Component, booleanAttribute, computed, input, numberAttribute } from '@angular/core';
+
+@Component({
+  selector: 'app-grade-badge',
+  template: `<span [class]="tone()">{{ label() }}{{ score() }}</span>`,
+})
+export class GradeBadge {
+  score = input.required<number>();                     // bắt buộc: thiếu là lỗi biên dịch ở nơi dùng
+  label = input('Điểm: ');                              // có mặc định, kiểu suy ra là string
+  max = input(10, { transform: numberAttribute });      // max="10" (chuỗi) tự đổi thành số
+  compact = input(false, { transform: booleanAttribute }); // <app-grade-badge compact /> → true
+  studentName = input<string | undefined>(undefined, { alias: 'student' }); // dùng [student]="..."
+
+  protected tone = computed(() => (this.score() / this.max() >= 0.8 ? 'good' : this.score() / this.max() >= 0.5 ? 'ok' : 'low'));
+}
+</pre>
+<pre lang="html" file="nơi dùng">
+<app-grade-badge [score]="9" />
+<app-grade-badge [score]="s.score" label="" compact max="20" />
+<app-grade-badge />            <!-- ✘ lỗi biên dịch: thiếu input bắt buộc 'score' -->
+</pre>
+<ul>
+<li>Input là <b>signal chỉ đọc</b>: đọc bằng <code>score()</code>, dùng được trong <code>computed</code> / <code>effect</code>. Con không được <code>set</code> input (giống không được sửa props trong Vue).</li>
+<li><code>transform</code> chuyển giá trị trước khi lưu. <code>booleanAttribute</code> cho phép viết thuộc tính trần như HTML (<code>&lt;app-x disabled /&gt;</code>), giống boolean prop của Vue.</li>
+</ul>
+<aside class="fe"><p>Khác Vue: Vue có <code>withDefaults</code> và kiểm tra kiểu prop lúc chạy. Angular kiểm tra hoàn toàn lúc biên dịch, nên truyền sai kiểu ở template là lỗi build. Không có kiểu "validator" lúc chạy cho input.</p></aside>
+<aside class="warn"><p>Muốn "sửa giá trị input ở trong con"? Đó là dấu hiệu cần <code>model()</code> (hai chiều) hoặc <code>linkedSignal(() =&gt; this.input())</code> (bản sao cục bộ có thể sửa).</p></aside>
+
+<h2>output()</h2>
+<pre lang="ts" file="assignment-item.ts">
+import { Component, input, output } from '@angular/core';
+
+@Component({
+  selector: 'app-assignment-item',
+  template: `
+    <span>{{ assignment().title }}</span>
+    <button (click)="edit.emit(assignment().id)">Sửa</button>
+    <button (click)="remove.emit(assignment())">Xoá</button>
+  `,
+})
+export class AssignmentItem {
+  assignment = input.required<Assignment>();
+  edit = output<number>();          // phát id
+  remove = output<Assignment>();    // phát cả object
+  closed = output();                // không mang dữ liệu: closed.emit()
+}
+</pre>
+<pre lang="html" file="cha">
+@for (a of assignments(); track a.id) {
+  <app-assignment-item [assignment]="a" (edit)="openEditor($event)" (remove)="confirmRemove($event)" />
+}
+</pre>
+<p><code>$event</code> trong template của cha chính là giá trị được <code>emit</code>. Khác DOM event, output của Angular <b>không nổi bọt</b> (bubble): chỉ cha trực tiếp nghe được, giống emit của Vue.</p>
+
+<h2>model(): two-way binding cho component</h2>
+<pre lang="ts" file="rating.ts">
+import { Component, input, model } from '@angular/core';
+
+@Component({
+  selector: 'app-rating',
+  template: `
+    @for (n of stars; track n) {
+      <button type="button" [class.on]="n <= value()" (click)="value.set(n)" [attr.aria-label]="n + ' sao'">★</button>
+    }
+  `,
+  styles: `button { border: 0; background: none; font-size: 22px; color: #cbd5e1; } .on { color: #f59e0b; }`,
+})
+export class Rating {
+  value = model(0);                 // signal ghi được; set() tự phát sự kiện valueChange
+  protected stars = [1, 2, 3, 4, 5];
+}
+</pre>
+<pre lang="html" file="cha">
+<app-rating [(value)]="quality" />
+<p>Chất lượng bài: {{ quality() }} / 5</p>
+</pre>
+<pre lang="ts">
+quality = signal(3); // cha truyền signal vào [( )]
+</pre>
+<pre lang="ui">
+<span style="font-size:22px;color:#f59e0b">★★★★</span><span style="font-size:22px;color:#cbd5e1">★</span>
+<p>Chất lượng bài: 4 / 5</p>
+</pre>
+<p><code>[(value)]="quality"</code> là viết tắt của <code>[value]="quality()" (valueChange)="quality.set($event)"</code>. Giống hệt <code>v-model</code> trên component với <code>defineModel</code> của Vue 3.4+.</p>
+
+<h2>ng-content: slot của Angular</h2>
+<pre lang="ts" file="card.ts">
+@Component({
+  selector: 'app-card',
+  template: `
+    <header>
+      <ng-content select="[card-title]" />      <!-- slot có tên -->
+    </header>
+    <section>
+      <ng-content />                            <!-- slot mặc định: phần còn lại -->
+    </section>
+    <footer>
+      <ng-content select="app-card-actions, [card-actions]">
+        <small>Không có hành động</small>        <!-- nội dung mặc định khi trống (v18+) -->
+      </ng-content>
+    </footer>
+  `,
+  styles: `:host { display: block; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }`,
+})
+export class Card {}
+</pre>
+<pre lang="html" file="cha">
+<app-card>
+  <h3 card-title>Lớp 5A</h3>
+  <p>30 học sinh · 4 bài đang mở</p>
+  <div card-actions>
+    <button>Giao bài</button>
+  </div>
+</app-card>
+</pre>
+<table>
+<tr><th>Vue</th><th>Angular</th></tr>
+<tr><td><code>&lt;slot /&gt;</code></td><td><code>&lt;ng-content /&gt;</code></td></tr>
+<tr><td><code>&lt;slot name="title" /&gt;</code> + <code>&lt;template #title&gt;</code></td><td><code>&lt;ng-content select="[card-title]" /&gt;</code> + thuộc tính <code>card-title</code> trên phần tử</td></tr>
+<tr><td>Nội dung mặc định trong slot</td><td>nội dung bên trong <code>&lt;ng-content&gt;</code> (v18+)</td></tr>
+<tr><td><b>Scoped slot</b> <code>&lt;slot :item="x"&gt;</code></td><td>không dùng ng-content được: dùng <code>ng-template</code> + <code>ngTemplateOutlet</code> (bên dưới)</td></tr>
+<tr><td>Render slot có điều kiện / nhiều lần</td><td>ng-content không làm được: dùng <code>ng-template</code></td></tr>
+</table>
+<aside class="warn"><p><code>ng-content</code> chỉ "chiếu" nội dung một lần, nội dung luôn được tạo ra (dù bị bọc trong <code>@if</code> trong component con). Cần render có điều kiện, lặp lại, hay truyền dữ liệu ngược ra (scoped slot), dùng template.</p></aside>
+
+<h3>ng-template: scoped slot</h3>
+<pre lang="ts" file="data-list.ts">
+import { Component, contentChild, input, TemplateRef } from '@angular/core';
+import { JsonPipe, NgTemplateOutlet } from '@angular/common';
+
+@Component({
+  selector: 'app-data-list',
+  imports: [NgTemplateOutlet, JsonPipe],
+  template: `
+    <ul>
+      @for (item of items(); track $index) {
+        <li>
+          <ng-container *ngTemplateOutlet="row() ?? defaultRow; context: { $implicit: item, index: $index }" />
+        </li>
+      }
+    </ul>
+    <ng-template #defaultRow let-item>{{ item | json }}</ng-template>
+  `,
+})
+export class DataList<T> {
+  items = input.required<T[]>();
+  row = contentChild<TemplateRef<{ $implicit: T; index: number }>>('row'); // template cha truyền vào
+}
+</pre>
+<pre lang="html" file="cha">
+<app-data-list [items]="students()">
+  <ng-template #row let-s let-i="index">
+    {{ i + 1 }}. <b>{{ s.name }}</b> — {{ s.score ?? 'chưa chấm' }}
+  </ng-template>
+</app-data-list>
+</pre>
+<p><code>let-s</code> nhận <code>$implicit</code>, <code>let-i="index"</code> nhận trường <code>index</code> của context. Giống <code>&lt;template #row="{ item, index }"&gt;</code> của Vue, chỉ dài hơn.</p>
+
+<h2>viewChild và contentChild</h2>
+<pre lang="ts">
+import { Component, ElementRef, afterNextRender, viewChild } from '@angular/core';
+
+@Component({
+  selector: 'app-quick-add',
+  imports: [DatePicker],
+  template: `
+    <input #title placeholder="Tên bài" />
+    <app-date-picker />
+    <button (click)="picker().open()">Chọn hạn</button>
+  `,
+})
+export class QuickAdd {
+  title = viewChild.required<ElementRef<HTMLInputElement>>('title'); // theo #tên
+  picker = viewChild.required(DatePicker);                            // theo kiểu component
+
+  constructor() {
+    afterNextRender(() => this.title().nativeElement.focus()); // DOM đã có sau lần render đầu
+  }
+}
+</pre>
+<table>
+<tr><th>Hàm</th><th>Tìm trong</th><th>Vue</th></tr>
+<tr><td><code>viewChild</code> / <code>viewChildren</code></td><td>template của chính component</td><td><code>useTemplateRef</code> / <code>ref</code></td></tr>
+<tr><td><code>contentChild</code> / <code>contentChildren</code></td><td>nội dung cha chiếu vào qua ng-content</td><td>không có tương đương trực tiếp (slots API)</td></tr>
+</table>
+<p>Kết quả là signal: <code>viewChild()</code> trả <code>undefined</code> cho tới khi phần tử xuất hiện, bản <code>.required</code> báo lỗi nếu đọc quá sớm. Đọc trong event handler, <code>afterNextRender</code> hoặc <code>effect</code>, không đọc trong constructor.</p>
+<aside class="tip"><p>Hạn chế gọi method của con qua <code>viewChild</code>. Phần lớn trường hợp, truyền input / nhận output là đủ và dễ theo dõi hơn. viewChild hợp với: focus, scroll, gọi <code>open()</code> của dialog, tích hợp thư viện DOM.</p></aside>
+
+<h2>Đọc code cũ: @Input, @Output</h2>
+<pre lang="ts">
+export class OldItem implements OnChanges {
+  @Input() title = '';
+  @Input({ required: true }) id!: number;
+  @Input() set score(v: number) { this._score = v; this.recalc(); } // setter để phản ứng khi đổi
+  @Output() removed = new EventEmitter<number>();
+  @ViewChild('box') box?: ElementRef;
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['title']) { /* title vừa đổi */ }
+  }
+}
+</pre>
+<p>Chuyển đổi tự động: <code>ng g @angular/core:signal-input-migration</code>, <code>ng g @angular/core:output-migration</code>, <code>ng g @angular/core:signal-queries-migration</code>. Với input dạng signal, bạn không cần <code>ngOnChanges</code> hay setter nữa: dùng <code>computed</code> hoặc <code>effect</code>.</p>
+
+<quiz q="Component con muốn cho phép cha dùng <code>[(open)]="isOpen"</code>. Khai báo gì trong con?">
+- <code>open = input(false)</code> và tự set nó
++ <code>open = model(false)</code>
+- <code>open = output&lt;boolean&gt;()</code>
+? model() tạo cặp input open + output openChange, và cho con set() giá trị.
+</quiz>
+<quiz q="Cần một danh sách tái sử dụng mà cha quyết định mỗi dòng hiển thị thế nào, có truyền dữ liệu từng dòng ra. Dùng gì?">
+- Nhiều ng-content
++ ng-template với let-, render bằng ngTemplateOutlet (tương đương scoped slot)
+- output cho từng dòng
+? ng-content không truyền được dữ liệu ngược ra và không lặp được. Template mới làm được.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Hộp thoại xác nhận dùng lại được</summary>
+<p>Viết component <code>ConfirmDialog</code>: mở / đóng bằng <code>[(open)]</code>, tiêu đề qua input, nội dung chiếu qua <code>ng-content</code>, hai nút "Huỷ" (đóng) và nút xác nhận có chữ tuỳ chỉnh (mặc định "Đồng ý"), phát output <code>confirmed</code>. Bấm phím Escape thì đóng. Dùng nó để xác nhận xoá một bài tập.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>open = model(false)</code>, <code>title = input.required&lt;string&gt;()</code>, <code>okText = input('Đồng ý')</code>, <code>confirmed = output()</code>.</li>
+<li>Template bọc trong <code>@if (open()) { ... }</code>, nền mờ là một div phủ toàn màn hình.</li>
+<li>Escape: <code>host: { '(document:keydown.escape)': 'open.set(false)' }</code>.</li>
+<li>Nút xác nhận: <code>confirmed.emit(); open.set(false)</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="confirm-dialog.ts">
+import { Component, input, model, output } from '@angular/core';
+
+@Component({
+  selector: 'app-confirm-dialog',
+  host: { '(document:keydown.escape)': 'open.set(false)' },
+  template: `
+    @if (open()) {
+      <div class="backdrop" (click)="open.set(false)"></div>
+      <div class="box" role="dialog" aria-modal="true" [attr.aria-label]="title()">
+        <h3>{{ title() }}</h3>
+        <ng-content />
+        <div class="actions">
+          <button type="button" (click)="open.set(false)">Huỷ</button>
+          <button type="button" class="danger" (click)="confirmed.emit(); open.set(false)">{{ okText() }}</button>
+        </div>
+      </div>
+    }
+  `,
+  styles: `
+    .backdrop { position: fixed; inset: 0; background: rgb(15 23 42 / .45); }
+    .box { position: fixed; left: 50%; top: 30%; translate: -50% 0; background: #fff; border-radius: 14px; padding: 18px 20px; width: min(420px, 92vw); }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .danger { background: #dc2626; color: #fff; border: 0; border-radius: 8px; padding: 6px 14px; }
+  `,
+})
+export class ConfirmDialog {
+  open = model(false);
+  title = input.required<string>();
+  okText = input('Đồng ý');
+  confirmed = output();
+}
+</pre>
+<pre lang="ts" file="assignment-page.ts (dùng thử)">
+@Component({
+  selector: 'app-assignment-page',
+  imports: [ConfirmDialog],
+  template: `
+    <p>{{ title() }} <button (click)="asking.set(true)">Xoá</button></p>
+    <app-confirm-dialog [(open)]="asking" title="Xoá bài tập?" okText="Xoá" (confirmed)="remove()">
+      <p>Bài "{{ title() }}" và mọi bài nộp sẽ bị xoá. Không thể hoàn tác.</p>
+    </app-confirm-dialog>
+  `,
+})
+export class AssignmentPage {
+  protected title = signal('Bài 3: Phân số');
+  protected asking = signal(false);
+  protected remove() {
+    this.title.set('(đã xoá)');
+  }
+}
+</pre>
+<pre lang="ui">
+<div style="background:rgb(15 23 42 / .45);padding:28px;border-radius:10px">
+<div style="background:#fff;border-radius:14px;padding:18px 20px;max-width:420px;margin:auto">
+<h3 style="margin:0 0 8px">Xoá bài tập?</h3>
+<p>Bài "Bài 3: Phân số" và mọi bài nộp sẽ bị xoá. Không thể hoàn tác.</p>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button>Huỷ</button><button style="background:#dc2626;color:#fff;border:0">Xoá</button></div>
+</div></div>
+</pre>
+<p><b>Giải thích:</b> cha giữ state <code>asking</code>, con đọc và đóng nó qua <code>model</code>. Nội dung câu hỏi do cha quyết định qua <code>ng-content</code>, nên dialog dùng lại được cho mọi loại xác nhận. <code>host</code> nghe phím trên <code>document</code>, Angular tự gỡ listener khi component bị huỷ. Bản production nên dùng <code>Dialog</code> của Angular CDK (bài {{n:styling-ui}}): nó xử lý giữ focus trong hộp thoại và trả focus khi đóng.</p>
+</details>
+</details>

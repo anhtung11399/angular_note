@@ -1,0 +1,232 @@
+<h2>Giải phẫu một component</h2>
+<pre lang="ts" file="src/app/features/class-card/class-card.ts">
+import { Component, input } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { Badge } from '../../shared/badge/badge';
+
+@Component({
+  selector: 'app-class-card',                // 1. tên thẻ dùng trong template khác
+  imports: [Badge, DecimalPipe],             // 2. component / directive / pipe mà template này dùng
+  templateUrl: './class-card.html',          // 3. template (hoặc template: `...`)
+  styleUrl: './class-card.css',              // 4. style riêng (hoặc styles: `...`)
+  host: { class: 'card', '[class.full]': 'isFull()' }, // 5. thuộc tính trên chính thẻ <app-class-card>
+})
+export class ClassCard {                     // 6. class: dữ liệu và hành vi
+  name = input.required<string>();
+  students = input(0);
+  capacity = input(40);
+
+  protected isFull() {
+    return this.students() >= this.capacity();
+  }
+}
+</pre>
+<pre lang="html" file="class-card.html">
+<h3>{{ name() }}</h3>
+<p>{{ students() }} / {{ capacity() }} học sinh</p>
+@if (isFull()) {
+  <app-badge tone="red">Đã đủ sĩ số</app-badge>
+}
+</pre>
+<pre lang="html" file="nơi dùng">
+<app-class-card name="Lớp 5A" [students]="30" [capacity]="30" />
+<app-class-card name="Lớp 5B" [students]="12" />
+</pre>
+<pre lang="ui">
+<div style="display:flex;gap:12px;flex-wrap:wrap">
+<div style="border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;min-width:180px"><b>Lớp 5A</b><p style="margin:6px 0">30 / 30 học sinh</p><span style="background:#fee2e2;color:#b91c1c;border-radius:99px;padding:2px 10px;font-size:13px">Đã đủ sĩ số</span></div>
+<div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;min-width:180px"><b>Lớp 5B</b><p style="margin:6px 0">12 / 40 học sinh</p></div>
+</div>
+</pre>
+<table>
+<tr><th>Phần</th><th>Trong file .vue</th><th>Trong Angular</th></tr>
+<tr><td>Tên dùng ở chỗ khác</td><td>tên file / tên import (<code>&lt;ClassCard&gt;</code>)</td><td><code>selector</code> (<code>&lt;app-class-card&gt;</code>)</td></tr>
+<tr><td>Component con dùng trong template</td><td><code>import</code> trong <code>&lt;script setup&gt;</code></td><td><code>import</code> TypeScript <b>và</b> khai báo trong <code>imports: []</code></td></tr>
+<tr><td>Template</td><td><code>&lt;template&gt;</code></td><td><code>template</code> / <code>templateUrl</code></td></tr>
+<tr><td>Style</td><td><code>&lt;style scoped&gt;</code></td><td><code>styles</code> / <code>styleUrl</code> (mặc định scoped)</td></tr>
+<tr><td>Logic</td><td><code>&lt;script setup&gt;</code></td><td>class</td></tr>
+<tr><td>Thuộc tính trên thẻ gốc</td><td>attribute fallthrough tự động</td><td><code>host: {}</code></td></tr>
+</table>
+
+<h2>Selector và thẻ host</h2>
+<p>Khi Angular render <code>&lt;app-class-card&gt;</code>, thẻ đó <b>thật sự xuất hiện trong DOM</b>, bao quanh nội dung template. Vue thì không: component Vue thay thế bằng phần tử gốc của template.</p>
+<pre lang="html" file="DOM thật sau khi render">
+<app-class-card class="card full">       <!-- thẻ host -->
+  <h3>Lớp 5A</h3>
+  <p>30 / 30 học sinh</p>
+  <app-badge tone="red">...</app-badge>
+</app-class-card>
+</pre>
+<aside class="warn"><p>Thẻ host mặc định là <code>display: inline</code> (vì trình duyệt coi thẻ lạ là inline). Khi đặt component vào flex / grid hoặc cho nó width, nhớ thêm vào style của component: <code>:host { display: block; }</code>. Đây là lỗi bố cục số một của người mới.</p></aside>
+<p>Quy ước selector:</p>
+<ul>
+<li>Có tiền tố của dự án (mặc định <code>app-</code>, có thể đổi trong <code>angular.json</code>) để không trùng thẻ HTML hay thư viện khác.</li>
+<li>Viết kebab-case: <code>app-class-card</code>.</li>
+<li>Selector còn có thể là thuộc tính <code>[appTooltip]</code> hay class, nhưng đó là cho directive (bài {{n:directive-pipe}}).</li>
+</ul>
+
+<h2>imports: component phải tự khai báo những gì nó dùng</h2>
+<p>Đây là điểm khác lớn nhất với Vue <code>&lt;script setup&gt;</code>. Template Angular chỉ hiểu những component, directive, pipe có trong <code>imports</code> của chính component đó.</p>
+<pre lang="out" sim="1">
+$ ng serve
+✘ [ERROR] NG8001: 'app-badge' is not a known element:
+1. If 'app-badge' is an Angular component, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-badge' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message.
+</pre>
+<p>Những thứ hay phải import:</p>
+<table>
+<tr><th>Dùng trong template</th><th>Import</th><th>Từ</th></tr>
+<tr><td><code>&lt;router-outlet&gt;</code>, <code>routerLink</code></td><td><code>RouterOutlet</code>, <code>RouterLink</code>, <code>RouterLinkActive</code></td><td><code>@angular/router</code></td></tr>
+<tr><td>pipe <code>date</code>, <code>currency</code>, <code>async</code>, <code>json</code></td><td><code>DatePipe</code>, <code>CurrencyPipe</code>, <code>AsyncPipe</code>, <code>JsonPipe</code></td><td><code>@angular/common</code></td></tr>
+<tr><td><code>[formControl]</code>, <code>[formGroup]</code></td><td><code>ReactiveFormsModule</code></td><td><code>@angular/forms</code></td></tr>
+<tr><td><code>[(ngModel)]</code></td><td><code>FormsModule</code></td><td><code>@angular/forms</code></td></tr>
+<tr><td><code>ngClass</code>, <code>ngStyle</code>, <code>ngTemplateOutlet</code></td><td><code>NgClass</code>, ... (ít dùng ở code mới)</td><td><code>@angular/common</code></td></tr>
+<tr><td><code>@if</code>, <code>@for</code>, <code>@switch</code>, <code>@defer</code></td><td><b>không cần import</b>, có sẵn trong ngôn ngữ template</td><td></td></tr>
+</table>
+<aside class="fe"><p>Cơ chế này giống đăng ký component cục bộ của Vue Options API (<code>components: { Badge }</code>), không phải đăng ký toàn cục <code>app.component()</code>. Angular không có đăng ký toàn cục: mọi phụ thuộc phải ghi rõ, nhờ vậy builder biết chính xác component nào cần đóng gói, và lazy loading tách bundle rất chuẩn.</p></aside>
+
+<h2>Template inline hay file riêng</h2>
+<table>
+<tr><th>Inline (<code>template: `...`</code>)</th><th>File riêng (<code>templateUrl</code>)</th></tr>
+<tr><td>giống SFC: nhìn một file là đủ</td><td>file <code>.html</code> riêng, editor hỗ trợ HTML tốt hơn</td></tr>
+<tr><td>hợp component nhỏ (dưới ~30 dòng template)</td><td>hợp component lớn, cách CLI tạo mặc định</td></tr>
+</table>
+<p>Hai cách giống nhau hoàn toàn về hiệu năng. Angular Language Service hỗ trợ cả template inline (gợi ý, báo lỗi trong chuỗi template).</p>
+
+<h2>Chia nhỏ thành cây component</h2>
+<p>Một trang danh sách lớp chia thành các component như sau:</p>
+<arch w="820" h="300" caption="Component trang (smart) lấy dữ liệu từ service và truyền xuống các component trình bày (presentational) qua input. Sự kiện đi ngược lên qua output">
+node pg 410 60 page "ClassListPage" "lấy dữ liệu, xử lý sự kiện"
+node sv 700 60 ngsvc "ClassStore" "service"
+node fl 170 200 cmp "ClassFilter" "ô tìm, lọc năm học"
+node cd 410 200 cmp "ClassCard" "× nhiều"
+node em 650 200 cmp "EmptyState" "chưa có lớp"
+edge sv pg "inject()" c=go
+path 410 120 410 140 170 140 170 176 "input"
+edge pg cd "input" route=v
+path 410 140 650 140 650 176 ""
+path 196 200 300 200 300 100 384 100 "output" c=ok dash
+</arch>
+<ul>
+<li><b>Component "thông minh" (container, smart)</b>: biết lấy dữ liệu ở đâu (inject service), xử lý sự kiện, điều hướng. Thường là component của một trang.</li>
+<li><b>Component "trình bày" (presentational, dumb)</b>: chỉ nhận <code>input</code>, phát <code>output</code>, không inject service dữ liệu. Dễ dùng lại và dễ test.</li>
+</ul>
+<aside class="fe"><p>Đây đúng là cách bạn tổ chức Vue tốt: trang gọi composable / store, component con chỉ nhận props và emit. Angular không bắt buộc, nhưng hầu hết dự án lớn theo cách này.</p></aside>
+
+<h2>Cấu trúc thư mục khuyên dùng</h2>
+<pre lang="text" file="src/app/">
+app/
+├── core/                    dùng một lần cho cả app: auth, interceptor, layout, error handler
+│   ├── auth/
+│   └── layout/
+├── shared/                  component / directive / pipe dùng lại nhiều nơi, không phụ thuộc nghiệp vụ
+│   ├── badge/
+│   └── pipes/
+├── features/                mỗi tính năng một thư mục, lazy load theo route
+│   ├── classes/
+│   │   ├── class-list-page.ts
+│   │   ├── class-card.ts
+│   │   ├── class-store.ts
+│   │   └── classes.routes.ts
+│   └── grading/
+├── models/                  interface dữ liệu
+├── app.ts
+├── app.config.ts
+└── app.routes.ts
+</pre>
+<p>Nguyên tắc từ style guide chính thức: tổ chức theo <b>tính năng</b>, không theo loại file (không tạo thư mục <code>components/</code>, <code>services/</code> chung cho cả app). Một tính năng nằm gọn một thư mục thì dễ tìm, dễ xoá và dễ lazy load.</p>
+
+<h2>Component cũ với NgModule</h2>
+<p>Trong dự án viết trước Angular 15, component được khai báo trong NgModule thay vì tự <code>imports</code>:</p>
+<pre lang="ts" file="classes.module.ts (kiểu cũ)">
+@NgModule({
+  declarations: [ClassListComponent, ClassCardComponent], // component "thuộc" module này
+  imports: [CommonModule, SharedModule, ClassesRoutingModule],
+  exports: [ClassCardComponent],
+})
+export class ClassesModule {}
+
+@Component({
+  selector: 'app-class-card',
+  templateUrl: './class-card.component.html',
+  standalone: false,            // từ v19 standalone là mặc định, component cũ phải ghi rõ false
+})
+export class ClassCardComponent {}
+</pre>
+<p>Component standalone và component trong NgModule dùng chung được: module import component standalone, component standalone import module. Lệnh <code>ng g @angular/core:standalone</code> giúp chuyển dần dự án cũ sang standalone.</p>
+
+<quiz q="Component dùng <code>&lt;app-badge&gt;</code> trong template nhưng chỉ có dòng import TypeScript. Kết quả?">
+- Chạy bình thường
++ Lỗi NG8001 'app-badge' is not a known element, vì Badge chưa có trong imports của component
+- Angular tự tìm component theo selector
+? Template chỉ biết những gì nằm trong imports của @Component. Import TypeScript thôi là chưa đủ.
+</quiz>
+<quiz q="Component nằm trong một hàng flex nhưng width: 300px không có tác dụng. Nguyên nhân hay gặp nhất?">
+- Angular chặn style
++ Thẻ host mặc định display: inline. Cần :host { display: block } (hoặc flex, grid)
+- Thiếu ViewEncapsulation
+? Thẻ tự đặt tên như app-class-card là phần tử inline với trình duyệt.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Component StudentRow và danh sách</summary>
+<p>Viết component <code>StudentRow</code> hiển thị tên học sinh, số bài đã nộp trên tổng số bài, và tô đỏ nếu nộp dưới một nửa. Viết <code>StudentList</code> dùng <code>StudentRow</code> cho 3 học sinh cố định.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li><code>StudentRow</code>: 3 input bắt buộc <code>name</code>, <code>done</code>, <code>total</code>.</li>
+<li>Dùng <code>computed</code> để tính <code>low = done / total &lt; 0.5</code>.</li>
+<li>Tô đỏ bằng host binding: <code>host: { '[class.low]': 'low()' }</code> và style <code>:host(.low) { color: #dc2626; }</code>.</li>
+<li><code>StudentList</code> import <code>StudentRow</code>, dùng <code>@for</code> qua một mảng (bài {{n:control-flow}} sẽ nói kỹ, ở đây chỉ cần <code>@for (s of students; track s.id) { ... }</code>).</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="student-row.ts">
+import { Component, computed, input } from '@angular/core';
+
+@Component({
+  selector: 'app-student-row',
+  template: `
+    <span class="name">{{ name() }}</span>
+    <span>{{ done() }} / {{ total() }} bài</span>
+  `,
+  styles: `
+    :host { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+    :host(.low) { color: #dc2626; font-weight: 600; }
+  `,
+  host: { '[class.low]': 'low()' },
+})
+export class StudentRow {
+  name = input.required<string>();
+  done = input.required<number>();
+  total = input.required<number>();
+  protected low = computed(() => this.total() > 0 && this.done() / this.total() < 0.5);
+}
+</pre>
+<pre lang="ts" file="student-list.ts">
+import { Component } from '@angular/core';
+import { StudentRow } from './student-row';
+
+@Component({
+  selector: 'app-student-list',
+  imports: [StudentRow],
+  template: `
+    @for (s of students; track s.id) {
+      <app-student-row [name]="s.name" [done]="s.done" [total]="10" />
+    }
+  `,
+})
+export class StudentList {
+  protected students = [
+    { id: 1, name: 'Nguyễn An', done: 9 },
+    { id: 2, name: 'Trần Bình', done: 3 },
+    { id: 3, name: 'Lê Chi', done: 6 },
+  ];
+}
+</pre>
+<pre lang="ui">
+<div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #e2e8f0"><span>Nguyễn An</span><span>9 / 10 bài</span></div>
+<div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-weight:600"><span>Trần Bình</span><span>3 / 10 bài</span></div>
+<div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #e2e8f0"><span>Lê Chi</span><span>6 / 10 bài</span></div>
+</pre>
+<p><b>Giải thích:</b> <code>host</code> gắn class <code>low</code> lên chính thẻ <code>&lt;app-student-row&gt;</code>, và <code>:host(.low)</code> chọn thẻ host khi có class đó. <code>:host { display: flex }</code> khiến thẻ host trở thành hàng flex, nên không cần thêm thẻ <code>div</code> bọc ngoài. Kiểm tra <code>total() &gt; 0</code> để tránh chia cho 0.</p>
+</details>
+</details>

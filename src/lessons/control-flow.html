@@ -1,0 +1,263 @@
+<h2>Khối điều khiển thay cho directive</h2>
+<p>Từ Angular 17, template có <b>khối điều khiển</b> (built-in control flow) bắt đầu bằng <code>@</code>. Chúng không phải thuộc tính gắn lên thẻ như <code>v-if</code>, mà là khối bao quanh nội dung:</p>
+<pre lang="html">
+<!-- Vue -->
+<p v-if="loading">Đang tải…</p>
+<p v-else-if="error">{{ error }}</p>
+<ul v-else>
+  <li v-for="a in assignments" :key="a.id">{{ a.title }}</li>
+</ul>
+</pre>
+<pre lang="html">
+<!-- Angular -->
+@if (loading()) {
+  <p>Đang tải…</p>
+} @else if (error()) {
+  <p>{{ error() }}</p>
+} @else {
+  <ul>
+    @for (a of assignments(); track a.id) {
+      <li>{{ a.title }}</li>
+    }
+  </ul>
+}
+</pre>
+<p>Khối không sinh thẻ HTML nào, giống <code>&lt;template v-if&gt;</code> của Vue. Không cần import gì.</p>
+
+<h2>@if</h2>
+<pre lang="html">
+@if (user(); as u) {
+  <p>Xin chào {{ u.name }}</p>          <!-- u chắc chắn khác null trong khối này -->
+} @else {
+  <a routerLink="/dang-nhap">Đăng nhập</a>
+}
+
+@if (assignments().length === 0) {
+  <app-empty-state>Chưa có bài tập nào</app-empty-state>
+}
+</pre>
+<p><code>as u</code> lưu kết quả biểu thức vào biến, đồng thời thu hẹp kiểu: bên trong khối, TypeScript biết <code>u</code> không phải <code>null</code>.</p>
+
+<h2>@for và track</h2>
+<pre lang="html">
+<ul>
+  @for (a of assignments(); track a.id; let i = $index, last = $last) {
+    <li [class.late]="a.late">
+      {{ i + 1 }}. {{ a.title }}
+      @if (!last) { <hr /> }
+    </li>
+  } @empty {
+    <li class="muted">Chưa có bài tập</li>
+  }
+</ul>
+</pre>
+<table>
+<tr><th>Biến</th><th>Ý nghĩa</th></tr>
+<tr><td><code>$index</code></td><td>vị trí (từ 0)</td></tr>
+<tr><td><code>$count</code></td><td>tổng số phần tử</td></tr>
+<tr><td><code>$first</code>, <code>$last</code></td><td>phần tử đầu / cuối</td></tr>
+<tr><td><code>$even</code>, <code>$odd</code></td><td>chẵn / lẻ (tô màu xen kẽ)</td></tr>
+</table>
+<p><code>@empty</code> hiển thị khi danh sách rỗng, thay cho cặp <code>v-if="list.length === 0"</code> riêng.</p>
+
+<h3>track là bắt buộc</h3>
+<p>Khác Vue (nơi <code>:key</code> chỉ là khuyến nghị và có cảnh báo), <code>track</code> trong Angular <b>bắt buộc</b>, thiếu là lỗi biên dịch. Nó cho Angular biết phần tử nào là phần tử nào khi danh sách đổi, để giữ DOM cũ thay vì xoá đi tạo lại.</p>
+<arch w="820" h="250" caption="Danh sách mới về từ API (object mới, cùng id). track a.id: Angular giữ nguyên 3 thẻ li cũ, chỉ cập nhật chữ. track a (theo object): mọi object đều mới → xoá 3 thẻ cũ, tạo 3 thẻ mới, mất focus và trạng thái">
+group 20 20 380 210 ok "track a.id"
+group 420 20 380 210 bad "track a (object)"
+node o1 110 100 dom "li #1" "giữ"
+node o2 210 100 dom "li #2" "giữ"
+node o3 310 100 dom "li #3" "giữ"
+node n1 510 100 dom "li #1" "xoá → tạo lại"
+node n2 610 100 dom "li #2" "xoá → tạo lại"
+node n3 710 100 dom "li #3" "xoá → tạo lại"
+text 210 200 "chỉ cập nhật nội dung đổi" small
+text 610 200 "ô nhập trong li mất chữ đang gõ" small c=bad
+</arch>
+<table>
+<tr><th>Dữ liệu</th><th>Nên track</th></tr>
+<tr><td>Object có id từ API</td><td><code>track a.id</code></td></tr>
+<tr><td>Mảng chuỗi / số không trùng</td><td><code>track tag</code> (chính giá trị)</td></tr>
+<tr><td>Mảng có thể trùng giá trị, không bao giờ sắp xếp lại</td><td><code>track $index</code></td></tr>
+<tr><td>Object không có id, được giữ nguyên tham chiếu</td><td><code>track a</code> (theo tham chiếu)</td></tr>
+</table>
+<aside class="warn"><p><code>track $index</code> nghe tiện nhưng sai khi danh sách được thêm / xoá / sắp xếp: Angular sẽ gắn nhầm DOM của phần tử cũ cho phần tử mới (ví dụ ô nhập điểm của em An hiện giá trị của em Bình sau khi xoá một em ở đầu). Có id thì luôn track theo id.</p></aside>
+
+<h2>@switch</h2>
+<pre lang="html">
+@switch (submission().status) {
+  @case ('missing') { <span class="tag red">Chưa nộp</span> }
+  @case ('submitted') { <span class="tag blue">Chờ chấm</span> }
+  @case ('graded') { <span class="tag green">{{ submission().score }} điểm</span> }
+  @default { <span class="tag">Không rõ</span> }
+}
+</pre>
+<p>So sánh bằng <code>===</code>, không "rơi" xuống case dưới (không cần break). Vue không có <code>v-switch</code>, bạn hay viết chuỗi <code>v-if / v-else-if</code>: ở Angular dùng <code>@switch</code> gọn hơn.</p>
+
+<h2>@defer: tải lười một phần giao diện</h2>
+<p><code>@defer</code> tách nội dung (và mọi component, directive, pipe bên trong) thành một <b>chunk JavaScript riêng</b>, chỉ tải khi điều kiện xảy ra. Đây là thứ Vue làm bằng <code>defineAsyncComponent</code> + <code>&lt;Suspense&gt;</code>, nhưng Angular làm bằng cú pháp template, không cần sửa code TypeScript.</p>
+<pre lang="html">
+<h2>Kết quả lớp 5A</h2>
+<app-summary [data]="summary()" />
+
+@defer (on viewport) {
+  <app-score-chart [scores]="scores()" />        <!-- thư viện vẽ biểu đồ nặng 200 KB -->
+} @placeholder (minimum 300ms) {
+  <div class="chart-skeleton"></div>             <!-- hiện trước khi bắt đầu tải -->
+} @loading (after 150ms; minimum 500ms) {
+  <app-spinner />                                <!-- hiện trong lúc tải -->
+} @error {
+  <p>Không tải được biểu đồ. <button (click)="reload()">Thử lại</button></p>
+}
+</pre>
+<arch w="820" h="200" caption="Bundle ban đầu không chứa ScoreChart và thư viện biểu đồ. Khi khung placeholder cuộn vào màn hình, Angular tải chunk riêng rồi thay bằng component thật">
+node pl 110 90 tpl "@placeholder" "khung xám"
+node tr 320 90 event "Trigger" "on viewport"
+node ld 520 90 bundle "Tải chunk" "score-chart.js"
+node ok 720 90 cmp "ScoreChart" "hiển thị"
+edge pl tr ""
+edge tr ld "" c=go
+edge ld ok "" c=ok
+</arch>
+<table>
+<tr><th>Trigger</th><th>Tải khi</th></tr>
+<tr><td><code>on idle</code> (mặc định)</td><td>trình duyệt rảnh (requestIdleCallback)</td></tr>
+<tr><td><code>on viewport</code></td><td>placeholder lọt vào màn hình</td></tr>
+<tr><td><code>on interaction</code></td><td>người dùng click / gõ vào placeholder</td></tr>
+<tr><td><code>on hover</code></td><td>rê chuột vào placeholder</td></tr>
+<tr><td><code>on timer(2s)</code></td><td>sau một khoảng thời gian</td></tr>
+<tr><td><code>on immediate</code></td><td>ngay khi phần còn lại render xong</td></tr>
+<tr><td><code>when điềuKiện()</code></td><td>khi biểu thức thành true (một lần)</td></tr>
+<tr><td><code>prefetch on idle</code></td><td>tải trước (chưa hiển thị), ví dụ <code>@defer (on interaction; prefetch on idle)</code></td></tr>
+</table>
+<aside class="warn"><p>Component bên trong <code>@defer</code> chỉ được tách chunk nếu nó <b>không được dùng ở chỗ khác ngoài khối defer</b> trong cùng file (kể cả không được tham chiếu trong code TypeScript của component). Nếu bạn lỡ dùng <code>viewChild(ScoreChart)</code>, nó bị kéo vào bundle chính và <code>@defer</code> mất tác dụng tách code.</p></aside>
+<aside class="tip"><p>Ứng dụng có SSR: <code>@defer</code> còn dùng cho <b>incremental hydration</b> (<code>hydrate on viewport</code>), bài {{n:ssr}}.</p></aside>
+
+<h2>Đọc template cũ: *ngIf, *ngFor</h2>
+<p>Dự án trước v17 viết bằng <b>structural directive</b> (dấu sao). Bạn cần đọc được:</p>
+<pre lang="html">
+<!-- Cũ -->
+<p *ngIf="loading; else ready">Đang tải…</p>
+<ng-template #ready>
+  <li *ngFor="let a of assignments; trackBy: trackById; let i = index">{{ i + 1 }}. {{ a.title }}</li>
+</ng-template>
+
+<div [ngSwitch]="status">
+  <span *ngSwitchCase="'graded'">Đã chấm</span>
+  <span *ngSwitchDefault>Chưa chấm</span>
+</div>
+
+<!-- Mới -->
+@if (loading) {
+  <p>Đang tải…</p>
+} @else {
+  @for (a of assignments; track a.id; let i = $index) { <li>{{ i + 1 }}. {{ a.title }}</li> }
+}
+</pre>
+<pre lang="sh">
+ng generate @angular/core:control-flow   # tự chuyển *ngIf / *ngFor / ngSwitch sang cú pháp mới
+</pre>
+<p>Dấu <code>*</code> là cú pháp rút gọn: Angular bọc phần tử vào một <code>&lt;ng-template&gt;</code> rồi để directive quyết định có render template đó không. Bạn vẫn sẽ thấy dấu sao ở các directive cấu trúc khác như <code>*ngTemplateOutlet</code>, <code>*cdkVirtualFor</code>.</p>
+
+<quiz q="Viết <code>@for (a of list(); track $index)</code> cho danh sách học sinh có thể xoá phần tử ở giữa. Vấn đề gì có thể xảy ra?">
+- Lỗi biên dịch
++ Sau khi xoá, DOM của phần tử cũ bị gắn cho phần tử khác: ô nhập / trạng thái hiển thị nhầm người
+- Không có vấn đề gì
+? track theo vị trí khiến Angular coi "phần tử thứ 2" là cùng một phần tử dù dữ liệu đã dịch chuyển. Có id thì track theo id.
+</quiz>
+<quiz q="Biểu đồ nặng ở cuối trang, muốn chỉ tải code khi người dùng cuộn tới. Dùng gì?">
++ <code>@defer (on viewport) { &lt;app-chart /&gt; } @placeholder { ... }</code>
+- <code>@if (scrolled()) { &lt;app-chart /&gt; }</code>
+- <code>[hidden]="!scrolled()"</code>
+? @if chỉ ẩn / hiện, code vẫn nằm trong bundle ban đầu. @defer tách thành chunk riêng và tải lười.
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Bảng điểm có lọc, trạng thái rỗng và phần thống kê tải lười</summary>
+<p>Viết component hiển thị danh sách bài nộp: mỗi dòng có số thứ tự, tên học sinh, trạng thái (dùng <code>@switch</code>), dòng chẵn tô nền nhạt. Có nút lọc "Chỉ chưa nộp". Khi danh sách lọc rỗng hiện "Tất cả đã nộp". Phần thống kê (component <code>Stats</code>) chỉ tải khi người dùng bấm vào khung "Xem thống kê".</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Dữ liệu: <code>signal</code> chứa mảng 5 bài nộp, <code>onlyMissing = signal(false)</code>, <code>shown = computed(...)</code> lọc theo cờ.</li>
+<li><code>@for (s of shown(); track s.id; let i = $index, even = $even)</code>, gắn <code>[class.even]="even"</code>.</li>
+<li><code>@empty</code> cho trường hợp rỗng.</li>
+<li><code>@defer (on interaction) { &lt;app-stats [subs]="subs()" /&gt; } @placeholder { &lt;button&gt;Xem thống kê&lt;/button&gt; }</code>.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="submission-table.ts">
+import { Component, computed, signal } from '@angular/core';
+import { Stats } from './stats';
+
+interface Sub { id: number; name: string; status: 'missing' | 'submitted' | 'graded'; score?: number }
+
+@Component({
+  selector: 'app-submission-table',
+  imports: [Stats],
+  template: `
+    <label><input type="checkbox" [checked]="onlyMissing()" (change)="onlyMissing.set(!onlyMissing())" /> Chỉ chưa nộp</label>
+    <ol>
+      @for (s of shown(); track s.id; let i = $index, even = $even) {
+        <li [class.even]="even">
+          <b>{{ i + 1 }}.</b> {{ s.name }} —
+          @switch (s.status) {
+            @case ('missing') { <span class="red">Chưa nộp</span> }
+            @case ('submitted') { <span class="blue">Chờ chấm</span> }
+            @case ('graded') { <span class="green">{{ s.score }} điểm</span> }
+          }
+        </li>
+      } @empty {
+        <li>Tất cả đã nộp 🎉</li>
+      }
+    </ol>
+
+    @defer (on interaction) {
+      <app-stats [subs]="subs()" />
+    } @placeholder {
+      <button>Xem thống kê</button>
+    } @loading (minimum 300ms) {
+      <p>Đang tải thống kê…</p>
+    }
+  `,
+  styles: `.even { background: #f8fafc; } .red { color: #dc2626; } .blue { color: #2563eb; } .green { color: #16a34a; }`,
+})
+export class SubmissionTable {
+  protected subs = signal<Sub[]>([
+    { id: 1, name: 'An', status: 'graded', score: 9 },
+    { id: 2, name: 'Bình', status: 'missing' },
+    { id: 3, name: 'Chi', status: 'submitted' },
+    { id: 4, name: 'Dũng', status: 'graded', score: 7 },
+    { id: 5, name: 'Hà', status: 'missing' },
+  ]);
+  protected onlyMissing = signal(false);
+  protected shown = computed(() => (this.onlyMissing() ? this.subs().filter((s) => s.status === 'missing') : this.subs()));
+}
+</pre>
+<pre lang="ts" file="stats.ts">
+import { Component, computed, input } from '@angular/core';
+
+@Component({
+  selector: 'app-stats',
+  template: `<p>Đã nộp {{ done() }}/{{ subs().length }} · điểm trung bình {{ avg() }}</p>`,
+})
+export class Stats {
+  subs = input.required<{ status: string; score?: number }[]>();
+  protected done = computed(() => this.subs().filter((s) => s.status !== 'missing').length);
+  protected avg = computed(() => {
+    const g = this.subs().filter((s) => s.score != null);
+    return g.length ? (g.reduce((t, s) => t + s.score!, 0) / g.length).toFixed(1) : '—';
+  });
+}
+</pre>
+<pre lang="ui">
+<label><input type="checkbox" /> Chỉ chưa nộp</label>
+<ol style="padding-left:20px">
+<li style="background:#f1f5f9"><b>1.</b> An — <span style="color:#16a34a">9 điểm</span></li>
+<li><b>2.</b> Bình — <span style="color:#dc2626">Chưa nộp</span></li>
+<li style="background:#f1f5f9"><b>3.</b> Chi — <span style="color:#2563eb">Chờ chấm</span></li>
+<li><b>4.</b> Dũng — <span style="color:#16a34a">7 điểm</span></li>
+<li style="background:#f1f5f9"><b>5.</b> Hà — <span style="color:#dc2626">Chưa nộp</span></li>
+</ol>
+<p>Đã nộp 3/5 · điểm trung bình 8.0</p>
+</pre>
+<p><b>Giải thích:</b> <code>$even</code> đúng ở vị trí 0, 2, 4 (đếm từ 0), nên dòng 1, 3, 5 có nền nhạt. Bấm "Xem thống kê" lần đầu, trình duyệt tải chunk chứa <code>Stats</code> (thấy trong tab Network), rồi khung được thay bằng dòng thống kê. Bật "Chỉ chưa nộp" thì chỉ còn Bình và Hà, số thứ tự đánh lại 1, 2 vì <code>$index</code> tính trên danh sách đã lọc.</p>
+</details>
+</details>

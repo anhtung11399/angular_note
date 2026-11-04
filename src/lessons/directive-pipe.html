@@ -1,0 +1,268 @@
+<h2>Directive: hành vi gắn lên phần tử có sẵn</h2>
+<p>Component = directive có template. <b>Attribute directive</b> không có template, nó thêm hành vi cho phần tử mà nó được gắn vào: tự focus, tooltip, kéo thả, kiểm tra quyền, tự co giãn textarea.</p>
+<aside class="fe"><p>Tương đương <b>custom directive</b> của Vue (<code>v-focus</code>, <code>app.directive('focus', ...)</code>). Khác: directive Angular là class đầy đủ, có input, output, inject service, signal, và phải được khai báo trong <code>imports</code> như component.</p></aside>
+<pre lang="ts" file="shared/autofocus.ts">
+import { Directive, ElementRef, afterNextRender, inject, input } from '@angular/core';
+
+@Directive({
+  selector: '[appAutofocus]',   // gắn bằng thuộc tính
+})
+export class Autofocus {
+  private el = inject<ElementRef<HTMLElement>>(ElementRef);
+  enabled = input(true, { alias: 'appAutofocus', transform: (v: boolean | '') => v !== false });
+
+  constructor() {
+    afterNextRender(() => {
+      if (this.enabled()) this.el.nativeElement.focus();
+    });
+  }
+}
+</pre>
+<pre lang="html" file="dùng">
+<input appAutofocus placeholder="Tên lớp" />
+<input [appAutofocus]="isNew()" />
+</pre>
+
+<h2>host: binding và listener trên phần tử chủ</h2>
+<pre lang="ts" file="shared/auto-grow.ts">
+@Directive({
+  selector: 'textarea[appAutoGrow]',          // chỉ áp cho textarea có thuộc tính này
+  host: {
+    '(input)': 'resize()',                    // lắng nghe sự kiện trên phần tử
+    '[style.overflow]': '"hidden"',           // gán style
+    '[attr.rows]': 'minRows()',
+  },
+})
+export class AutoGrow {
+  private el = inject<ElementRef<HTMLTextAreaElement>>(ElementRef);
+  minRows = input(2);
+
+  constructor() {
+    afterNextRender(() => this.resize());
+  }
+
+  protected resize() {
+    const t = this.el.nativeElement;
+    t.style.height = 'auto';
+    t.style.height = t.scrollHeight + 'px';
+  }
+}
+</pre>
+<pre lang="html">
+<textarea appAutoGrow [minRows]="3" placeholder="Nhận xét"></textarea>
+</pre>
+<p><code>host</code> trong metadata là cách hiện đại thay cho <code>@HostBinding</code> / <code>@HostListener</code> (vẫn gặp trong code cũ):</p>
+<pre lang="ts">
+// Kiểu cũ
+@HostListener('input') onInput() { this.resize(); }
+@HostBinding('style.overflow') overflow = 'hidden';
+</pre>
+
+<h2>Directive có output và nhận dữ liệu</h2>
+<pre lang="ts" file="shared/click-outside.ts">
+@Directive({
+  selector: '[appClickOutside]',
+  host: { '(document:click)': 'onDocClick($event)' },
+})
+export class ClickOutside {
+  private el = inject(ElementRef);
+  appClickOutside = output<void>();
+
+  protected onDocClick(e: MouseEvent) {
+    if (!this.el.nativeElement.contains(e.target)) this.appClickOutside.emit();
+  }
+}
+</pre>
+<pre lang="html">
+<div class="menu" (appClickOutside)="menuOpen.set(false)">...</div>
+</pre>
+
+<h2>Directive kiểm tra quyền (structural directive)</h2>
+<p>Muốn ẩn hẳn một phần giao diện theo quyền, có thể viết directive cấu trúc (dạng <code>*</code>) tạo / huỷ template:</p>
+<pre lang="ts" file="core/if-role.ts">
+import { Directive, TemplateRef, ViewContainerRef, effect, inject, input } from '@angular/core';
+import { Auth } from './auth';
+
+@Directive({ selector: '[appIfRole]' })
+export class IfRole {
+  private tpl = inject(TemplateRef);
+  private vcr = inject(ViewContainerRef);
+  private auth = inject(Auth);
+  appIfRole = input.required<'teacher' | 'parent'>();
+
+  constructor() {
+    effect(() => {
+      this.vcr.clear();
+      if (this.auth.role() === this.appIfRole()) this.vcr.createEmbeddedView(this.tpl);
+    });
+  }
+}
+</pre>
+<pre lang="html">
+<button *appIfRole="'teacher'">Giao bài mới</button>
+</pre>
+<aside class="warn"><p>Ẩn nút theo quyền chỉ là trải nghiệm người dùng, <b>không phải bảo mật</b>. Người dùng mở DevTools vẫn gọi được API. Server luôn phải kiểm tra quyền (bài {{n:bao-mat}}).</p></aside>
+<aside class="tip"><p>Với code mới, nhiều đội thích viết <code>@if (auth.isTeacher()) { ... }</code> trực tiếp hơn là viết directive cấu trúc: rõ ràng hơn, không cần học cơ chế <code>TemplateRef</code>. Viết directive khi cùng một logic lặp lại ở rất nhiều chỗ.</p></aside>
+
+<h2>Directive composition: ghép directive vào component</h2>
+<pre lang="ts">
+@Component({
+  selector: 'app-menu-button',
+  hostDirectives: [
+    ClickOutside,
+    { directive: Tooltip, inputs: ['tooltip'] },   // mở input tooltip ra ngoài
+  ],
+  template: `...`,
+})
+export class MenuButton {}
+</pre>
+<p><code>hostDirectives</code> gắn sẵn các directive vào component, người dùng component không cần thêm thuộc tính. Giống trộn composable vào component ở Vue, nhưng ở mức hành vi DOM.</p>
+
+<h2>Pipe: biến đổi giá trị để hiển thị</h2>
+<pre lang="html">
+<p>{{ dueDate | date: 'EEEE, dd/MM/yyyy' }}</p>       <!-- Thứ Ba, 10/11/2026 (khi đặt locale vi) -->
+<p>{{ price | currency: 'VND' : 'symbol' : '1.0-0' }}</p>  <!-- 49.000 ₫ -->
+<p>{{ ratio | percent: '1.0-1' }}</p>                  <!-- 83,3% -->
+<p>{{ average | number: '1.1-2' }}</p>                 <!-- 8,25 -->
+<p>{{ name | uppercase }}</p>
+<pre>{{ debugObject | json }}</pre>
+<p>{{ list | slice: 0 : 3 }}</p>
+<p>{{ data$ | async }}</p>                            <!-- subscribe Observable (bài RxJS) -->
+</pre>
+<p>Pipe nhận tham số sau dấu <code>:</code>, nối được nhiều pipe: <code>{{ name | slice:0:20 | uppercase }}</code>. Mỗi pipe phải được import vào component (<code>DatePipe</code>, <code>CurrencyPipe</code>, <code>DecimalPipe</code>, <code>PercentPipe</code>, <code>AsyncPipe</code>...).</p>
+<aside class="fe"><p>Vue 2 có filter (<code>{{ price | currency }}</code>), Vue 3 bỏ filter và khuyên dùng method / computed. Angular vẫn giữ pipe vì <b>pure pipe được ghi nhớ</b>: chỉ chạy lại khi tham số đổi, nên dùng trong template an toàn về hiệu năng hơn gọi method.</p></aside>
+
+<h3>Định dạng theo tiếng Việt</h3>
+<pre lang="ts" file="app.config.ts">
+import { LOCALE_ID } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeVi from '@angular/common/locales/vi';
+
+registerLocaleData(localeVi);
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    { provide: LOCALE_ID, useValue: 'vi' },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'VND' },
+  ],
+};
+</pre>
+<p>Sau đó <code>{{ 49000 | currency }}</code> ra "49.000 ₫", <code>{{ d | date:'fullDate' }}</code> ra "Thứ Ba, 10 tháng 11, 2026".</p>
+
+<h3>Tự viết pipe</h3>
+<pre lang="ts" file="shared/relative-due.ts">
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({ name: 'relativeDue' })   // pure: true là mặc định
+export class RelativeDuePipe implements PipeTransform {
+  transform(due: string, today = new Date().toISOString().slice(0, 10)): string {
+    const days = Math.round((Date.parse(due) - Date.parse(today)) / 86_400_000);
+    if (days < 0) return `Quá hạn ${-days} ngày`;
+    if (days === 0) return 'Hạn hôm nay';
+    if (days === 1) return 'Hạn ngày mai';
+    return `Còn ${days} ngày`;
+  }
+}
+</pre>
+<pre lang="html">
+@for (a of assignments(); track a.id) {
+  <li>{{ a.title }} — <span [class.late]="a.dueDate < today">{{ a.dueDate | relativeDue: today }}</span></li>
+}
+</pre>
+<pre lang="ui">
+<ul>
+<li>Bài 1: Cộng phân số — <span style="color:#dc2626">Quá hạn 2 ngày</span></li>
+<li>Bài 2: Đo độ dài — <span>Hạn hôm nay</span></li>
+<li>Bài 3: Văn tả cảnh — <span>Còn 5 ngày</span></li>
+</ul>
+</pre>
+<h3>Pure và impure</h3>
+<table>
+<tr><th></th><th>Pure (mặc định)</th><th>Impure (<code>pure: false</code>)</th></tr>
+<tr><td>Chạy lại khi</td><td>tham số đổi (so sánh tham chiếu)</td><td>mỗi lần Angular kiểm tra giao diện</td></tr>
+<tr><td>Mảng bị <code>push</code> tại chỗ</td><td>không chạy lại (tham chiếu không đổi)</td><td>chạy lại</td></tr>
+<tr><td>Hiệu năng</td><td>tốt</td><td>tốn, tránh dùng</td></tr>
+</table>
+<p>Với dữ liệu bất biến (luôn tạo mảng mới như signal yêu cầu), pure pipe luôn đúng. Đó là lý do bạn hầu như không cần impure pipe.</p>
+<aside class="tip"><p>Pipe hay computed? Pipe khi phép biến đổi <b>dùng lại ở nhiều template</b> (định dạng ngày, tiền, "còn N ngày"). <code>computed</code> khi logic thuộc riêng về một component.</p></aside>
+
+<quiz q="Directive cần nghe sự kiện click trên toàn trang để đóng menu. Cách viết hiện đại?">
+- addEventListener trong constructor và không gỡ
++ <code>host: { '(document:click)': 'onDocClick($event)' }</code>
+- @HostListener là cách duy nhất
+? host listener được Angular tự gỡ khi directive bị huỷ. @HostListener vẫn chạy nhưng là cú pháp cũ.
+</quiz>
+<quiz q="Pure pipe <code>count</code> trên mảng <code>items()</code>, và code gọi <code>items().push(x)</code>. Con số hiển thị?">
+- Cập nhật đúng
++ Không đổi, vì tham chiếu mảng không đổi nên pure pipe không chạy lại (và signal cũng không báo)
+- Lỗi runtime
+? Luôn tạo mảng mới: items.update(l => [...l, x]).
+</quiz>
+
+<h2>Bài tập</h2>
+<details class="ex"><summary>Directive appHighlight và pipe initials</summary>
+<p>Viết directive <code>appHighlight</code> tô nền phần tử khi rê chuột (màu truyền qua input, mặc định vàng nhạt). Viết pipe <code>initials</code> đổi "Nguyễn Thị Lan" thành "NL" (chữ đầu của họ và tên cuối). Dùng cả hai trong danh sách học sinh hiển thị avatar chữ tròn.</p>
+<p><b>Gợi ý từng bước</b></p>
+<ol class="steps">
+<li>Directive: <code>color = input('#fef9c3', { alias: 'appHighlight' })</code>, <code>hovering = signal(false)</code>.</li>
+<li><code>host: { '(mouseenter)': 'hovering.set(true)', '(mouseleave)': 'hovering.set(false)', '[style.background]': 'hovering() ? color() : null' }</code>.</li>
+<li>Pipe: tách chuỗi bằng <code>trim().split(/\s+/)</code>, lấy chữ đầu của phần tử đầu và cuối, viết hoa.</li>
+<li>Nhớ import cả directive và pipe vào component dùng chúng.</li>
+</ol>
+<details class="sol"><summary>Xem lời giải</summary>
+<pre lang="ts" file="highlight.ts">
+import { Directive, input, signal } from '@angular/core';
+
+@Directive({
+  selector: '[appHighlight]',
+  host: {
+    '(mouseenter)': 'hovering.set(true)',
+    '(mouseleave)': 'hovering.set(false)',
+    '[style.background]': 'hovering() ? color() : null',
+  },
+})
+export class Highlight {
+  color = input('#fef9c3', { alias: 'appHighlight', transform: (v: string) => v || '#fef9c3' });
+  protected hovering = signal(false);
+}
+</pre>
+<pre lang="ts" file="initials.pipe.ts">
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({ name: 'initials' })
+export class InitialsPipe implements PipeTransform {
+  transform(fullName: string | null | undefined): string {
+    const parts = (fullName ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    const first = parts[0][0];
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return (first + last).toLocaleUpperCase('vi');
+  }
+}
+</pre>
+<pre lang="ts" file="roster.ts">
+@Component({
+  selector: 'app-roster',
+  imports: [Highlight, InitialsPipe],
+  template: `
+    @for (s of students; track s.id) {
+      <div class="row" appHighlight>
+        <span class="avatar">{{ s.name | initials }}</span> {{ s.name }}
+      </div>
+    }
+  `,
+  styles: `.row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; }
+           .avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #dd0031; color: #fff; font-weight: 700; font-size: 13px; }`,
+})
+export class Roster {
+  protected students = [{ id: 1, name: 'Nguyễn Thị Lan' }, { id: 2, name: 'Trần Bình' }, { id: 3, name: 'Ánh' }];
+}
+</pre>
+<pre lang="ui">
+<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px"><span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#dd0031;color:#fff;font-weight:700;font-size:13px">NL</span> Nguyễn Thị Lan</div>
+<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;background:#fef9c3"><span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#dd0031;color:#fff;font-weight:700;font-size:13px">TB</span> Trần Bình <small style="color:#64748b">(đang rê chuột)</small></div>
+<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px"><span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#dd0031;color:#fff;font-weight:700;font-size:13px">Á</span> Ánh</div>
+</pre>
+<p><b>Giải thích:</b> <code>appHighlight</code> không có giá trị nên input nhận chuỗi rỗng, <code>transform</code> đổi thành màu mặc định. Muốn màu khác: <code>appHighlight="#dbeafe"</code>. Pipe dùng <code>toLocaleUpperCase('vi')</code> để chữ có dấu viết hoa đúng. Tên một chữ ("Ánh") chỉ cho một chữ cái.</p>
+</details>
+</details>
